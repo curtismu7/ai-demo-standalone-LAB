@@ -1,0 +1,4 @@
+# vendored from curtismu7/AI-DEMO-Standalone shared/hop-detail at 4845d15 (main); re-vendor, do not edit. These are the hashes of the SHARED originals. hop-catalog.json is copied unchanged. hopDetail.mjs is the original under one added header line. server/test/hopDetail.test.js is hopDetail.test.mjs under one added header line, with its two import paths adjusted (server/test/hopDetail.pin.test.js reverses exactly those edits before hashing).
+51aa3055f2648b76aa3cd7455de920aa36fb667489025d382c8d687236bdabf7  hop-catalog.json
+001e46d71bad19867f79accb73d71f84b3ae555996485f1c4d11b78530c135da  hopDetail.mjs
+89bac44c929d13bc0769e3afe9445de800d1f5bd226aff27f444bc751690e73f  hopDetail.test.mjs
