@@ -48,7 +48,9 @@
     "pep": null,
     "authz": "Evaluates the act claim and delegation chain; returns PERMIT for a valid actor.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Delegated access: consent mints an agent token that acts for you",
+   "valueStatement": "You approve once; your agent can then act for you, and every action traces back to your consent — no shared password, no anonymous access."
   },
   {
    "id": "UC2",
@@ -80,7 +82,9 @@
     "pep": null,
     "authz": "Evaluates the full act chain at each hop; denies if any link is unauthorized.",
     "pa": null
-   }
+   },
+   "explicitTitle": "A2A delegation: your generalist agent hands a task to a specialist agent",
+   "valueStatement": "Multi-agent work stays governed end-to-end: each specialist inherits only the scope the handoff granted, so adding agents never widens access."
   },
   {
    "id": "UC2.5",
@@ -112,7 +116,9 @@
     "pep": null,
     "authz": "Evaluates the full act chain at each hop and narrows policy context for the specialist.",
     "pa": null
-   }
+   },
+   "explicitTitle": "A2A orchestrator: how the right specialist is found and the handoff proven",
+   "valueStatement": "You can see the full delegation chain before trusting an automated handoff — the proof is in the token, not a promise."
   },
   {
    "id": "UC2.7",
@@ -144,7 +150,9 @@
     "pep": null,
     "authz": "Decides over the full act chain — ActChainDepth 2, specialist acting for generalist acting for the user.",
     "pa": null
-   }
+   },
+   "explicitTitle": "A2A end to end: the agent protocol (Agent Card, 401) and the identity chain side by side",
+   "valueStatement": "One demo shows both halves of agent-to-agent: the wire protocol AND the identity — so 'A2A' never hides an ungoverned shortcut."
   },
   {
    "id": "UC2.6",
@@ -176,7 +184,9 @@
     "pep": null,
     "authz": "Evaluates ActChainDepth and NestedActClientId; DENYs invalid_a2a_generalist when the actor does not match the registered generalist.",
     "pa": null
-   }
+   },
+   "explicitTitle": "A2A security: an unregistered specialist agent is refused",
+   "valueStatement": "Only agents your organization registered can act for you — a rogue agent can't slip into a delegation chain by knowing the endpoint."
   },
   {
    "id": "UC3",
@@ -207,7 +217,9 @@
     "pep": null,
     "authz": "Checks the user's bridged consent (may_act) against the acting agent on every tool call — no match, no permit.",
     "pa": null
-   }
+   },
+   "explicitTitle": "act gate: every agent action names its actor and its human",
+   "valueStatement": "Nothing an agent does is anonymous: security teams can always answer 'who did this, through which agent, for which user'."
   },
   {
    "id": "UC19",
@@ -239,7 +251,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Agent identity lifecycle: register, rotate and revoke agent keys like employee badges",
+   "valueStatement": "Agents are managed like employees: joiners get keys, movers get rotations, leavers get cut off — one process your IAM team already runs."
   },
   {
    "id": "UC20",
@@ -270,7 +284,9 @@
     "pep": null,
     "authz": "Records the policy decision (PERMIT/DENY/STEP_UP) for every evaluated request.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Agent observability: every action traceable end to end",
+   "valueStatement": "When something goes wrong you have the full story in minutes, not a forensics project: every hop, every decision, attributable."
   },
   {
    "id": "UC33",
@@ -303,7 +319,9 @@
     "pep": null,
     "authz": "Evaluates the same act-claim policy for every tool in scope.",
     "pa": null
-   }
+   },
+   "explicitTitle": "My mortgage: your agent working on a real customer journey end to end",
+   "valueStatement": "This isn't a toy flow: the same governance that guards a demo mortgage guards your production customer journeys."
   },
   {
    "id": "UC34",
@@ -333,7 +351,9 @@
     "pep": null,
     "authz": "Evaluates each resulting tool call independently — freeform intent grants no special access.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Anomaly detection: unusual patterns surface before damage",
+   "valueStatement": "Odd agent behavior — new payees, odd hours, velocity — is caught and checked, not silently executed."
   },
   {
    "id": "UC35",
@@ -364,7 +384,9 @@
     "pep": null,
     "authz": "Recorded the original PERMIT/DENY/STEP_UP decision the explanation is built from.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Explainable denial: exactly why an agent action was blocked",
+   "valueStatement": "When something is blocked you get the reason in plain language — support can resolve tickets without a forensic dig."
   },
   {
    "id": "UC4",
@@ -394,7 +416,9 @@
     "pep": null,
     "authz": "Evaluates scope requirements per tool; a token carrying only the needed scope is the correct posture.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Overscoped agent: the agent asks for write, the mint grants only read",
+   "valueStatement": "Least privilege at mint time: even a misconfigured or compromised agent gets the minimum scope for the task, not what it asked for."
   },
   {
    "id": "UC6",
@@ -424,7 +448,9 @@
     "pep": null,
     "authz": "Evaluates the transaction amount against the ceiling rule and returns DENY.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Authorization denied: an unregistered agent is refused at the gateway",
+   "valueStatement": "Only allow-listed agents reach your data: an attacker's agent is refused before any tool runs, whatever token it presents."
   },
   {
    "id": "UC7",
@@ -456,7 +482,9 @@
     "pep": null,
     "authz": "Returns the STEP_UP obligation for the mid-range amount; re-evaluates to PERMIT after MFA.",
     "pa": null
-   }
+   },
+   "explicitTitle": "MFA step-up: a mid-range transfer pauses until you complete MFA",
+   "valueStatement": "Large actions pause for a human check — automation can't move meaningful money without you in the loop, but small everyday tasks never bug you."
   },
   {
    "id": "UC8",
@@ -487,7 +515,9 @@
     "pep": null,
     "authz": "Returns the HITL obligation; re-evaluates to PERMIT only when HitlApproved=true is presented.",
     "pa": null
-   }
+   },
+   "explicitTitle": "HITL approval: sensitive transfers need explicit human approval, not just MFA",
+   "valueStatement": "For genuinely sensitive actions, a tap is not enough: an explicit approval receipt — bound to that exact transfer — is required. An approval can't be faked with MFA, and vice versa."
   },
   {
    "id": "UC9",
@@ -517,7 +547,9 @@
     "pep": null,
     "authz": "Evaluates the group claim against the entitlement rule; returns DENY when the user is not a member.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Entitlement check: outside the required group is denied regardless of scopes",
+   "valueStatement": "Access follows your job role, not your token: moving teams changes access instantly, and a stolen token inherits only the victim's entitlements."
   },
   {
    "id": "UC9A",
@@ -547,7 +579,9 @@
     "pep": null,
     "authz": "Answers every decision the board and panel display.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Entitlement live flip: revoke the group and the very next call is denied",
+   "valueStatement": "Offboarding is instant: remove the group and the next agent call fails — no waiting for token expiry, no stale caches, no orphaned access."
   },
   {
    "id": "UC21",
@@ -578,7 +612,9 @@
     "pep": null,
     "authz": "Evaluates the tier claim against the entitlement rule; adjusts the permitted tool set and limits.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Tiered capability: your entitlement level decides which tools exist and their limits",
+   "valueStatement": "Upgrading your account upgrades your agent instantly — and downgrading just as instantly shrinks what it can do. No code changes."
   },
   {
    "id": "UC22",
@@ -608,7 +644,9 @@
     "pep": null,
     "authz": "Returns the CIBA obligation for the sensitive, agent-initiated action; PERMITs only after the user approves out-of-band.",
     "pa": null
-   }
+   },
+   "explicitTitle": "CIBA: approving agent actions out-of-band on your phone",
+   "valueStatement": "Agents can prompt you even with no browser open: the approval lands on your phone, so automation never bypasses the human check."
   },
   {
    "id": "UC23",
@@ -641,7 +679,9 @@
     "pep": null,
     "authz": "Returns PERMIT, HITL obligation, CIBA requirement, or DENY based on tool and transaction amount.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Progressive trust walkthrough: how agent access grows with proven behavior",
+   "valueStatement": "Agents earn access step by step instead of getting everything up front — you can show auditors exactly why each level was granted."
   },
   {
    "id": "UC24",
@@ -671,7 +711,9 @@
     "pep": null,
     "authz": "Not called for this public catalog request.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Public catalog: browsing needs no identity, but action does",
+   "valueStatement": "Anonymous visitors can browse freely while every real action stays gated — good UX and zero anonymous risk in one pattern."
   },
   {
    "id": "UC26",
@@ -703,7 +745,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Proof of enforcement: every use case shows its live verdict",
+   "valueStatement": "Nothing here is a slide: every claim on this dashboard is backed by a real decision you can replay — enforcement you can demonstrate to auditors."
   },
   {
    "id": "UC5",
@@ -734,7 +778,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Wrong scope: a read-scoped token calling a write tool is refused 403",
+   "valueStatement": "Scope enforcement stops privilege escalation cold: a stolen or misused token can read what it may read — and nothing more."
   },
   {
    "id": "UC10",
@@ -765,7 +811,9 @@
     "pep": null,
     "authz": "Binds the resource to the token sub; returns DENY on an ownership mismatch.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Account takeover blocked: an agent reading someone else's account is denied",
+   "valueStatement": "Even a fully valid agent token can't cross customer boundaries: your agent can only see YOUR accounts, however it's phrased."
   },
   {
    "id": "UC11",
@@ -796,7 +844,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Wrong audience: a token minted for another API is refused 401",
+   "valueStatement": "Tokens are destination-locked: a credential stolen from one system is worthless at another — the breach doesn't spread sideways."
   },
   {
    "id": "UC12",
@@ -827,7 +877,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Token theft + replay: DPoP makes a stolen bearer token worthless",
+   "valueStatement": "A stolen token alone can't be used: the attacker also needs the private key on your device, and captured proofs can't be replayed."
   },
   {
    "id": "UC13",
@@ -857,7 +909,9 @@
     "pep": null,
     "authz": "Checks ActClientId against the configured authorized actor; returns DENY for any other value.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Confused deputy: a forged actor header can't change who the agent acts for",
+   "valueStatement": "Identity travels in signed claims, not headers: an attacker can't launder their actions through a legitimate agent by editing metadata."
   },
   {
    "id": "UC14",
@@ -888,7 +942,9 @@
     "pep": null,
     "authz": "Compares the live request parameters against the RAR grant; returns DENY on overage.",
     "pa": null
-   }
+   },
+   "explicitTitle": "PAR+RAR intent exceeded: the agent tries to spend beyond what was consented",
+   "valueStatement": "Pushed consent is a hard ceiling: the agent cannot spend a cent more than the exact intent you approved, even inside its normal tier."
   },
   {
    "id": "UC14b",
@@ -914,7 +970,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "PAR+RAR intent honored: the exact consented amount permits",
+   "valueStatement": "The same mechanism that blocks overreach allows exactly what you approved — consent is precise, not a blanket 'yes'."
   },
   {
    "id": "UC15",
@@ -945,7 +1003,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Intent tampering: an edited consent token fails its signature check",
+   "valueStatement": "Consent can't be forged after the fact: changing the approved amount invalidates the signature before the value is ever read."
   },
   {
    "id": "UC16",
@@ -976,7 +1036,9 @@
     "pep": null,
     "authz": "Validates the act chain when present; this scenario demonstrates the absence case.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Impersonation blocked: a user token with no act claim is refused",
+   "valueStatement": "Every agent action is attributable: an attacker can't pretend to be you directly — the missing actor claim gives them away."
   },
   {
    "id": "UC16b",
@@ -1006,7 +1068,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Raw token forwarding blocked: passing a user token through an agent fails Zero Trust",
+   "valueStatement": "Agents can't reuse your login token as their own: each hop must re-delegate properly, so a hijacked agent can't pose as your browser."
   },
   {
    "id": "UC17",
@@ -1038,7 +1102,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Ephemeral credentials: delegated tokens expire in minutes",
+   "valueStatement": "The theft window is minutes, not months: a captured agent token is already dead by the time an attacker tries it — no revocation scramble needed."
   },
   {
    "id": "UC18",
@@ -1069,7 +1135,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Flood defense: a burst of agent calls hits the 429 rate limit",
+   "valueStatement": "A runaway or malicious agent can't take the service down for everyone: the gateway cuts off the flood while normal customers keep working."
   },
   {
    "id": "UC29",
@@ -1100,7 +1168,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Fail closed: when token validation is down, everything stops",
+   "valueStatement": "An outage degrades to 'deny' not 'allow': attackers can't use an infrastructure failure as an open door, at the cost of brief unavailability."
   },
   {
    "id": "UC30",
@@ -1130,7 +1200,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Third-party MCP server: scoped access at the gateway for external tools",
+   "valueStatement": "You can adopt external tool servers without surrendering control: the gateway scopes what external tools may see and do."
   },
   {
    "id": "UC31",
@@ -1160,7 +1232,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Third-party MCP: an out-of-scope call to an external server is denied",
+   "valueStatement": "External integrations obey the same rules as internal ones: the scope grant is the boundary, enforced at the gateway every call."
   },
   {
    "id": "UC32",
@@ -1190,7 +1264,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Live policy edit: tighten the gateway scope list and the next call moves",
+   "valueStatement": "Policy changes take effect on the next call, not the next deploy: security teams respond to incidents in seconds."
   },
   {
    "id": "UC41",
@@ -1220,7 +1296,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Third-party search filtered: results scoped before they reach the agent",
+   "valueStatement": "External search results are filtered at the gateway, so a third party can't leak data into your agent's context."
   },
   {
    "id": "UC42",
@@ -1250,7 +1328,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Third-party search blocked: a query outside the grant is denied",
+   "valueStatement": "The grant defines the queries: external providers can't expand what they answer beyond what was permitted."
   },
   {
    "id": "UC-TOOL1",
@@ -1281,7 +1361,9 @@
     "pep": null,
     "authz": "Evaluates the code_search tool request and returns the visible PERMIT or DENY decision.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Protected RAG: retrieval grounded in indexed code behind delegated auth",
+   "valueStatement": "AI answers are grounded in real indexed sources, and the retrieval itself is authorized — no ungoverned data scraping to build context."
   },
   {
    "id": "UC-TOOL2",
@@ -1307,7 +1389,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Code Explorer: AI code search over a semantic knowledge graph",
+   "valueStatement": "Engineers and their agents get accurate answers from the actual codebase, with access governed — faster work without shadow copies of source."
   },
   {
    "id": "UC-TOOL3",
@@ -1333,7 +1417,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "LLM Gateway: prompt-injection, PII and content scanning in front of every model",
+   "valueStatement": "Every LLM call passes one security layer: injection and PII are caught before they reach the model or the log — AI traffic governed like any other API."
   },
   {
    "id": "UC46",
@@ -1359,7 +1445,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Privilege A2A access review: one console over the whole agent chain",
+   "valueStatement": "Access reviews cover the entire agent chain from one place — auditors see every hop without stitching logs from five systems."
   },
   {
    "id": "UC46A",
@@ -1385,7 +1473,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Privilege A2A review inside the agent: decisions surfaced where work happens",
+   "valueStatement": "Governance shows up in the agent's own UI: users see why things pass or fail in the flow of work, not in a separate admin console."
   },
   {
    "id": "UC47",
@@ -1411,7 +1501,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Privilege A2A three-deep chain: policy across a three-agent pipeline",
+   "valueStatement": "Chains of agents stay governed at every depth — the third hop is as controlled as the first."
   },
   {
    "id": "UC-MUSE1",
@@ -1437,7 +1529,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Your own agent, our gateway: external agents onboard via discovery + DCR + PKCE",
+   "valueStatement": "Customers and partners can point their own agents at your API safely: standard onboarding (discovery, registration, login) means no bespoke access paths."
   },
   {
    "id": "UC-MUSE2",
@@ -1463,7 +1557,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Your own agent, the Agent Privilege: the privilege-gateway lane",
+   "valueStatement": "The same external-agent experience with the full privilege engine in line: partners get governed access without you building custom integrations."
   },
   {
    "id": "UC-NHI1",
@@ -1489,7 +1585,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Agent NHI inventory: every agent identity live, revocable in one view",
+   "valueStatement": "You always know which agents exist and can kill any of them in one click — non-human identities stop being an unmanaged shadow directory."
   },
   {
    "id": "UC-NHI2",
@@ -1515,7 +1613,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Agent lifecycle export: joiner/mover/leaver events for your IGA system",
+   "valueStatement": "Agent identities flow into the same governance tooling as employees: SailPoint-style systems see agents as first-class identities automatically."
   },
   {
    "id": "UC-LEARN1",
@@ -1541,7 +1641,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "OAuth Academy: interactive lessons on the OAuth flows behind everything here",
+   "valueStatement": "New team members learn the actual flows hands-on instead of from slides — the same engine that enforces policy teaches it."
   },
   {
    "id": "UC-LEARN2",
@@ -1567,7 +1669,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "PingOne MCP Inspector: watch MCP traffic through PingOne, call by call",
+   "valueStatement": "Support and SEs can see exactly what PingOne does with MCP calls — faster diagnosis, clearer demos."
   },
   {
    "id": "UC-LEARN3",
@@ -1593,7 +1697,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Generic MCP Inspector: the raw MCP protocol, request by request",
+   "valueStatement": "Learn the MCP wire format itself — what tools/list and tools/call really look like on the wire."
   },
   {
    "id": "UC-LEARN4",
@@ -1619,7 +1725,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "MCP tools: the tool catalog and how calls are gated",
+   "valueStatement": "See the actual tool inventory an agent could call, and what stands between it and each tool."
   },
   {
    "id": "UC-LEARN5",
@@ -1645,7 +1753,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Learning Hub: the index of every hands-on lesson in the suite",
+   "valueStatement": "One place to learn the whole stack: every lesson links to a runnable scenario, not a wall of text."
   },
   {
    "id": "UC-LEARN6",
@@ -1671,7 +1781,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Token Flow: watch a token's claims change hop by hop",
+   "valueStatement": "The best way to understand delegation: see sub and act change at each exchange, live."
   },
   {
    "id": "UC-LEARN7",
@@ -1706,7 +1818,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "The ungoverned agent: what an agent can do with NO gateway in the way",
+   "valueStatement": "The cautionary tale: the same agent with no governance — the baseline that makes every control here worth having."
   },
   {
    "id": "UC-PAM-SETUP",
@@ -1732,7 +1846,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Privilege demo setup: how the SE environment is wired",
+   "valueStatement": "Reproducible setup for the Privilege demo — anyone can stand up the same governed environment."
   },
   {
    "id": "UC-PAM-SCRIPT",
@@ -1758,7 +1874,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Privilege demo script: the access-request story to run live",
+   "valueStatement": "A scripted, rehearsed demo path for the access-request story — reliable under presentation pressure."
   },
   {
    "id": "UC-LEARN8",
@@ -1784,7 +1902,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Enterprise-managed MCP authorization: the ID-JAG pattern explained",
+   "valueStatement": "The enterprise keeps authorization decisions at the core instead of trusting every agent — the architectural shift behind MCP security."
   },
   {
    "id": "UC-LEARN9",
@@ -1810,7 +1930,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "ID-JAG / cross-app access: one approval, scoped access across apps",
+   "valueStatement": "Users approve once and agents get scoped access across participating apps — fewer prompts, no blanket consent."
   },
   {
    "id": "UC-LEARN10",
@@ -1836,7 +1958,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Orchestration SDK: building your own brandable agent login UI",
+   "valueStatement": "Product teams embed Ping login in their own UX — governance with your brand, not a redirect to someone else's page."
   },
   {
    "id": "UC-LEARN12",
@@ -1862,7 +1986,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "PingFederate DaVinci kit: orchestrating login journeys in PingFederate",
+   "valueStatement": "Build no-code login journeys on PingFederate — identity experience without custom code."
   },
   {
    "id": "UC-LEARN13",
@@ -1888,7 +2014,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "PingFederate RAR: the authorization server refuses an out-of-policy transfer",
+   "valueStatement": "Rich authorization enforced at the AS itself: the server, not the app, is the last line against out-of-policy actions."
   },
   {
    "id": "UC-LEARN14",
@@ -1914,7 +2042,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "CIBA human approval: PingFederate or PingOne depending on how you signed in",
+   "valueStatement": "The same out-of-band approval works with either IdP — governance survives your hybrid identity estate."
   },
   {
    "id": "UC-LEARN15",
@@ -1944,7 +2074,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "JEV decision model: fast path vs slow path (System One vs System Two)",
+   "valueStatement": "Not every decision needs the same scrutiny: routine calls flow, risky ones pause — like human judgment, formalized."
   },
   {
    "id": "UC-LEARN11",
@@ -1974,7 +2106,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Privilege LLM: prompt injection caught at the gateway",
+   "valueStatement": "Prompt injection is a gateway problem: malicious instructions are caught before the model ever sees them."
   },
   {
    "id": "UC-LEARN16",
@@ -2000,7 +2134,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "MFA test: the FIDO2 passkey ceremony, step by step",
+   "valueStatement": "See exactly what a passkey check does — phishing-resistant MFA made concrete."
   },
   {
    "id": "UC-LEARN17",
@@ -2026,7 +2162,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "OAuth debug: a live log of the token flow",
+   "valueStatement": "Debug auth like you debug code: every request and response in the flow, live."
   },
   {
    "id": "UC-LEARN18",
@@ -2052,7 +2190,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "LLM test: raw provider chat through the gateway",
+   "valueStatement": "See what the model actually receives and returns — transparency into the AI call path."
   },
   {
    "id": "UC-LEARN19",
@@ -2078,7 +2218,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Intent Inspector: the PAR and RAR payloads behind a consent",
+   "valueStatement": "Read the real consent payload: what the user approved, exactly, in machine-readable form."
   },
   {
    "id": "UC25",
@@ -2111,7 +2253,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Enterprise-managed MCP access: the org owns which MCP servers agents use",
+   "valueStatement": "Agents can't bring their own integrations: the enterprise catalog decides, and every connection is governed."
   },
   {
    "id": "UC39",
@@ -2143,7 +2287,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Centralized revocation: kill one MCP integration everywhere at once",
+   "valueStatement": "One revocation spreads instantly to every consumer of that server — incident response in one action, not a fire drill across teams."
   },
   {
    "id": "UC40",
@@ -2175,7 +2321,9 @@
     "pep": null,
     "authz": "The MCP Authorization Server verifies the ID-JAG and issues the scoped access token.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Enterprise-managed MCP: the org, not the agent, decides what agents may connect to",
+   "valueStatement": "The enterprise keeps the catalog of allowed MCP servers: agents can't bring their own ungoverned integrations to work."
   },
   {
    "id": "UC-LOGIN",
@@ -2205,7 +2353,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "PingOne login: the OIDC + PKCE sign-in behind the demo",
+   "valueStatement": "The real sign-in flow, standards-based — what your users would actually experience."
   },
   {
    "id": "UC-LOGIN-PF",
@@ -2235,7 +2385,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "PingFederate login: the same OIDC + PKCE sign-in on PingFederate",
+   "valueStatement": "The same experience on your existing PingFederate estate — governance doesn't require a platform migration."
   },
   {
    "id": "UC-LOGIN-AIC",
@@ -2265,7 +2417,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "AIC login: federated sign-in through PingOne",
+   "valueStatement": "Federated identity in the flow: partner users sign in through their own IdP with the same governance."
   },
   {
    "id": "UC-AIC-TX",
@@ -2295,7 +2449,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "AIC token exchange: cross-domain delegation for federated agents",
+   "valueStatement": "Agents act across organizational boundaries with proper delegation — federation and governance together."
   },
   {
    "id": "UC-OBO",
@@ -2325,7 +2481,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "On-behalf-of delegation inspector: watch the OBO exchange",
+   "valueStatement": "See precisely how a service acts on a customer's behalf with attribution — the core pattern behind background agents."
   },
   {
    "id": "UC27",
@@ -2355,7 +2513,9 @@
     "pep": null,
     "authz": "P1AZ policy still governs whether HITL is required for this transaction type.",
     "pa": null
-   }
+   },
+   "explicitTitle": "HITL bypass attempt: replaying or forging the approval receipt fails",
+   "valueStatement": "The approval can't be gamed: a captured or reused receipt is refused, because it's bound to one challenge, one user, one exact call."
   },
   {
    "id": "UC28",
@@ -2385,7 +2545,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "The tool list IS the permission set: what the agent can't see, it can't call",
+   "valueStatement": "Access control you can read at a glance: the agent's tool list is its whole capability — no hidden APIs, no surprise powers."
   },
   {
    "id": "UC37",
@@ -2417,7 +2579,9 @@
     "pep": null,
     "authz": "Evaluates the act chain as usual — the credential is additive, not a replacement authorization signal.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Verified Trust: signed agent assertions on every A2A handoff",
+   "valueStatement": "Agents prove who they are cryptographically at every handoff: trust between agents isn't assumed, it's verified."
   },
   {
    "id": "UC38",
@@ -2449,7 +2613,9 @@
     "pep": null,
     "authz": "Evaluates the selected vertical action and any assurance obligations before the tool executes.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Workload agent: MFA-gated protected actions for service identities",
+   "valueStatement": "Even non-interactive workload agents hit a human gate for protected actions — service accounts stop being a silent backdoor."
   },
   {
    "id": "UC43",
@@ -2481,7 +2647,9 @@
     "pep": null,
     "authz": null,
     "pa": null
-   }
+   },
+   "explicitTitle": "Consumer & partner agents: CIMD registration for third-party agent developers",
+   "valueStatement": "Third-party developers onboard their agents safely: verified client metadata means partners get governed access without manual key handoffs."
   },
   {
    "id": "UC44",
@@ -2515,7 +2683,9 @@
     "pep": null,
     "authz": "Evaluates the user, assistant actor, scopes, resource ownership, and step-up requirements.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Workload agent OBO: a backend service reading customer data on a customer's behalf",
+   "valueStatement": "Background services act for customers with full attribution — batch jobs and integrations get the same governance as interactive agents."
   },
   {
    "id": "UC45",
@@ -2549,7 +2719,9 @@
     "pep": null,
     "authz": "Evaluates the customer, worker actor, scopes, tenant context, and action policy.",
     "pa": null
-   }
+   },
+   "explicitTitle": "SaaS-embedded agent: a website's built-in agent under your governance",
+   "valueStatement": "Agents embedded in vendor websites obey YOUR policy: SaaS convenience doesn't create a governance blind spot."
   },
   {
    "id": "UC48",
@@ -2581,7 +2753,9 @@
     "pep": null,
     "authz": "Evaluates the booking price against the transaction policy and returns the HITL consent obligation.",
     "pa": null
-   }
+   },
+   "explicitTitle": "Consumer agent, governed: a real flight-booking agent under full policy",
+   "valueStatement": "A polished consumer agent experience that is fully governed underneath — usability and control, not either-or."
   }
  ]
 }
