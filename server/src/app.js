@@ -24,6 +24,7 @@ import { matchTurn } from './assistant.js';
 import { createWorkspaces, workspaceFrom } from './workspaces.js';
 import { SCENARIOS } from './policyData.js';
 import { toDemoHops, tokenCardsFrom } from './evidenceAdapter.js';
+import { buildDemoHops, buildTokenCards } from './hops.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = process.env.WEB_DIST || path.resolve(HERE, '../../web/dist');
@@ -414,17 +415,21 @@ export function createApp({
     });
     const ctx = { user: sc.user, actor: sc.actor, tool: sc.tool, amount, groups: entry.groups, tier: entry.tier, aud: sc.aud };
     const trace = newTrace(req.headers.traceparent);
+    // P3 evidence views: the run also carries the 10-step demo-hop/1 hops (for the reel,
+    // the sequence view and the chain map) and the raw MOCK token cards, adapter output.
+    const demoHops = buildDemoHops({ verdict, user: sc.user, actor: sc.actor, tool: sc.tool, amount, token, trace, aud: sc.aud, consent: true });
     const run = {
       ...verdict, tool: sc.tool, user: sc.user, act: token.act ?? null,
       chainDepth: actChainDepth(token.act), groups: entry.groups, tier: entry.tier,
       ucId: sc.ucId, scenarioId: sc.id, workspace: ws, obligation, amount: amount ?? null,
       narrative: explain(verdict, ctx), lesson: lessonFor(verdict, ctx),
       products: productCast(verdict), hops: toDemoHops(buildHops({ verdict, ...ctx, token, trace, consent: true }), { decision: verdict.decision }), tokens: tokenCardsFrom({ exchangeToken: token }),
+      demoHops, tokens10: buildTokenCards({ user: sc.user, actor: sc.actor, tool: sc.tool, token, aud: sc.aud }),
       traceId: trace.traceId,
     };
     workspaces.record(ws, { tool: sc.tool, decision: verdict.decision, reason: verdict.reason, token, blocked: verdict.code, ucId: sc.ucId });
     const by = verdict.decision === 'OBLIGATION' ? 'gateway' : 'authorize';
-    return res.json({ handling: 'in-app', ucId: sc.ucId, scenarioId: sc.id, decision: verdict.decision, say: verdict.reason, obligation: obligation ?? undefined, run, hops: run.hops, reply: { text: verdict.reason, by, outcome: verdict.decision, ucId: sc.ucId, tool: sc.tool } });
+    return res.json({ handling: 'in-app', ucId: sc.ucId, scenarioId: sc.id, decision: verdict.decision, say: verdict.reason, obligation: obligation ?? undefined, run, hops: run.hops, demoHops: run.demoHops, tokens10: run.tokens10, reply: { text: verdict.reason, by, outcome: verdict.decision, ucId: sc.ucId, tool: sc.tool } });
   }));
 
   api.get('/runs', withWorkspace((ws, _req, res) => res.json(workspaces.runs(ws))));

@@ -1,6 +1,6 @@
 // The one-page dashboard: five sections, jump tiles, the assistant turn filling everything.
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DashboardPage, { StepTiles, AssistantSection, PlanSection, EvidenceSection, ProductsSection, TalkTrackSection } from "./DashboardPage";
 
@@ -35,6 +35,21 @@ const RUN = {
 };
 
 const STORY = { scenarios: [{ id: "uc1", ucId: "UC1" }] };
+
+// demo-hop/1 hops shaped like the 10-step adapter emits (server/src/hops.js): the reel
+// and sequence need n/kind/from/to/verdict/title/fact/spec; the chain map keys on kind.
+const DEMO_HOPS = [
+  { n: 1, kind: "sign-in", from: "browser", to: "idp", verdict: "ok", mock: true, label: "sign in", title: "Sign-in", fact: "user token issued", spec: { none: true, why: "w", failure: "f" }, request: {}, response: {}, traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b1-01" },
+  { n: 2, kind: "prompt", from: "browser", to: "bff", verdict: "ok", mock: true, label: "ask", title: "Prompt", fact: "message only, no token", spec: { none: true, why: "w", failure: "f" }, request: {}, response: {}, traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b2-01" },
+  { n: 3, kind: "agent-receive", from: "bff", to: "agent", verdict: "ok", mock: true, label: "agent", title: "Agent", fact: "request reaches the agent", spec: { none: true, why: "w", failure: "f" }, request: {}, response: {}, traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b3-01" },
+  { n: 4, kind: "llm-plan", from: "agent", to: "llm", verdict: "ok", mock: true, label: "plan", title: "Agent: intent match", fact: "model proposes a tool", spec: { none: true, why: "w", failure: "f" }, request: {}, response: {}, traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b4-01" },
+  { n: 5, kind: "actor-token", from: "bff", to: "idp", verdict: "ok", mock: true, label: "agent token", title: "Agent token", fact: "agent has its own identity", spec: { none: true, why: "w", failure: "f" }, request: {}, response: {}, traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b5-01" },
+  { n: 6, kind: "token-exchange", from: "bff", to: "idp", verdict: "ok", mock: true, label: "exchange", title: "Exchange", fact: "act added", spec: { none: true, why: "w", failure: "f" }, request: {}, response: {}, traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b6-01" },
+  { n: 7, kind: "authorize-decision", from: "gateway", to: "authorize", verdict: "obligation", mock: true, label: "decide", title: "Authorize", fact: "policy decided", spec: { none: true, why: "w", failure: "f" }, request: {}, response: {}, traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01", decision: { outcome: "OBLIGATION", by: "authorize policy", reasons: ["step-up"] } },
+  { n: 8, kind: "gateway-check", from: "bff", to: "gateway", verdict: "ok", mock: true, label: "gateway", title: "Gateway", fact: "filter chain passed", spec: { none: true, why: "w", failure: "f" }, request: {}, response: {}, traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b8-01" },
+  { n: 9, kind: "tool-held", from: "gateway", to: "mcp", verdict: "obligation", mock: true, label: "held", title: "Held", fact: "write held, not sent", spec: { none: true, why: "w", failure: "f" }, request: {}, response: {}, traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b9-01" },
+  { n: 10, kind: "agent-reply", from: "agent", to: "agent", verdict: "ok", mock: true, label: "reply", title: "Reply", fact: "answer shown in the chat", spec: { none: true, why: "w", failure: "f" }, request: {}, response: {}, traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902ba-01" },
+];
 
 beforeEach(() => { vi.clearAllMocks(); });
 afterEach(() => { cleanup(); });
@@ -128,6 +143,61 @@ describe("EvidenceSection", () => {
     if (step) await user.click(step);
     // either way the panel must never crash and the empty detail must not be open with a run
     expect(screen.getByTestId("chain-view")).toBeTruthy();
+  });
+});
+
+describe("EvidenceSection chain map (the 10-step row)", () => {
+  beforeEach(() => { window.localStorage.clear(); });
+  it("a run with demoHops derives the 10 steps: obligation hops hold their steps", () => {
+    render(<EvidenceSection run={{ ...RUN, demoHops: DEMO_HOPS }} />);
+    for (const id of ["signin", "prompt", "agent", "llm", "agent-token", "exchange", "gateway", "reply"]) {
+      expect(screen.getByTestId(`chain-step-${id}`).dataset.state).toBe("ok");
+    }
+    expect(screen.getByTestId("chain-step-llm").textContent).toContain("LLM");
+    expect(screen.getByTestId("chain-step-authorize").dataset.state).toBe("held");
+    expect(screen.getByTestId("chain-step-tool").dataset.state).toBe("held");
+  });
+  it("a DENY run marks the right steps DENIED and NOT IN RUN", () => {
+    const denyHops = DEMO_HOPS.map((h) =>
+      h.kind === "authorize-decision" ? { ...h, verdict: "deny" }
+      : h.kind === "tool-held" ? { ...h, kind: "tool-refused", verdict: "deny" }
+      : h);
+    denyHops.splice(9, 1); // the reply never happened: the step is not in this run
+    render(<EvidenceSection run={{ ...RUN, decision: "DENY", demoHops: denyHops }} />);
+    expect(screen.getByTestId("chain-step-authorize").dataset.state).toBe("deny");
+    expect(screen.getByTestId("chain-step-tool").dataset.state).toBe("deny");
+    expect(screen.getByTestId("chain-step-tool").textContent).toContain("denied");
+    expect(screen.getByTestId("chain-step-reply").dataset.state).toBe("not-in-run");
+    expect(screen.getByTestId("chain-step-signin").dataset.state).toBe("ok");
+  });
+  it("an OBLIGATION run with an all-obligation hop set marks the Authorize and tool steps HELD", () => {
+    const holdHops = DEMO_HOPS.map((h) => (h.kind === "tool-held" || h.kind === "authorize-decision" ? { ...h, verdict: "obligation" } : h));
+    render(<EvidenceSection run={{ ...RUN, demoHops: holdHops }} />);
+    expect(screen.getByTestId("chain-step-authorize").dataset.state).toBe("held");
+    expect(screen.getByTestId("chain-step-tool").dataset.state).toBe("held");
+  });
+  it("a run without demoHops still shows the section (every step not in run)", () => {
+    render(<EvidenceSection run={RUN} />);
+    expect(screen.getByTestId("chain-step-exchange").dataset.state).toBe("not-in-run");
+  });
+  it("the density toggle persists and survives a throwing localStorage", () => {
+    render(<EvidenceSection run={{ ...RUN, demoHops: DEMO_HOPS }} />);
+    expect(screen.getByTestId("chain-density-detailed").getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByTestId("chain-density-compact"));
+    expect(screen.getByTestId("chain-density-compact").getAttribute("aria-pressed")).toBe("true");
+    expect(window.localStorage.getItem("ud_chain_density")).toBe("compact");
+    cleanup();
+    const get = Storage.prototype.getItem, set = Storage.prototype.setItem;
+    Storage.prototype.setItem = () => { throw new Error("quota"); };
+    Storage.prototype.getItem = () => { throw new Error("blocked"); };
+    try {
+      render(<EvidenceSection run={{ ...RUN, demoHops: DEMO_HOPS }} />);
+      expect(screen.getByTestId("chain-density-compact").getAttribute("aria-pressed")).toBe("true");
+      fireEvent.click(screen.getByTestId("chain-density-detailed"));
+      expect(screen.getByTestId("chain-density-detailed").getAttribute("aria-pressed")).toBe("true");
+    } finally {
+      Storage.prototype.getItem = get; Storage.prototype.setItem = set;
+    }
   });
 });
 
