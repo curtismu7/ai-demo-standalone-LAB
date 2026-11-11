@@ -51,7 +51,7 @@ test('GET /api/usecases: the launcher rows, one per use case, with the (uc, app)
       assert.equal(typeof r.title, 'string');
     }
     const here = j.useCases.filter((r) => r.handling === 'in-app');
-    assert.equal(here.length, 15, 'the wired scenarios run here (P6 grows this)');
+    assert.equal(here.length, 21, 'the wired scenarios run here (P6 grows this)');
     const off = j.useCases.find((r) => r.id === 'UC12');
     assert.equal(off.handling, 'redirect');
     assert.equal(off.proxyPath, '/stolen-token-lab/');

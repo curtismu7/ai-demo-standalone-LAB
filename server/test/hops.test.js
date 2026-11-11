@@ -11,23 +11,23 @@ import { validateHop } from '../src/vendor/hopDetail.mjs';
 import { newTrace } from '../src/explain.js';
 import { SCENARIOS } from '../src/policyData.js';
 import { matchTurn } from '../src/assistant.js';
-import { decideWithObligation, exchange } from '../src/pdp.js';
+import { decideWithObligation } from '../src/pdp.js';
+import { seedFor, tokenFor } from '../src/scenario.js';
 
 const catalog = JSON.parse(fs.readFileSync(new URL('../src/vendor/hop-catalog.json', import.meta.url), 'utf8'));
 
-// Run each of the 11 scenarios through the REAL engine (the same seeding /api/assistant/turn
-// applies) and adapt; this is the fixture factory the assertions below share.
+// Run each scenario through the REAL engine (the same seeding /api/assistant/turn applies
+// — the SHARED seeding rule, so the tests cannot drift from the endpoint) and adapt; this
+// is the fixture factory the assertions below share.
 function runScenario(scenarioId) {
   const sc = SCENARIOS.find((s) => s.id === scenarioId);
   assert.ok(sc, scenarioId);
-  const groups = Array.isArray(sc.flipTo) ? sc.flipTo
-    : sc.user === 'premiumUser' ? ['privileged', 'premiumTier']
-    : sc.user === 'jane' ? [] : ['privileged'];
-  const tier = sc.user === 'premiumUser' ? 'Premium' : 'Standard';
-  const token = exchange({ userSub: sc.user, actorClientId: sc.actor, aud: sc.aud || undefined });
+  const { groups, tier } = seedFor(sc);
+  const token = tokenFor(sc);
   const amount = sc.amount ?? null;
   const { verdict, obligation } = decideWithObligation({
-    token, groups, tier, tool: sc.tool, amount, receipts: null, now: () => Date.now(),
+    token, groups, tier, tool: sc.tool, amount, resourceOwner: sc.resourceOwner ?? null,
+    receipts: null, now: () => Date.now(),
   });
   const trace = newTrace();
   const ctx = { verdict, user: sc.user, actor: sc.actor, tool: sc.tool, amount, token, trace, aud: sc.aud };
