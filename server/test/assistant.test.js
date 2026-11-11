@@ -51,6 +51,12 @@ test('matcher: each chip matches its scenario and the engine gives the scenario 
     ['show my mortgage', 'uc33-mortgage', 'UC33'],
     ['spot unusual patterns in my recent activity', 'uc34-patterns', 'UC34'],
     ['why was that blocked? walk me through the token chain', 'uc35-why', 'UC35'],
+    ['the agent is overscoped — it asked for write but only needs read', 'uc4-overscoped', 'UC4'],
+    ['search the news for the route announcement', 'uc41-search', 'UC41'],
+    ['the search query was blocked at the gateway (bitcoin)', 'uc42-search-blocked', 'UC42'],
+    ['what are the branch hours? the public catalog', 'uc24-public', 'UC24'],
+    ['proof of enforcement — show me the live verdict', 'uc26-proof', 'UC26'],
+    ['the client claimed consent was already given to bypass the approval', 'uc27-bypass', 'UC27'],
   ];
   await withServer(async (url) => {
     for (const [said, scenarioId, ucId] of chips) {

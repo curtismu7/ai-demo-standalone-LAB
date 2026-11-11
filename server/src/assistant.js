@@ -42,6 +42,8 @@ export function amountIn(text) {
 // The matcher table. First match wins; order matters (specific phrases before generic ones).
 // Each row: [regex, handling, id]. In-app ids are scenario ids; redirect ids are catalog ids.
 const RULES = [
+  // P6 batch 3: the HITL bypass attempt — specific before the generic HITL rows
+  [/consent (was )?already given|bypass (the )?(hitl|consent|approval)|skip (the )?(hitl|consent|approval)|forged approval|already approved|consentgiven/i, 'in-app', 'uc27-bypass'],
   // HITL: step-up, approval, CIBA — the teaching core
   [/mfa|step[- ]?up|two[- ]?factor|otp|verification code/i, 'in-app', 'uc7-stepup'],
   [/human (approval|in the loop)|hitl|approv(e|al) (a )?(transfer|payment|action)|manager approv/i, 'in-app', 'uc8-hitl'],
@@ -70,6 +72,12 @@ const RULES = [
   [/confused deputy|forged.{0,20}(actor|header)|actor injection|header.{0,20}(actor|acting)|forged.{0,20}acting|acting[- ]for header/i, 'in-app', 'uc13-deputy'],
   [/raw (user )?token|forward(ed|ing).{0,20}token|token forwarding|zero trust/i, 'in-app', 'uc16b-forward'],
   [/validation (outage|down|unavailable)|fail[- ]closed|fails closed|outage|down.{0,30}(what happens|happens to)/i, 'in-app', 'uc29-outage'],
+  // P6 batch 3 (final): overscoped agent, gateway-filtered search, public catalog, live verdict, HITL bypass
+  [/overscop(e|ed)|over[- ]privileged|least[- ]privilege|asks? for write.{0,30}(only )?need(s)? read|too much scope|scope bloat/i, 'in-app', 'uc4-overscoped'],
+  [/blocked (query|search|term)|content blocklist|blocklist|bitcoin|cryptocurrency|crypto.{0,20}search|search.{0,30}(bitcoin|blocked)/i, 'in-app', 'uc42-search-blocked'],
+  [/(third[- ]party|news|web) search|brave search|search the news|search the web for|search server/i, 'in-app', 'uc41-search'],
+  [/branch (hours|near)|public catalog|before (i|we) sign|without signing in|browse.{0,20}(without|before)|act 1/i, 'in-app', 'uc24-public'],
+  [/proof of enforcement|live verdict|watch the verdict|take (your|the) (agent'?s? )?word|watch.{0,20}decid/i, 'in-app', 'uc26-proof'],
   // Redirects: the standalone labs that own these stories
   [/token (theft|replay)|stolen (token|session)|replay (attack|defense)/i, 'redirect', 'UC12'],
   [/\bjit\b|just[- ]in[- ]time (access|provision)/i, 'redirect', 'UC17'],

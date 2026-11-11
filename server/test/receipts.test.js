@@ -30,7 +30,7 @@ const session = (url, ws) => {
       const ch = (await send('/api/challenge', { user, tool, ...amountOf(amount) })).j.challenge;
       return (await send('/api/challenge/answer', { challenge: ch, answer })).j.receipt;
     },
-    authorize: (token, tool, amount, receipt) => send('/api/authorize', { token, tool, ...amountOf(amount), ...(receipt ? { receipt } : {}) }),
+    authorize: (token, tool, amount, receipt, extra = {}) => send('/api/authorize', { token, tool, ...amountOf(amount), ...(receipt ? { receipt } : {}), ...extra }),
   };
 };
 
@@ -263,7 +263,7 @@ test('defect 3: there is no separate hard-deny band; the tier ceilings are the h
   });
 });
 
-test('scenario outcomes are unchanged: the eleven originals give the same decisions, every pause resolves with a receipt, and the P6 additions permit', async () => {
+test('scenario outcomes are unchanged: the originals give the same decisions, every pause resolves with a receipt, and the P6 additions permit', async () => {
   const expected = {
     uc1: [200, 'PERMIT', null, 'policy'],
     uc9: [403, 'DENY', 'group_entitlement', 'policy'],
@@ -289,6 +289,14 @@ test('scenario outcomes are unchanged: the eleven originals give the same decisi
     'uc29-outage': [403, 'DENY', 'validation_unavailable', 'gateway'],
     'uc8-hitl': [202, 'OBLIGATION', 'HITL_CONSENT', 'policy'],
     'uc22-ciba': [202, 'OBLIGATION', 'CIBA', 'policy'],
+    // P6 batch 3 (final), in table order; UC41/UC42/UC27 ride the turn/seeded path
+    // (query/consentGiven are scenario arguments), pinned in p6Batch3.test.js
+    'uc4-overscoped': [200, 'PERMIT', null, 'policy'],
+    'uc41-search': [200, 'PERMIT', null, 'policy'],
+    'uc42-search-blocked': [403, 'DENY', 'query_blocked', 'gateway'],
+    'uc24-public': [200, 'PERMIT', null, 'policy'],
+    'uc26-proof': [200, 'PERMIT', null, 'policy'],
+    'uc27-bypass': [202, 'OBLIGATION', 'HITL_CONSENT', 'policy'],
   };
   const scenarios = rawStory().scenarios;
   assert.deepEqual(scenarios.map((sc) => sc.id), Object.keys(expected));
@@ -299,9 +307,11 @@ test('scenario outcomes are unchanged: the eleven originals give the same decisi
       // the attack-track scenarios ride the assistant turn (their seeding lives in the
       // shared scenario.js rule: wrong scope, raw token, outage); here the ORIGINAL
       // consent -> authorize -> receipt path keeps proving the non-attack scenarios
-      if (sc.track === 'attacks') continue;
-      const token = (await s.send('/api/consent', { user: sc.user, actor: sc.actor, ...(sc.aud ? { aud: sc.aud } : {}) })).j.token;
-      const r = await s.authorize(token, sc.tool, sc.amount);
+      if (sc.track === 'attacks' || sc.id === 'uc42-search-blocked' || sc.id === 'uc27-bypass') continue;
+      // UC41 rides the plain authorize path with its query argument; the consent call names
+      // the tool so the exchange narrows scope to the task (the UC4 rule /consent applies).
+      const token = (await s.send('/api/consent', { user: sc.user, actor: sc.actor, tool: sc.tool, ...(sc.aud ? { aud: sc.aud } : {}) })).j.token;
+      const r = await s.authorize(token, sc.tool, sc.amount, null, sc.query != null ? { query: sc.query } : {});
       assert.deepEqual([r.status, r.j.decision, r.j.code, r.j.stage], expected[sc.id], sc.id);
       if (r.j.decision !== 'OBLIGATION') continue;
       const answer = r.j.obligation === 'STEP_UP' ? MFA : r.j.obligation === 'CIBA' ? CIBA : CONSENT;

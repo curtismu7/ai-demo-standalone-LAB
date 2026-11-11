@@ -5,7 +5,7 @@ import { netguardSelfTest } from './netguard.js';
 import { DEFAULT_CAST, VERTICALS, unfilled } from './cast.js';
 import { buildStory, rawStory } from './story.js';
 import { decideWithObligation } from './pdp.js';
-import { seedFor, tokenFor } from './scenario.js';
+import { seedFor, tokenFor, callArgsFor } from './scenario.js';
 import { modeFrom, realAvailableFrom } from './config.js';
 import { DIAGRAM_NAMES, buildDiagram } from './diagramData.js';
 
@@ -31,7 +31,8 @@ export async function runChecks({ env = process.env, cast = DEFAULT_CAST } = {})
     const entry = seedFor(sc);
     const groups = entry.groups;
     const t = tokenFor(sc);
-    const { verdict: d } = decideWithObligation({ token: t, groups, tier: entry.tier, tool: sc.tool, amount: sc.amount, resourceOwner: sc.resourceOwner ?? null });
+    const args = callArgsFor(sc);
+    const { verdict: d } = decideWithObligation({ token: t, groups, tier: entry.tier, tool: sc.tool, amount: sc.amount, resourceOwner: sc.resourceOwner ?? null, query: args.query, consentGiven: args.consentGiven });
     if (d.decision === 'OBLIGATION') {
       // an obligation is the expected stage-2 outcome when the scenario says so
       return sc.expected !== 'OBLIGATION' || d.code !== sc.obligation;

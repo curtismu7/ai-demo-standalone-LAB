@@ -30,6 +30,11 @@ export const PROXY_PATHS = Object.freeze(JSON.parse(
 const SELF_ID = 'ai-demo-standalone';
 const APP_ID = /^[a-z0-9-]{2,40}$/;
 
+// The A2A use cases run in-process too (the A2A panel: two exchanges + the registry-driven
+// tool call), not through an SCENARIOS row. Pinned here so the in-app derivation yields the
+// owner's 31 (Appendix A: 31 in-app, 45 redirect, 11 guide).
+const PANEL_WIRED = ['UC2', 'UC2.5', 'UC2.6', 'UC2.7'];
+
 /** The launcher rows: one per use case, { id, route, apps, path, runsHere }. */
 export function usecaseRows(catalog) {
   return (catalog.useCases ?? []).map((u) => {
@@ -41,10 +46,11 @@ export function usecaseRows(catalog) {
       return { id: u.id, title: u.title ?? u.explicitTitle ?? u.id, route: 'Hand off', apps: [app], path: PROXY_PATHS[app] ?? null, runsHere: false };
     }
     const scenario = SCENARIOS.some((s) => s.ucId === u.id);
-    if (r.route === 'Guide' || (!scenario && !r.app)) {
+    const panel = PANEL_WIRED.includes(u.id);
+    if ((r.route === 'Guide' || (!scenario && !panel && !r.app))) {
       return { id: u.id, title: u.title ?? u.explicitTitle ?? u.id, route: 'Guide', apps: [], path: null, runsHere: false };
     }
-    if (scenario) {
+    if (scenario || panel) {
       const apps = r.app && APP_ID.test(r.app) ? [r.app, ...(r.also ? [r.also] : [])] : [];
       return { id: u.id, title: u.title ?? u.explicitTitle ?? u.id, route: 'Here + go deeper', apps, path: apps[0] ? PROXY_PATHS[apps[0]] ?? null : null, runsHere: true };
     }
@@ -56,7 +62,6 @@ export function usecaseRows(catalog) {
 }
 
 const HANDLING = (row) => (row.runsHere ? 'in-app' : row.route === 'Hand off' ? 'redirect' : 'guide');
-
 /** The /api/usecases entries: one per use case, { id, track, title, expectedOutcome, handling, app, proxyPath }. */
 export function usecaseEntries(catalog) {
   return (catalog.useCases ?? []).map((u) => {

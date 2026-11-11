@@ -44,6 +44,13 @@ const CHIPS = [
   { prompt: "The agent forged an acting-for header to pose as the authorized actor", label: "Confused deputy", ucId: "UC13" },
   { prompt: "The agent forwarded my raw user token to a tool", label: "Raw token forwarding", ucId: "UC16b" },
   { prompt: "Token validation is down — what happens to my call?", label: "Fail closed", ucId: "UC29" },
+  // P6 batch 3 (final): controls, demo, hitl — in-app reaches 31 of 87
+  { prompt: "The agent asked for write access but only needs read", label: "Overscoped agent", ucId: "UC4" },
+  { prompt: "Search the news for the route announcement", label: "Gateway-filtered search", ucId: "UC41" },
+  { prompt: "The search query was blocked at the gateway", label: "Blocked query denied", ucId: "UC42" },
+  { prompt: "What are the branch hours? Browse the public catalog", label: "Public catalog", ucId: "UC24" },
+  { prompt: "Show me the proof of enforcement — the live verdict", label: "Proof of enforcement", ucId: "UC26" },
+  { prompt: "The client claimed consent was already given to skip the approval", label: "HITL bypass attempt", ucId: "UC27" },
 ];
 
 // The scenario runner's baseline rule, mirrored server-side: what the directory says

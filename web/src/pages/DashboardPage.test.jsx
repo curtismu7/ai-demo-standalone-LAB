@@ -80,7 +80,7 @@ describe("AssistantSection", () => {
   it("shows the greeting bubble, chips, the direct-run panel and one primary Send", () => {
     render(<AssistantSection transcript={[{ who: "agent", text: "Sign in with your customer account to access travel features" }]} run={null} onSend={() => {}} busy={false} fail={null} onChip={() => {}} />);
     expect(screen.getByTestId("transcript").textContent).toContain("travel features");
-    expect(screen.getAllByTestId(/^chip-/)).toHaveLength(23);    expect(screen.getByTestId("direct-run-empty").textContent).toContain("Run a prompt");
+    expect(screen.getAllByTestId(/^chip-/)).toHaveLength(29);    expect(screen.getByTestId("direct-run-empty").textContent).toContain("Run a prompt");
     expect(screen.getByTestId("dash-send").className).toContain("primary");
     expect(screen.getAllByRole("button", { name: "Send" })).toHaveLength(1);
   });

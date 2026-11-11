@@ -407,6 +407,90 @@
       "story": "S23"
     },
     {
+      "id": "try-uc4-overscoped",
+      "label": "Scenario 24: UC4: overscoped agent — the exchange grants only what the task needs",
+      "description": "The agent asked for write; the task needed only read — the exchange narrows the token to the task’s required scope before any tool runs. Least privilege at mint time: even a misconfigured or compromised agent holds the minimum.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc4-overscoped"
+      },
+      "terms": [
+        "entitlement"
+      ],
+      "story": "S24"
+    },
+    {
+      "id": "try-uc41-search",
+      "label": "Scenario 25: UC41: third-party search server, filtered at the gateway",
+      "description": "The gateway fronts an unmodified third-party search MCP server: it validates the token, inspects the query argument against the content blocklist, then forwards. The vendor never sees — or enforces — the bank’s policy.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc41-search"
+      },
+      "terms": [
+        "entitlement"
+      ],
+      "story": "S25"
+    },
+    {
+      "id": "try-uc42-search-blocked",
+      "label": "Scenario 26: UC42: third-party search — the blocked query is denied",
+      "description": "The gateway kills the query before Brave ever sees it: no vendor log, no billed call, no data leaving the perimeter. Egress control sits in ONE place instead of being re-implemented in every tool integration.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc42-search-blocked"
+      },
+      "terms": [
+        "entitlement"
+      ],
+      "story": "S26"
+    },
+    {
+      "id": "try-uc24-public",
+      "label": "Scenario 27: UC24: Act 1 — the public catalog answers before any sign-in",
+      "description": "Progressive trust, act 1: the public branch catalog is answered without the group gate or a tier check — browsing needs no identity, while every real action on this same engine stays fully gated.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc24-public"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S27"
+    },
+    {
+      "id": "try-uc26-proof",
+      "label": "Scenario 28: UC26: proof of enforcement — the live verdict on every use case",
+      "description": "You do not have to take the agent’s word for it: every run on this page answers from the SAME engine — token, gateway, policy — and the decision, its reason and its hops render live. Nothing is a slide; every claim is a replayable verdict.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc26-proof"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S28"
+    },
+    {
+      "id": "try-uc27-bypass",
+      "label": "Scenario 29: UC27: HITL consent bypass — a claimed \"already approved\" still pauses",
+      "description": "The call arrived with a client-sent \"consent already given\" flag: the flag is ignored, not trusted — no boolean can substitute for a verified, call-bound HitlApproved receipt, so the gate still pauses the call (fail-closed).",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc27-bypass"
+      },
+      "terms": [
+        "hitl"
+      ],
+      "story": "S29"
+    },
+    {
       "id": "concept-catalog",
       "label": "Browse the 87-use-case catalog",
       "description": "Every use case from the AI-DEMO2 dashboard, grouped by track. The foundations, controls and HITL scenarios and the A2A panel run against the mock PDP; the attacks, learn, tools, nhi and demo tracks are catalog entries with their expected outcome, not yet wired.",
@@ -569,6 +653,36 @@
       "id": "S23",
       "title": "UC22: CIBA — out-of-band approval on the user’s device",
       "say": "An agent has no browser in which to prompt: the backend calls bc-authorize and the user approves out-of-band; the receipt (CibaApproved) re-evaluates the call."
+    },
+    {
+      "id": "S24",
+      "title": "UC4: overscoped agent — the exchange grants only what the task needs",
+      "say": "The agent asked for write; the task needed only read — the exchange narrows the token to the task’s required scope before any tool runs. Least privilege at mint time: even a misconfigured or compromised agent holds the minimum."
+    },
+    {
+      "id": "S25",
+      "title": "UC41: third-party search server, filtered at the gateway",
+      "say": "The gateway fronts an unmodified third-party search MCP server: it validates the token, inspects the query argument against the content blocklist, then forwards. The vendor never sees — or enforces — the bank’s policy."
+    },
+    {
+      "id": "S26",
+      "title": "UC42: third-party search — the blocked query is denied",
+      "say": "The gateway kills the query before Brave ever sees it: no vendor log, no billed call, no data leaving the perimeter. Egress control sits in ONE place instead of being re-implemented in every tool integration."
+    },
+    {
+      "id": "S27",
+      "title": "UC24: Act 1 — the public catalog answers before any sign-in",
+      "say": "Progressive trust, act 1: the public branch catalog is answered without the group gate or a tier check — browsing needs no identity, while every real action on this same engine stays fully gated."
+    },
+    {
+      "id": "S28",
+      "title": "UC26: proof of enforcement — the live verdict on every use case",
+      "say": "You do not have to take the agent’s word for it: every run on this page answers from the SAME engine — token, gateway, policy — and the decision, its reason and its hops render live. Nothing is a slide; every claim is a replayable verdict."
+    },
+    {
+      "id": "S29",
+      "title": "UC27: HITL consent bypass — a claimed \"already approved\" still pauses",
+      "say": "The call arrived with a client-sent \"consent already given\" flag: the flag is ignored, not trusted — no boolean can substitute for a verified, call-bound HitlApproved receipt, so the gate still pauses the call (fail-closed)."
     }
   ]
 }

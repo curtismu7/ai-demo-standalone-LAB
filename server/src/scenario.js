@@ -29,10 +29,17 @@ export function tokenFor(sc, { now = Date.now } = {}) {
     userSub: sc.user,
     actorClientId: sc.actor || DEFAULT_ACTORS[0],
     aud: sc.aud || AUDIENCE,
-    // the exchange narrows scope to the task (UC4); a scenario can mint a WRONG scope (UC5)
+    // UC4: the scenario can name the scope the agent ASKED for; the engine answers the
+    // shortfall (insufficient_scope) or the exchange's narrowing is the lesson.
     scope: sc.scope ?? (sc.tool ? TOOL_REQUIRED_SCOPE[sc.tool] ?? 'accounts:read' : 'accounts:read transfers:write'),
     now,
   });
   if (sc.validationDown) t.validationDown = true; // UC29: the validation backend is unreachable
   return t;
+}
+
+/** The non-directory arguments of a scenario's call: the search query (UC41/UC42) and the
+ *  client-sent "consent already given" flag (UC27) ride with the turn, never in the token. */
+export function callArgsFor(sc) {
+  return { query: typeof sc.query === 'string' ? sc.query : null, consentGiven: sc.consentGiven === true ? true : null };
 }

@@ -24,6 +24,8 @@ export const TOOLS = [
   { name: 'get_transactions', kind: 'read', lesson: 'Transaction history read.' },
   { name: 'show_mortgage', kind: 'read', lesson: 'Mortgage lookup: a less-common read that carries the same delegated proof (UC33).' },
   { name: 'create_wire_transfer', kind: 'write', lesson: 'Premium-only: Standard tier is denied before the amount is even read.' },
+  { name: 'brave_news_search', kind: 'read', lesson: 'Third-party search fronted at the gateway: the query argument is inspected against the content blocklist before the call is forwarded (UC41/UC42).' },
+  { name: 'get_branch_hours', kind: 'public', lesson: 'Public catalog: answered without the full gate — browsing is anonymous, action is not (UC24).' },
 ];
 
 export const FACTS = [
@@ -172,6 +174,43 @@ export const SCENARIOS = [
     user: 'demoUser', actor: 'demo-agent', tool: 'move_money', amount: null,
     expected: 'OBLIGATION', obligation: 'CIBA',
     lesson: 'An agent has no browser in which to prompt: the backend calls bc-authorize and the user approves out-of-band; the receipt (CibaApproved) re-evaluates the call.',
+  },
+  // ── P6 batch 3 (final): controls 3, demo 2, hitl 1 — in-app reaches 31 of 87 ──
+  {
+    id: 'uc4-overscoped', ucId: 'UC4', track: 'controls', title: 'UC4: overscoped agent — the exchange grants only what the task needs',
+    user: 'demoUser', actor: 'demo-agent', tool: 'get_balance', amount: null,
+    expected: 'PERMIT',
+    lesson: 'The agent asked for write; the task needed only read — the exchange narrows the token to the task\u2019s required scope before any tool runs. Least privilege at mint time: even a misconfigured or compromised agent holds the minimum.',
+  },
+  {
+    id: 'uc41-search', ucId: 'UC41', track: 'controls', title: 'UC41: third-party search server, filtered at the gateway',
+    user: 'demoUser', actor: 'demo-agent', tool: 'brave_news_search', amount: null, query: 'regional weather outlook',
+    expected: 'PERMIT',
+    lesson: 'The gateway fronts an unmodified third-party search MCP server: it validates the token, inspects the query argument against the content blocklist, then forwards. The vendor never sees — or enforces — the bank\u2019s policy.',
+  },
+  {
+    id: 'uc42-search-blocked', ucId: 'UC42', track: 'controls', title: 'UC42: third-party search — the blocked query is denied',
+    user: 'demoUser', actor: 'demo-agent', tool: 'brave_news_search', amount: null, query: 'bitcoin price today',
+    expected: 'DENY',
+    lesson: 'The gateway kills the query before Brave ever sees it: no vendor log, no billed call, no data leaving the perimeter. Egress control sits in ONE place instead of being re-implemented in every tool integration.',
+  },
+  {
+    id: 'uc24-public', ucId: 'UC24', track: 'demo', title: 'UC24: Act 1 — the public catalog answers before any sign-in',
+    user: 'demoUser', actor: 'demo-agent', tool: 'get_branch_hours', amount: null,
+    expected: 'PERMIT',
+    lesson: 'Progressive trust, act 1: the public branch catalog is answered without the group gate or a tier check — browsing needs no identity, while every real action on this same engine stays fully gated.',
+  },
+  {
+    id: 'uc26-proof', ucId: 'UC26', track: 'demo', title: 'UC26: proof of enforcement — the live verdict on every use case',
+    user: 'demoUser', actor: 'demo-agent', tool: 'get_balance', amount: null,
+    expected: 'PERMIT',
+    lesson: 'You do not have to take the agent\u2019s word for it: every run on this page answers from the SAME engine — token, gateway, policy — and the decision, its reason and its hops render live. Nothing is a slide; every claim is a replayable verdict.',
+  },
+  {
+    id: 'uc27-bypass', ucId: 'UC27', track: 'hitl', title: 'UC27: HITL consent bypass — a claimed "already approved" still pauses',
+    user: 'demoUser', actor: 'demo-agent', tool: 'create_transfer', amount: 600, consentGiven: true,
+    expected: 'OBLIGATION', obligation: 'HITL_CONSENT',
+    lesson: 'The call arrived with a client-sent "consent already given" flag: the flag is ignored, not trusted — no boolean can substitute for a verified, call-bound HitlApproved receipt, so the gate still pauses the call (fail-closed).',
   },
 ];
 
