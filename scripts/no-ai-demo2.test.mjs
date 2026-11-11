@@ -43,7 +43,7 @@ const KNOWN = [
 
 const PROSE_FILES = new Set(['docs/PROVENANCE.md', 'CHANGELOG.md']);
 const README_ATTRIBUTION = /^\s*(?:[-*>]\s*)?(?:Ported|Copied|Adapted|Derived|Extracted|Forked)\b/i;
-const VENDORED = ['web/src/evidence/', 'web/src/floating-dialog/', 'web/src/return-link/', 'web/src/styles/standalone-ui.css', 'server/src/vendor/', 'server/test/hopDetail.test.js'];
+const VENDORED = ['web/src/evidence/', 'web/src/floating-dialog/', 'web/src/return-link/', 'web/src/styles/standalone-ui.css', 'web/src/components/tokenchain/', 'server/src/vendor/', 'server/test/hopDetail.test.js'];
 
 const isDockerfile = (rel) => /(^|\/)Dockerfile(\.[^/]+)?$|\.Dockerfile$/.test(rel);
 const isCompose = (rel) => /(^|\/)(docker-)?compose[^/]*\.ya?ml$/.test(rel);
