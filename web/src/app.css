@@ -99,9 +99,13 @@ details { margin: 6px 0; } summary { cursor: pointer; font-size: var(--font-size
   border-radius: 6px;
 }
 
-/* Section tabs */
-.gate-tabs { margin-bottom: 14px; border-bottom: 1px solid var(--th-border, #ddd); padding-bottom: 8px; }
-.gate-tabs button[aria-selected="true"] { border-color: var(--th-accent); font-weight: 700; box-shadow: inset 0 -3px 0 var(--th-accent); }
+/* Section tabs: full-width bar across the top, content stacks below */
+.gate-tabs { grid-column: 1 / -1; display: flex; gap: 4px; margin: 0 0 4px; border-bottom: 2px solid var(--th-border-strong); padding: 0 0 0; }
+.gate-tabs button { border: none; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; padding: 10px 18px; font-weight: 600; color: var(--th-text-muted); }
+.gate-tabs button:hover { background: var(--th-bg-hover); color: var(--th-text); }
+.gate-tabs button[aria-selected="true"] { color: var(--th-accent); border-bottom-color: var(--th-accent); background: transparent; box-shadow: none; }
+/* One clean column below the tab bar */
+.gate { grid-template-columns: 1fr !important; }
 
 /* Ping brand buttons: primary actions red, secondary outline; heavier weight per brand. */
 button { font-weight: 600; letter-spacing: 0.01em; }
