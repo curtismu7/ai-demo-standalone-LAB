@@ -25,6 +25,13 @@ export function mintWorkspaceToken(id, key) {
   return createHmac('sha256', key).update(`workspace:${id}`).digest('base64url');
 }
 
+/** A stable per-session fingerprint: HMAC over the workspace id + its token. The receipts
+ *  store records it when a challenge is raised and requires the same one at redemption, so a
+ *  genuine receipt captured by a DIFFERENT session (different workspace token) is refused. */
+export function workspaceTokenFingerprint(id, token, key) {
+  return createHmac('sha256', key).update(`presenter:${id}:${token ?? ''}`).digest('base64url');
+}
+
 export function verifyWorkspaceToken(id, token, key) {
   if (typeof token !== 'string' || !token) return false;
   const expected = Buffer.from(mintWorkspaceToken(id, key));

@@ -21,7 +21,7 @@ import { createRoster, keyAllows, KNOWN_SCOPES, NhiInputError } from './nhi.js';
 import { mountShelfRoute, shelfInfo } from './shelfLink.js';
 import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.js';
 import { matchTurn } from './assistant.js';
-import { createWorkspaces, workspaceFrom, serverKey, mintWorkspaceToken, verifyWorkspaceToken } from './workspaces.js';
+import { createWorkspaces, workspaceFrom, serverKey, mintWorkspaceToken, verifyWorkspaceToken, workspaceTokenFingerprint } from './workspaces.js';
 import { SCENARIOS } from './policyData.js';
 import { seedFor, tokenFor } from './scenario.js';
 import { toDemoHops, tokenCardsFrom } from './evidenceAdapter.js';
@@ -93,6 +93,8 @@ export function createApp({
     v.extra.receipts = v.extra.receipts || createReceipts();
     return v.extra.receipts;
   };
+
+  const presenterOf = (req) => workspaceTokenFingerprint(workspaceFrom(req), req.headers['x-workspace-token'], wsKey);
 
   const withWorkspace = (handler) => (req, res) => {
     const ws = workspaceFrom(req);
@@ -178,7 +180,7 @@ export function createApp({
     }
     const claimed = typeof body.receipt === 'object' && body.receipt !== null ? body.receipt : null;
     const { verdict, obligation, receiptCheck } = decideWithObligation({
-      token: body.token, groups: entry.groups, tier: entry.tier, tool, amount, receipt: claimed, receipts: receiptsOf(v),
+      token: body.token, groups: entry.groups, tier: entry.tier, tool, amount, receipt: claimed, receipts: receiptsOf(v), presenter: presenterOf(req),
       resourceOwner: typeof body.resourceOwner === 'string' && body.resourceOwner.trim() ? body.resourceOwner.trim().slice(0, LIMITS.id) : null,
       authorizedActors: Array.isArray(body.authorizedActors) ? body.authorizedActors.slice(0, 8).map((x) => String(x).slice(0, LIMITS.id)) : DEFAULT_ACTORS,
       audience: typeof body.aud === 'string' && body.aud.trim() ? body.aud.trim().slice(0, 100) : AUDIENCE,
@@ -245,7 +247,7 @@ export function createApp({
       const ob = evaluateObligation({ tool, amount });
       if (!ob.obligation) return res.status(400).json({ error: 'no_challenge', detail: ob.reason });
       const receipts = receiptsOf(workspaces.state(ws));
-      const ch = createChallenge({ obligation: ob.obligation, user, tool, amount, now: receipts.now });
+      const ch = createChallenge({ obligation: ob.obligation, user, tool, amount, now: receipts.now, presenter: presenterOf(req) });
       receipts.track(ch); // the server keeps the challenge; the answer is checked against this copy
       workspaces.record(ws, { tool, decision: 'CHALLENGED', reason: ob.reason, token: null, blocked: ob.obligation });
       return res.json({ challenge: ch, obligation: ob.obligation, reason: ob.reason, workspace: ws });

@@ -36,7 +36,7 @@ export function evaluateObligation({ tool, amount = null, hitlTools = ['create_t
 }
 
 /** A challenge: what the human must satisfy, bound to the exact call that raised it. */
-export function createChallenge({ obligation, user, tool, amount = null, now = Date.now, ttlSeconds = TTL_SECONDS, rand = () => randomUUID().replaceAll('-', '').slice(0, 12) } = {}) {
+export function createChallenge({ obligation, user, tool, amount = null, now = Date.now, ttlSeconds = TTL_SECONDS, rand = () => randomUUID().replaceAll('-', '').slice(0, 12), presenter = null } = {}) {
   if (!['CONFIRM', 'STEP_UP', 'HITL_CONSENT', 'CIBA'].includes(obligation)) throw new HitlInputError('bad_obligation', 'obligation must be CONFIRM, STEP_UP, HITL_CONSENT or CIBA');
   const id = `chg_${rand()}${rand()}`.slice(0, 40);
   const iat = Math.floor(now() / 1000);
@@ -44,6 +44,10 @@ export function createChallenge({ obligation, user, tool, amount = null, now = D
   return {
     challengeId: id, obligation, user: clean(user, LIMITS.id), tool: clean(tool, LIMITS.id),
     amount: amount == null ? null : Number(amount), needs, createdAt: iat, expiresAt: iat + ttlSeconds,
+    // PRESENTER BINDING: the workspace-token fingerprint of the session that raised the
+    // challenge. The store requires the same fingerprint at redemption, so a genuine receipt
+    // captured by a different session is refused. `presenter` is stripped from client copies.
+    presenter,
     // CIBA carries an auth_req_id the backend polls for (mock)
     authReqId: obligation === 'CIBA' ? `ciba_${rand()}${rand()}`.slice(0, 44) : null,
   };
@@ -73,7 +77,7 @@ export function verifyAnswer({ challenge, answer, now = Date.now } = {}) {
  *  mfaVerified): a CONFIRM-band consent receipt carries MfaVerified=false. */
 /** Canonical signing payload for a receipt: the fields a verifier cares about, in a fixed order. */
 export function receiptSigningPayload(receipt) {
-  return JSON.stringify([receipt.receiptId, receipt.challengeId, receipt.obligation, receipt.user, receipt.tool, receipt.amount ?? null, receipt.issuedAt]);
+  return JSON.stringify([receipt.receiptId, receipt.challengeId, receipt.obligation, receipt.user, receipt.tool, receipt.amount ?? null, receipt.issuedAt, receipt.presenter ?? null]);
 }
 
 /** HMAC-SHA256 over the canonical payload. A receipt whose sig does not verify was not issued
@@ -99,6 +103,7 @@ export function mintReceipt({ challenge, mfaVerified = false, now = Date.now, ra
     user: challenge.user,
     tool: challenge.tool,
     amount: challenge.amount ?? null,
+    presenter: challenge.presenter ?? null,
     issuedAt: Math.floor(now() / 1000),
     claims: challenge.obligation === 'HITL_CONSENT' ? { HitlApproved: true }
       : challenge.obligation === 'CIBA' ? { CibaApproved: true }
@@ -149,6 +154,8 @@ export function createReceipts({ now = Date.now, max = STORE_MAX, signingKey = `
     now,
     /** Remember a challenge this server just issued. */
     track(challenge) { prune(); pending.set(challenge.challengeId, challenge); cap(pending); },
+    /** The presenter fingerprint the store enforces at redemption (null = binding off). */
+    presenterOf(id) { const c = pending.get(id); return c?.presenter ?? null; },
     /** The challenge as the server issued it, or null (never issued here, expired, or already answered). */
     challenge(id) { return typeof id === 'string' ? pending.get(id) ?? null : null; },
     /** Mark a challenge answered (single use). False when it already was. */
@@ -167,12 +174,18 @@ export function createReceipts({ now = Date.now, max = STORE_MAX, signingKey = `
       };
     },
     /** Check a presented receipt against the store and the call; consume it when it is valid. */
-    redeem({ receipt, user, tool, obligation, amount = null }) {
+    redeem({ receipt, user, tool, obligation, amount = null, presenter = null }) {
       if (receipt == null || typeof receipt !== 'object' || Array.isArray(receipt)) return { valid: false, code: 'no_receipt', reason: 'no receipt presented' };
       const entry = typeof receipt.receiptId === 'string' ? issued.get(receipt.receiptId) : undefined;
       if (!entry) return { valid: false, code: 'receipt_not_found', reason: 'no such receipt in this workspace store (never issued, expired, or already spent): a hand-written receipt is not accepted' };
       if (!receiptSignatureValid(receipt, signingKey) || !receiptSignatureValid(entry.receipt, signingKey)) return { valid: false, code: 'receipt_forged', reason: 'the receipt signature does not verify: it was not issued by this workspace' };
       if (entry.used) return { valid: false, code: 'receipt_spent', reason: 'this receipt was already used; a receipt permits one call' };
+      // PRESENTER BINDING: the receipt belongs to the session that raised the challenge. A
+      // genuine receipt captured by a different session (a different workspace token) is
+      // refused — present your own challenge, not someone else's.
+      if (entry.receipt.presenter && presenter !== null && entry.receipt.presenter !== presenter) {
+        return { valid: false, code: 'receipt_presenter_mismatch', reason: 'this receipt was issued to a different session; raise your own challenge' };
+      }
       const check = receiptValid({ receipt: entry.receipt, user, tool, obligation, amount, now });
       if (!check.valid) return check;
       entry.used = true;

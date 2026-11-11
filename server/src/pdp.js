@@ -197,7 +197,7 @@ export function decideWithObligation({ receipt = null, receipts = null, ...args 
   if (ob.obligation) {
     if (receipt != null) {
       receiptCheck = receipts
-        ? receipts.redeem({ receipt, user: args.token.sub, tool: args.tool, obligation: ob.obligation, amount: args.amount })
+        ? receipts.redeem({ receipt, user: args.token.sub, tool: args.tool, obligation: ob.obligation, amount: args.amount, presenter: args.presenter ?? null })
         : { valid: false, code: 'receipt_unverifiable', reason: 'there is no receipt store to verify the receipt against' };
     }
     if (receiptCheck?.valid) {
