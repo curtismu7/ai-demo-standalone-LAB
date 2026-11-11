@@ -1,5 +1,5 @@
 // Deployment configuration: the MODE switch (rule 18) and the Mock/Real toggle (rule 19).
-// One image serves the local standalone and the hosted SE build.
+// One image, one form: the local standalone (no hosted build; standalone apps are not hosted).
 // Mock is the only fully-offline mode. Real (owner-run) is configured via the environment:
 // AIDEMOLAB_REAL_URL + AIDEMOLAB_REAL_CLIENT_ID + AIDEMOLAB_REAL_CLIENT_SECRET (owner-verified; agents never use live
 // credentials). This lab's Real mode is RESERVED: the toggle mechanics follow rule 19 (409 when unconfigured,
@@ -22,4 +22,3 @@ export function modeFrom(env = process.env) {
 }
 
 // AIDEMOLAB_HOSTED=1 marks the SE build: the banner says HOSTED SIMULATION. It changes wording only, never behaviour.
-export const hostedFrom = (env = process.env) => env.AIDEMOLAB_HOSTED === '1';

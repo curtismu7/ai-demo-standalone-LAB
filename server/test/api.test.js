@@ -19,14 +19,11 @@ test('health is GET only; unknown API paths are 404 JSON; non-loopback Host refu
   });
 });
 
-test('GET /api/info: mock, simulated, hosted only when asked', async () => {
+test('GET /api/info: mock, simulated', async () => {
   await withServer(async (url) => {
-    assert.deepEqual(await (await fetch(`${url}/api/info`)).json(), { mode: 'mock', source: 'mock', simulated: true, hosted: false, realAvailable: false });
+    assert.deepEqual(await (await fetch(`${url}/api/info`)).json(), { mode: 'mock', source: 'mock', simulated: true, realAvailable: false });
     assert.match((await (await fetch(`${url}/api/scenarios`)).json()).banner, /^SIMULATED/);
   });
-  await withServer(async (url) => {
-    assert.equal((await (await fetch(`${url}/api/info`)).json()).hosted, true);
-  }, { hosted: true });
 });
 
 test('GET /api/catalog: all 87 use cases, filterable by track, tracks listed', async () => {

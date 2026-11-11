@@ -3,7 +3,7 @@ import { installNetguard } from './netguard.js';
 import { startHttpServer, createApp } from './app.js';
 import { allPassed, runChecks } from './doctor.js';
 import { assertBindAllowed, bindHost, resolvePort } from './safety.js';
-import { hostedFrom, modeFrom, realAvailableFrom } from './config.js';
+import { modeFrom, realAvailableFrom } from './config.js';
 
 installNetguard(); // before anything else can open a socket
 
@@ -16,6 +16,6 @@ if (!allPassed(checks)) {
 }
 console.log(`[ai-demo-standalone] starting in ${modeFrom()} mode`);
 const host = assertBindAllowed(bindHost(), process.env);
-const { url } = await startHttpServer({ port: resolvePort(), host, app: createApp({ hosted: hostedFrom(process.env) }) });
+const { url } = await startHttpServer({ port: resolvePort(), host, app: createApp() });
 console.log(`[ai-demo-standalone] lab at ${url} (loopback${realAvailableFrom() ? ', Real configured' : ', Mock only — no outbound network'})`);
 console.log(`[ai-demo-standalone] health: ${url}api/health`);

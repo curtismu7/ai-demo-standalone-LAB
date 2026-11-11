@@ -116,7 +116,7 @@ All under `/api`. Writes are same-origin only; every request carries a workspace
 | Route | What it does |
 | --- | --- |
 | `GET /api/health` | `demo-health/1`, GET only |
-| `GET /api/info` | `mode`, `source`, `simulated`, `hosted`, `realAvailable` |
+| `GET /api/info` | `mode`, `source`, `simulated`, `realAvailable` |
 | `POST /api/mode` | Rule 19 toggle, body exactly `{ "source": "mock" \| "real" }`; `409` when Real is not configured |
 | `GET /api/scenarios?vertical=` | The story as data: banner, intro, rule, the eleven scenarios, tools, facts, talk track |
 | `GET /api/catalog?track=` | The 87-use-case catalog (`count`, `tracks`, `useCases`), optionally one track |
@@ -144,7 +144,7 @@ The web page has three tabs (Dashboard & catalog, Diagram, Talk track), a Mock /
 - **Receipts are a teaching mechanism, not a security boundary.** The server issues and consumes them, but a receipt is an unsigned record that anyone who knows its `receiptId` can present; the workspace id (`X-Workspace`) is not authenticated, so whoever sends it shares that workspace's store; `POST /api/consent` mints a mock token for any user without a login; and the store lives in process memory (a restart clears it). `POST /api/challenge` does not run the policy, so a challenge can be raised for a call the policy would deny (for example a user outside the group, or an amount above the tier ceiling): the receipt cannot permit what the policy denies, but the challenge is not refused up front.
 - **Some page text still describes the stage-1 build:** the intro, the "stages" fact and the catalog hint say HITL and the other tracks "land in the next stages", and the use-case detail says HITL runs in "stage 2-4". HITL and A2A are wired now; that text is out of date.
 - **The header's Shelf link never shows.** The page asks `GET /api/shelf`, but the server mounts the route at `/shelf`, so the page gets a 404.
-- **Leftovers from the scaffold, unused:** the `k8s/` manifests and the `AIDEMOLAB_HOSTED` / hosted-banner wording belong to the SE mock build, which is deferred and not allowed for standalone apps (no hosted mode). They are not part of this app's ship form (local Docker only).
+- **Removed 2026-11-11:** the `k8s/` manifests and the `AIDEMOLAB_HOSTED` / hosted-banner wording (the SE mock build is deferred; standalone apps are not hosted). Also fixed: the header Shelf link now answers on `GET /api/shelf` (the vendored ShelfLink's path; `/shelf` still serves the same payload), and compose carries `restart: unless-stopped`.
 - **The UI does not follow the family UI standard** (dark shell-bar header, simulation banner first, card grid). The rebuild in "Direction" replaces the page, so the standard is applied there.
 - **`server/src/shelfLink.js` still reads `SHELF_URL` from `~/Development/.env`** when the variable is not set in the environment; the compose file sets `SHELF_URL`, so the Docker form does not depend on it.
 

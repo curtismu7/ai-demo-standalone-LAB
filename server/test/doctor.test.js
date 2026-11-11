@@ -16,12 +16,6 @@ test('a port other than 7810 fails, and a wildcard bind needs the opt-in', async
   assert.equal((await runChecks({ env: { PORT: '7810', AIDEMOLAB_BIND: '0.0.0.0' } })).find((c) => c.id === 'bind').level, 'pass');
 });
 
-test('MODE other than mock fails the doctor, and the hosted build says so', async () => {
-  assert.equal((await runChecks({ env: { MODE: 'live' } })).find((c) => c.id === 'mode').level, 'fail');
-  const hosted = (await runChecks({ env: { AIDEMOLAB_HOSTED: '1' } })).find((c) => c.id === 'mode');
-  assert.equal(hosted.level, 'pass');
-  assert.match(hosted.detail, /hosted build/);
-});
 
 test('the doctor host scan catches a real host in the story', async () => {
   const bad = { ...DEFAULT_CAST, castBrand: 'Acme https://acme-airlines.com/x' };

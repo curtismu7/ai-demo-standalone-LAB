@@ -16,7 +16,7 @@ export async function runChecks({ env = process.env, cast = DEFAULT_CAST } = {})
   const major = Number(process.versions.node.split('.')[0]);
   add('node', major >= 20 ? 'pass' : 'fail', `v${process.versions.node} (need >= 20)`);
 
-  try { add('mode', 'pass', `mode=${modeFrom(env)}${realAvailableFrom(env) ? ' (Real configured)' : ' (Mock only)'}${env.AIDEMOLAB_HOSTED === '1' ? '; hosted build' : ''}`); }
+  try { add('mode', 'pass', `mode=${modeFrom(env)}${realAvailableFrom(env) ? ' (Real configured)' : ' (Mock only)'}`); }
   catch (e) { add('mode', 'fail', e.message); }
 
   try { add('bind', 'pass', `${assertBindAllowed(bindHost(env), env)}${env.AIDEMOLAB_BIND ? ' (AIDEMOLAB_BIND opt-in)' : ' (loopback)'}`); }

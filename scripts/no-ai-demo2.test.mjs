@@ -160,7 +160,9 @@ function trackedFiles() {
 }
 
 const readText = (rel) => {
-  const buf = fs.readFileSync(path.join(root, rel));
+  const full = path.join(root, rel);
+  if (!fs.existsSync(full)) return null; // staged-but-deleted (git rm): nothing to scan
+  const buf = fs.readFileSync(full);
   return buf.subarray(0, 8000).includes(0) ? null : buf.toString('utf8'); // binary: nothing to scan
 };
 

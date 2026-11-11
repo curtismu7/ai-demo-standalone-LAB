@@ -9,7 +9,7 @@ import express from 'express';
 import { hostCheck, sameOriginWrites } from './safety.js';
 import { createHealth } from './health.js';
 import { loadCast, verticalFrom, VERTICALS } from './cast.js';
-import { hostedFrom, modeFrom, realAvailableFrom } from './config.js';
+import { modeFrom, realAvailableFrom } from './config.js';
 import { buildStory, CATALOG } from './story.js';
 import { DIAGRAM_NAMES, buildDiagram } from './diagramData.js';
 import { decide, decideWithObligation, actChainDepth, DEFAULT_ACTORS, AUDIENCE, exchange } from './pdp.js';
@@ -18,7 +18,7 @@ import { evaluateObligation, createChallenge, answerChallenge, createReceipts, H
 import { exchangeOne, exchangeTwo, evaluateA2a, createRegistry, actChainDepth as a2aDepth, A2AInputError, agentCard as a2aAgentCard, LIMITS as A2A_LIMITS } from './a2a.js';
 import { runAttack, createRateLimiter, ATTACK_CATALOG, AttackInputError } from './attacks.js';
 import { createRoster, keyAllows, KNOWN_SCOPES, NhiInputError } from './nhi.js';
-import { mountShelfRoute } from './shelfLink.js';
+import { mountShelfRoute, shelfInfo } from './shelfLink.js';
 import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.js';
 import { createWorkspaces, workspaceFrom } from './workspaces.js';
 
@@ -30,7 +30,7 @@ const CONFIG = process.env.CUSTOMER_CONFIG || path.resolve(HERE, '../../customer
 const newExtra = () => ({ receipts: createReceipts(), registry: createRegistry({}), generalistToken: null });
 
 export function createApp({
-  health = createHealth(), configFile = CONFIG, hosted = false,
+  health = createHealth(), configFile = CONFIG,
   workspaces = createWorkspaces({ makeDirectory: () => structuredClone(DEFAULT_DIRECTORY), makeExtra: () => ({ ...newExtra(), rateLimiter: createRateLimiter({ max: 8 }), roster: createRoster() }) }),
 } = {}) {
   const app = express();
@@ -44,7 +44,7 @@ export function createApp({
   api.use('/health', health.router);
   const castFor = (req) => loadCast(configFile, verticalFrom(req.query.vertical));
   // customer.config.json is read on every request so editing it shows up on reload.
-  api.get('/scenarios', (req, res) => { res.set('Cache-Control', 'no-store'); res.json({ ...buildStory(castFor(req), { hosted }), verticals: Object.keys(VERTICALS), hosted }); });
+  api.get('/scenarios', (req, res) => { res.set('Cache-Control', 'no-store'); res.json({ ...buildStory(castFor(req)), verticals: Object.keys(VERTICALS) }); });
   // The full 87-UC catalog, filterable by track; the dashboard UI renders it grouped.
   api.get('/catalog', (req, res) => {
     res.set('Cache-Control', 'no-store');
@@ -54,7 +54,7 @@ export function createApp({
     res.json({ schema: CATALOG.schema, tracks: [...new Set(CATALOG.useCases.map((u) => u.track))], verticals: CATALOG.verticals, count: ucs.length, useCases: ucs });
   });
   api.get('/diagram', (req, res) => { res.set('Cache-Control', 'no-store'); res.json(buildDiagram(castFor(req), DIAGRAM_NAMES.includes(req.query.name) ? req.query.name : DIAGRAM_NAMES[0])); });
-  api.get('/info', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json({ mode: modeFrom(), source: modeFrom(), simulated: true, hosted, realAvailable: realAvailableFrom() }); });
+  api.get('/info', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json({ mode: modeFrom(), source: modeFrom(), simulated: true, realAvailable: realAvailableFrom() }); });
   api.post('/mode', (req, res) => {
     const body = req.body;
     if (!body || typeof body !== 'object' || Array.isArray(body) || !['mock', 'real'].includes(body.source)) {
@@ -380,6 +380,8 @@ export function createApp({
   api.use((_req, res) => res.status(404).json({ error: 'not_found' }));
   app.use('/api', api);
   mountShelfRoute(app);
+  // ShelfLink (vendored, pinned) fetches GET /api/shelf; mountShelfRoute serves /shelf.
+  api.get('/shelf', (req, res) => { res.set('Cache-Control', 'no-store'); res.json(shelfInfo(process.env)); });
   // Errors become short JSON. Express's default handler would send an HTML stack trace with absolute file paths.
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
