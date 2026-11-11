@@ -23,7 +23,7 @@ import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.
 import { matchTurn } from './assistant.js';
 import { createWorkspaces, workspaceFrom, serverKey, mintWorkspaceToken, verifyWorkspaceToken } from './workspaces.js';
 import { SCENARIOS } from './policyData.js';
-import { seedFor, tokenFor } from './scenario.js';
+import { seedFor, tokenFor, callArgsFor } from './scenario.js';
 import { toDemoHops, tokenCardsFrom } from './evidenceAdapter.js';
 import { buildDemoHops, buildTokenCards } from './hops.js';
 import { usecaseRows, usecaseEntries, handoffHref } from './usecases.js';
@@ -145,7 +145,7 @@ export function createApp({
     // The exchange narrows scope to the task (UC4): consent with a tool mints the task's
     // required scope; consent without one mints the consented grant (read + write).
     const tool = typeof body.tool === 'string' && body.tool.trim() ? body.tool.trim().slice(0, LIMITS.id) : null;
-    const scope = typeof body.scope === 'string' && body.scope.trim() ? body.scope.trim().slice(0, 100)
+    let scope = typeof body.scope === 'string' && body.scope.trim() ? body.scope.trim().slice(0, 100)
       : tool ? TOOL_REQUIRED_SCOPE[tool] ?? 'accounts:read' : 'accounts:read transfers:write';
     const token = exchange({ userSub: user, actorClientId: actor, aud, scope });
     workspaces.record(ws, { tool: 'consent', decision: 'MINTED', reason: `act={${token.act.sub}} for ${token.sub}`, token: null });
@@ -180,6 +180,10 @@ export function createApp({
     const { verdict, obligation, receiptCheck } = decideWithObligation({
       token: body.token, groups: entry.groups, tier: entry.tier, tool, amount, receipt: claimed, receipts: receiptsOf(v),
       resourceOwner: typeof body.resourceOwner === 'string' && body.resourceOwner.trim() ? body.resourceOwner.trim().slice(0, LIMITS.id) : null,
+      // UC41/UC42: the gateway inspects the search query argument; UC27: a client-sent
+      // "consent already given" flag is passed in only so the engine can answer it (ignored).
+      query: typeof body.query === 'string' && body.query.trim() ? body.query.trim().slice(0, 300) : null,
+      consentGiven: body.consentGiven === true ? true : null,
       authorizedActors: Array.isArray(body.authorizedActors) ? body.authorizedActors.slice(0, 8).map((x) => String(x).slice(0, LIMITS.id)) : DEFAULT_ACTORS,
       audience: typeof body.aud === 'string' && body.aud.trim() ? body.aud.trim().slice(0, 100) : AUDIENCE,
       now: () => Date.now(),
@@ -447,9 +451,11 @@ export function createApp({
     dir[sc.user] = entry;
     v.directory = dir;
     const token = tokenFor(sc);
+    const callArgs = callArgsFor(sc);
     const { verdict, obligation } = decideWithObligation({
       token, groups: entry.groups, tier: entry.tier, tool: sc.tool, amount,
       resourceOwner: sc.resourceOwner ?? null,
+      query: callArgs.query, consentGiven: callArgs.consentGiven,
       receipts: receiptsOf(v), authorizedActors: DEFAULT_ACTORS, audience: AUDIENCE, now: () => Date.now(),
     });
     const ctx = { user: sc.user, actor: sc.actor, tool: sc.tool, amount, groups: entry.groups, tier: entry.tier, aud: sc.aud };

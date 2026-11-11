@@ -23,8 +23,13 @@ export class HitlInputError extends Error {
 }
 
 /** The obligation an amount+tool produces, mirroring simulatedAuthorizeService. */
-export function evaluateObligation({ tool, amount = null, hitlTools = ['create_transfer', 'create_wire_transfer', 'approve_large_transfer'], cibaTools = ['move_money'] } = {}) {
+export function evaluateObligation({ tool, amount = null, hitlTools = ['create_transfer', 'create_wire_transfer', 'approve_large_transfer'], cibaTools = ['move_money'], consentGiven = null } = {}) {
   const t = clean(tool, LIMITS.id);
+  // UC27: a client-sent "consent already given" flag is never trusted — any boolean the
+  // caller asserts would skip the gate entirely. The check runs and ignores it, fail-closed.
+  if (consentGiven === true && hitlTools.includes(t)) {
+    return { obligation: 'HITL_CONSENT', bypassAttempt: true, reason: `"${t}" arrived with a client-sent "consent already given" flag — the flag is ignored, not trusted: a verified, call-bound HitlApproved receipt is the only thing that satisfies this tool, so the call still pauses.` };
+  }
   if (hitlTools.includes(t)) return { obligation: 'HITL_CONSENT', reason: `"${t}" is a human-approval tool: the agent pauses until a verified HitlApproved receipt is presented (an approval is never an MFA).` };
   if (cibaTools.includes(t)) return { obligation: 'CIBA', reason: `"${t}" is a sensitive agent-initiated action with no browser: the backend calls bc-authorize and the user approves out-of-band on their device.` };
   if (amount == null) return { obligation: null, reason: 'no amount to band' };

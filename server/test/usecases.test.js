@@ -17,9 +17,9 @@ test('every catalog use case has exactly one launcher row', () => {
   for (const u of CATALOG.useCases) assert.ok(byId[u.id], `${u.id}: a row exists`);
 });
 
-test('counts are pinned: 21 run here (the wired scenarios, P6 batch 2 grew 15 -> 21), every redirect in the matcher redirects', () => {
+test('counts are pinned: 31 run here (the owner total: 27 scenario-backed ucIds + the 4 A2A panel use cases; P6 batch 3 grew 21 -> 31), every redirect in the matcher redirects', () => {
   const here = rows.filter((r) => r.runsHere).map((r) => r.id).sort();
-  assert.deepEqual(here, ['UC1', 'UC10', 'UC11', 'UC13', 'UC16b', 'UC19', 'UC20', 'UC21', 'UC22', 'UC29', 'UC3', 'UC32', 'UC33', 'UC34', 'UC35', 'UC5', 'UC6', 'UC7', 'UC8', 'UC9', 'UC9A']);
+  assert.deepEqual(here, ['UC1', 'UC10', 'UC11', 'UC13', 'UC16b', 'UC19', 'UC2', 'UC2.5', 'UC2.6', 'UC2.7', 'UC20', 'UC21', 'UC22', 'UC24', 'UC26', 'UC27', 'UC29', 'UC3', 'UC32', 'UC33', 'UC34', 'UC35', 'UC4', 'UC41', 'UC42', 'UC5', 'UC6', 'UC7', 'UC8', 'UC9', 'UC9A']);
   for (const [uc, lab] of Object.entries(REDIRECTS)) {
     assert.equal(byId[uc].route, 'Hand off', `${uc}: the matcher's redirect is a hand off row`);
     assert.equal(byId[uc].apps[0], lab, `${uc}: the app matches the matcher's lab`);
@@ -65,11 +65,10 @@ test('handoffHref: the query carries ids only; a malformed uc is refused', () =>
   assert.ok(href.includes('uc=UC.12b-x'), 'id-shaped ucs pass');
 });
 
-// Appendix A owner-pinned totals (2026-11-10): 45 redirect to standalone apps, 11 guide
-// cards. Today 7 of the 13 in-app rows in Appendix A (UC2, UC2.5-2.7, UC9A, UC22, UC32)
-// are wired as scenarios AND still name a deeper app — they are "Runs here + deeper", not
-// redirect rows, so the derived redirect count is 52 until P6 narrows the routing table.
-test('Appendix A counts are pinned: 45 Appendix redirects land as redirect (52 derived today), 11 guide', () => {
+// Appendix A owner-pinned totals (2026-11-10): 31 in-app, 45 redirect to standalone apps,
+// 11 guide cards. P6 batch 3 closed the batch: 27 scenario-backed ucIds + the 4 A2A panel
+// use cases (UC2/2.5/2.6/2.7, wired in-process through the A2A panel) = 31.
+test('Appendix A counts are pinned: 31 in-app, 45 redirects land as redirect, 11 guide — every use case classified exactly once', () => {
   const counts = { 'Hand off': 0, Guide: 0, 'Here + go deeper': 0 };
   for (const r of rows) counts[r.route] += 1;
   // Every Appendix A "Redirect ->" use case is a redirect row:
@@ -78,18 +77,17 @@ test('Appendix A counts are pinned: 45 Appendix redirects land as redirect (52 d
   assert.equal(appendixRedirects.length, 45, 'the owner-pinned redirect total');
   // Every Appendix A guide row is a Guide row (the text-only cards):
   for (const id of ['UC-LEARN1', 'UC-LEARN5', 'UC-LEARN7', 'UC-LEARN10', 'UC-LEARN18', 'UC-PAM-SETUP', 'UC-PAM-SCRIPT', 'UC-TOOL1', 'UC-TOOL2', 'UC-LOGIN-AIC', 'UC-AIC-TX']) assert.equal(byId[id].route, 'Guide', `${id}: Appendix A guide`);
-  // The 11 Appendix A guide cards are Guide rows; 15 more rows (the BUILD-in-app P6 use
-  // cases with no wired scenario and no deeper app) render Guide today — P6 replaces
-  // them with in-app engine runs.
-  assert.ok(counts.Guide >= 11, 'at least the Appendix guide cards are Guide rows');
+  assert.equal(counts.Guide, 11, 'exactly the Appendix guide cards are Guide rows (P6 built the rest in-app)');
+  assert.equal(counts['Here + go deeper'], 31, 'the owner-pinned in-app total');
   assert.equal(counts['Hand off'] + counts.Guide + counts['Here + go deeper'], CATALOG.useCases.length, 'every use case classified exactly once');
   const scenarios = new Set(SCENARIOS.map((s) => s.ucId));
-  assert.equal(counts['Here + go deeper'], [...scenarios].filter((id) => byId[id] && byId[id].runsHere).length, 'in-app is derived from SCENARIOS, not hardcoded');
+  const derived = [...scenarios].filter((id) => byId[id] && byId[id].runsHere).length + rows.filter((r) => r.runsHere && !SCENARIOS.some((s) => s.ucId === r.id)).length;
+  assert.equal(counts['Here + go deeper'], derived, 'in-app is derived (SCENARIOS + the A2A panel), not hardcoded');
 });
 
-test('guide rows carry no app link; run-here rows come only from the scenario table', () => {
+test('guide rows carry no app link; run-here rows come from the scenario table or the A2A panel', () => {
   for (const r of rows) {
     if (r.route === 'Guide') assert.equal(r.apps.length, 0, `${r.id}: guide has no app`);
-    if (r.runsHere) assert.ok(SCENARIOS.some((s) => s.ucId === r.id), `${r.id}: a scenario backs it`);
+    if (r.runsHere) assert.ok(SCENARIOS.some((s) => s.ucId === r.id) || ['UC2', 'UC2.5', 'UC2.6', 'UC2.7'].includes(r.id), `${r.id}: a scenario or the A2A panel backs it`);
   }
 });

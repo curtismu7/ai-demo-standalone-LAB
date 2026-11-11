@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- P6 batch 3 (final): UC4 (overscoped agent), UC41/UC42 (third-party search filtered / blocked at the gateway), UC24 (public catalog access), UC26 (proof of enforcement) and UC27 (HITL consent bypass attempt) run in-app. In-app is now 31 of 87 — the owner-pinned total (45 redirect, 11 guide). Mechanisms: the exchange narrows scope to the task's required scope (UC4); a content blocklist on `brave_news_search`'s query argument, checked before the call is forwarded (`query_blocked`, UC41/UC42); a public-catalog tool that permits without the group gate or a tier check (UC24); and a client-sent "consent already given" flag that is ignored, never trusted, so the HITL gate still pauses (`BYPASS DENIED`, UC27). Six new dashboard chips and matcher rows. Mutations killed: disabling the query-block check, and trusting the consentGiven flag — each kills batch-3 tests.
+- 154 server + 154 web + 24 packaging tests green.
 - Receipts are issued by the server and checked against it (four verified defects in the stage-2 HITL engine, one PR):
   - A hand-written receipt that was never issued is refused (`receipt_not_found`). Before, `/api/authorize` checked only the fields of the object it was handed and permitted a forged one (HTTP 200).
   - A receipt is consumed by the call it permits (`receipt_spent` on a replay). Before, the same receipt permitted again for 5 minutes. A refused attempt does not burn it.

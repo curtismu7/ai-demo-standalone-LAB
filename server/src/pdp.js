@@ -30,7 +30,16 @@ export const TOOL_REQUIRED_SCOPE = {
   get_transactions: 'accounts:read',
   show_mortgage: 'accounts:read',
   create_wire_transfer: 'transfers:write',
+  brave_news_search: 'search:read',
 };
+
+// UC24: public catalog tools answer without the full gate (no group gate, no tier check) —
+// the progressive-trust Act 1 path: browsing is anonymous, action is not.
+export const PUBLIC_TOOLS = ['get_branch_hours'];
+// UC41/UC42: third-party search servers are fronted at the gateway — the query argument is
+// inspected against a content blocklist BEFORE the call leaves the perimeter.
+export const SEARCH_TOOLS = ['brave_news_search'];
+export const SEARCH_BLOCKED_TERMS = ['bitcoin', 'cryptocurrency', 'crypto'];
 
 export const REQUIRED_ACT = 'demo-agent';
 export const PREMIUM_ONLY_TOOLS = ['create_wire_transfer', 'approve_large_transfer'];
@@ -105,7 +114,7 @@ export function validateChain(token, { authorizedActors = DEFAULT_ACTORS, now = 
 }
 
 /** Stage 3: the policy decides from the live directory + tool + amount. */
-export function evaluatePolicy({ groups = [], tier = 'Standard', tool = '', amount = null, requiredGroup = 'privileged', premiumOnlyTools = PREMIUM_ONLY_TOOLS, tiers = TIERS, resourceOwner = null, token = null } = {}) {
+export function evaluatePolicy({ groups = [], tier = 'Standard', tool = '', amount = null, requiredGroup = 'privileged', premiumOnlyTools = PREMIUM_ONLY_TOOLS, tiers = TIERS, resourceOwner = null, token = null, query = null, publicTools = PUBLIC_TOOLS, searchTools = SEARCH_TOOLS, blockedTerms = SEARCH_BLOCKED_TERMS } = {}) {
   const g = (groups || []).map((x) => clean(x, LIMITS.group));
   const t = clean(tool, LIMITS.id);
   // UC10: the resource is bound to the token subject — a call naming another owner's
@@ -115,6 +124,22 @@ export function evaluatePolicy({ groups = [], tier = 'Standard', tool = '', amou
     if (who !== resourceOwner) {
       return { decision: 'DENY', code: 'resource_owner_mismatch', reason: `the resource belongs to "${clean(resourceOwner, LIMITS.id)}", not to the token subject "${clean(who, LIMITS.id)}" — the owner match denies the call` };
     }
+  }
+  // UC24: a public catalog tool skips the group gate and the tier checks — browsing is
+  // anonymous-safe; every real action below is still gated.
+  if (publicTools.includes(t)) {
+    return { decision: 'PERMIT', code: null, reason: `public catalog: "${t}" needs no sign-in — browsing is open while every real action stays gated` };
+  }
+  // UC42: the gateway fronts the third-party search server — the query argument is
+  // inspected against the content blocklist BEFORE the call is forwarded. No vendor log,
+  // no billed call, no data leaving the perimeter.
+  if (searchTools.includes(t) && query != null) {
+    const q = String(query).toLowerCase();
+    const hit = blockedTerms.find((term) => q.includes(term));
+    if (hit) {
+      return { decision: 'DENY', stage: 'gateway', code: 'query_blocked', reason: `the query contains the blocked term "${hit}" — the gateway denies the call before it is forwarded to the third-party search server` };
+    }
+    return { decision: 'PERMIT', code: null, reason: `the query carries no blocked term — the gateway forwards the call to the third-party search server` };
   }
   const band = tiers[tier] || tiers.Standard;
   // The group gate is read on EVERY decision: outside the required group is denied
@@ -138,7 +163,7 @@ export function evaluatePolicy({ groups = [], tier = 'Standard', tool = '', amou
  * (the workspace store owns mutations), so the SAME token + call can flip with the directory.
  * @returns {{ decision, stage, code, reason, hops: string[] }}
  */
-export function decide({ token, groups, tier = 'Standard', tool = '', amount = null, authorizedActors = DEFAULT_ACTORS, audience = AUDIENCE, now = Date.now, resourceOwner = null } = {}) {
+export function decide({ token, groups, tier = 'Standard', tool = '', amount = null, authorizedActors = DEFAULT_ACTORS, audience = AUDIENCE, now = Date.now, resourceOwner = null, query = null } = {}) {
   const stages = [];
   // UC16b: custody first — a raw forwarded user token never leaves the BFF, so the
   // gateway and the policy never see the call at all.
@@ -152,9 +177,9 @@ export function decide({ token, groups, tier = 'Standard', tool = '', amount = n
   const chain = validateChain(token, { authorizedActors, now });
   stages.push(`chain: ${chain.valid ? 'ok' : `${chain.code}`}`);
   if (!chain.valid) return { decision: 'DENY', stage: chain.stage, code: chain.code, reason: chain.reason, stages };
-  const pol = evaluatePolicy({ groups, tier, tool, amount, resourceOwner, token });
+  const pol = evaluatePolicy({ groups, tier, tool, amount, resourceOwner, token, query });
   stages.push(`policy: ${pol.decision.toLowerCase()}`);
-  if (pol.decision === 'DENY') return { decision: 'DENY', stage: 'policy', code: pol.code, reason: pol.reason, stages };
+  if (pol.decision === 'DENY') return { decision: 'DENY', stage: pol.stage ?? 'policy', code: pol.code, reason: pol.reason, stages };
   const who = token.act?.sub ? `${token.act.sub} acting for ${token.sub}` : String(token.sub);
   return { decision: 'PERMIT', stage: 'policy', code: null, reason: `${who}${tool ? ` -> ${clean(tool, LIMITS.id)}` : ''}: ${pol.reason}`, stages };
 }
@@ -180,13 +205,13 @@ export function exchange({ userSub, actorClientId, aud = AUDIENCE, now = Date.no
  *  reason }. A presented receipt completes the pause only if `receipts` (the server's store,
  *  createReceipts() in hitl.js) issued it, it is unspent and it binds this call; it is then
  *  CONSUMED. With no store a receipt cannot be verified, so it is refused. */
-export function decideWithObligation({ receipt = null, receipts = null, ...args } = {}) {
+export function decideWithObligation({ receipt = null, receipts = null, consentGiven = null, ...args } = {}) {
   const verdict = decide(args);
   if (verdict.decision !== 'PERMIT') return { verdict, obligation: null, receiptCheck: null };
   let ob;
   // Reviewer item 7: fail CLOSED. An obligation-layer error must not silently hand out the
   // bare policy verdict; it surfaces as a DENY explaining the engine failure.
-  try { ob = evaluateObligation({ tool: args.tool, amount: args.amount }); } catch (e) {
+  try { ob = evaluateObligation({ tool: args.tool, amount: args.amount, consentGiven: consentGiven ?? null }); } catch (e) {
     return {
       verdict: { decision: 'DENY', stage: 'obligation', code: 'obligation_error', reason: `the obligation layer failed on this call (${e instanceof Error ? e.message : String(e)}); refusing rather than permitting without the check` },
       obligation: null, receiptCheck: null,
@@ -208,7 +233,9 @@ export function decideWithObligation({ receipt = null, receipts = null, ...args 
       obligation = ob.obligation;
       verdict.decision = 'OBLIGATION';
       verdict.code = ob.obligation;
-      verdict.reason = receiptCheck ? `${ob.reason} The presented receipt was refused (${receiptCheck.code}): ${receiptCheck.reason}.` : ob.reason;
+      verdict.reason = ob.bypassAttempt
+        ? `BYPASS DENIED — ${ob.reason}${receiptCheck ? ` The presented receipt was refused (${receiptCheck.code}): ${receiptCheck.reason}.` : ''}`
+        : receiptCheck ? `${ob.reason} The presented receipt was refused (${receiptCheck.code}): ${receiptCheck.reason}.` : ob.reason;
       if (receiptCheck) receiptCheck = { valid: false, code: receiptCheck.code, reason: receiptCheck.reason };
     }
   }

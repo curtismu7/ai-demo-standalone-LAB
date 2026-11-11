@@ -82,7 +82,7 @@ The seeded directory has three users: `demoUser` (`privileged`, Standard), `prem
 - `./scripts/run.sh`: host-run on port 7810 (Node >= 26), installs and builds if needed, runs the doctor, starts the server.
 - Docker (OrbStack): `HOST_PORT=7810 docker compose up --build -d`, published on `127.0.0.1` only.
 - Through the shared lab-proxy: `https://local.ping-devops.com:8443/ai-demo-standalone/`.
-- Tests: `npm ci && npm test && npm run build`. Real counts from a run after the receipt fixes, 2026-11-10 (Node 26): **65 server tests, 25 web tests (3 files) and 19 root packaging tests, 109 in all**, all passing.
+- Tests: `npm ci && npm test && npm run build`. Real counts from a run after P6 batch 3, 2026-11-11 (Node 26): **154 server tests, 154 web tests (11 files) and 24 root packaging tests, 332 in all**, all passing.
 
 ## Run from a clone
 
