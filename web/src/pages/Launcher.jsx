@@ -41,6 +41,12 @@ export default function Launcher({ onRunHere }) {
     }, () => {});
   };
 
+  const chipName = (row, chip, shelfOnly) =>
+    chip.kind === "here" ? `Run ${row.title} here`
+      : shelfOnly ? `Start ${chip.app} from the Shelf`
+      : chip.kind === "open" ? `Open ${row.title} in ${chip.app}`
+      : `Guide: ${row.title}`;
+
   return (
     <section className="uc-launcher" aria-labelledby="uc-launcher-h" data-testid="uc-launcher">
       <h2 id="uc-launcher-h">Every use case, one click</h2>
@@ -52,6 +58,9 @@ export default function Launcher({ onRunHere }) {
         aria-label="Search the use cases"
         data-testid="uc-search"
       />
+      <p className="sr-only" role="status" aria-live="polite" data-testid="uc-count">
+        {rows.length ? `${shown.length} of ${rows.length} use cases shown` : ""}
+      </p>
       <ul className="uc-rows" data-testid="uc-rows">
         {shown.map((row) => {
           const chip = chipFor(row);
@@ -65,6 +74,7 @@ export default function Launcher({ onRunHere }) {
                 className={`uc-chip uc-chip--${chip.kind}`}
                 disabled={chip.kind === "guide"}
                 onClick={() => click(row)}
+                aria-label={chipName(row, chip, shelfOnly)}
                 title={shelfOnly ? `Start ${chip.app} from the Shelf (open the shelf to launch it)` : undefined}
                 data-testid={`uc-chip-${row.id}`}
               >

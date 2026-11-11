@@ -106,4 +106,61 @@ describe("Launcher", () => {
     expect(screen.getAllByTestId(/^uc-row-/)).toHaveLength(1);
     expect(screen.getByTestId("uc-row-UC12")).toBeTruthy();
   });
+
+  test("the result count is announced politely", async () => {
+    getUseCases.mockResolvedValue({ ok: true, status: 200, body: { rows: ROWS, href: null } });
+    render(<Launcher />);
+    await waitFor(() => expect(screen.getByTestId("uc-count").textContent).toBe("3 of 3 use cases shown"));
+  });
+
+  test("chips carry accessible names: Run <title> here / Open <title> in <app> / Guide", async () => {
+    getUseCases.mockResolvedValue({ ok: true, status: 200, body: { rows: ROWS, href: null } });
+    const orig = window.location;
+    try {
+      delete window.location;
+      window.location = { ...orig, pathname: "/ai-demo-standalone/" };
+      render(<Launcher />);
+    await waitFor(() => expect(screen.getByTestId("uc-chip-UC1")).toBeTruthy());
+    expect(screen.getByTestId("uc-chip-UC1")).toHaveAccessibleName("Run Delegated access (consent only) here");
+    expect(screen.getByTestId("uc-chip-UC12")).toHaveAccessibleName("Open Token theft / replay defense in stolen-token-lab");
+    expect(screen.getByTestId("uc-chip-UC-LEARN1")).toHaveAccessibleName("Guide: OAuth Academy");
+    } finally { window.location = orig; }
+  });
+
+  test("open-redirect guard: an app without a proxy path renders the Shelf fallback and never navigates", async () => {
+    const user = userEvent.setup();
+    // The row names an app the fixed map has no path for: the server row carries path: null,
+    // so even behind the proxy the Launcher must never build a target for it.
+    const noPath = [{ id: "UCX", title: "Mystery app", route: "Hand off", apps: ["unlisted-app"], path: null, runsHere: false }];
+    getUseCases.mockResolvedValue({ ok: true, status: 200, body: { rows: noPath, href: null } });
+    const orig = window.location;
+    const assign = vi.fn();
+    try {
+      delete window.location;
+      window.location = { ...orig, pathname: "/ai-demo-standalone/", assign };
+      render(<Launcher />);
+      await waitFor(() => expect(screen.getByTestId("uc-chip-UCX")).toBeTruthy());
+      expect(screen.getByTestId("uc-chip-UCX").textContent).toBe("Opens unlisted-app");
+      expect(screen.getByTestId("uc-chip-UCX")).toHaveAccessibleName("Open Mystery app in unlisted-app");
+      await user.click(screen.getByTestId("uc-chip-UCX"));
+      await waitFor(() => {});
+      expect(assign).not.toHaveBeenCalled(); // the server href is null, so nothing is assigned
+    } finally { window.location = orig; }
+  });
+
+  test("the server href is the only navigation target; a hostile href is never assigned", async () => {
+    const user = userEvent.setup();
+    getUseCases.mockResolvedValue({ ok: true, status: 200, body: { rows: ROWS, href: null } });
+    const orig = window.location;
+    const assign = vi.fn();
+    try {
+      delete window.location;
+      window.location = { ...orig, pathname: "/ai-demo-standalone/", assign };
+      render(<Launcher />);
+      await waitFor(() => expect(screen.getByTestId("uc-chip-UC12")).toBeTruthy());
+      await user.click(screen.getByTestId("uc-chip-UC12"));
+      await waitFor(() => {});
+      expect(assign).not.toHaveBeenCalled(); // href: null -> no navigation
+    } finally { window.location = orig; }
+  });
 });

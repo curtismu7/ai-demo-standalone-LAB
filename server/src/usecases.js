@@ -18,41 +18,14 @@ import { SCENARIOS } from './policyData.js';
 const handoff = JSON.parse(readFileSync(fileURLToPath(new URL('../data/handoff.json', import.meta.url)), 'utf8'));
 const ROUTES = handoff.routes ?? {};
 
-// Paths from customer-agent-LAB web/src/handoff.js PROXY_PATHS (the lab-proxy route table;
-// paths only). A row whose app has no path gets no link — behind a plain port the button
-// reads "Start <app> from the Shelf" instead.
-export const PROXY_PATHS = Object.freeze({
-  'a2a-lab': '/a2a-lab/',
-  'agent-audit-trail': '/agent-audit-trail-lab/',
-  'agent-governance-lab': '/agent-governance-lab/',
-  'agent-kill-switch': '/agent-kill-switch/',
-  'agent-registry-demo': '/agent-registry-demo/',
-  'ai-guard-sidecar': '/ai-guard-sidecar/',
-  'ciba-hitl-lab': '/ciba-hitl-lab/',
-  cimd: '/cimd-lab/',
-  'delegation-lab': '/delegation-lab/',
-  'gateway-suite-lab': '/gateway-suite/',
-  'hitl-mfa-lab': '/hitl-mfa-lab/',
-  'id-jag-standalone': '/id-jag-kit/',
-  'intent-par-inspector': '/intent-par-inspector/',
-  'jev-lab': '/jev-lab/',
-  'jit-lab': '/jit-lab/',
-  'mcp-gateway-lab': '/mcp-gateway-lab/',
-  'mcp-tools': '/mcp-tools/',
-  'meridian-a2a-hop': '/meridian-a2a-hop/',
-  'mock-authorize': '/mock-authorize/',
-  muse: '/muse/',
-  'no-tool-no-promise': '/no-tool-no-promise/',
-  'obo-lab': '/obo-lab/',
-  pingfederate: '/pingfederate-lab/',
-  'pingone-mcp-inspector': '/pingone-mcp-inspector/',
-  'pingone-signin': '/pingone-signin-lab/',
-  'privilege-a2a-anthropic-demo': '/privilege-a2a/',
-  'progressive-trust-ladder': '/progressive-trust-ladder/',
-  'stolen-token-lab': '/stolen-token-lab/',
-  'token-workbench': '/token-workbench/',
-  'worker-demo': '/worker-demo/',
-});
+// The lab-proxy route table: server/data/proxy-paths.json, vendored from customer-agent-LAB
+// web/src/handoff.js PROXY_PATHS (paths only) and sha-pinned in server/data/proxy-paths.json.sha256
+// (server/test/vendoredPins.test.js). Paths only — the href builder composes relative links; a
+// row whose app has no path gets no link — behind a plain port the button reads
+// "Start <app> from the Shelf" instead.
+export const PROXY_PATHS = Object.freeze(JSON.parse(
+  readFileSync(fileURLToPath(new URL('../data/proxy-paths.json', import.meta.url)), 'utf8'),
+));
 
 const SELF_ID = 'ai-demo-standalone';
 const APP_ID = /^[a-z0-9-]{2,40}$/;
@@ -79,6 +52,24 @@ export function usecaseRows(catalog) {
     const apps = [r.app, ...(r.also ? [r.also] : [])].filter((a) => typeof a === 'string' && APP_ID.test(a));
     if (!apps.length) return { id: u.id, title: u.title ?? u.explicitTitle ?? u.id, route: 'Guide', apps: [], path: null, runsHere: false };
     return { id: u.id, title: u.title ?? u.explicitTitle ?? u.id, route: 'Hand off', apps, path: PROXY_PATHS[apps[0]] ?? null, runsHere: false };
+  });
+}
+
+const HANDLING = (row) => (row.runsHere ? 'in-app' : row.route === 'Hand off' ? 'redirect' : 'guide');
+
+/** The /api/usecases entries: one per use case, { id, track, title, expectedOutcome, handling, app, proxyPath }. */
+export function usecaseEntries(catalog) {
+  return (catalog.useCases ?? []).map((u) => {
+    const row = usecaseRows({ useCases: [u] })[0];
+    return {
+      id: u.id,
+      track: u.track ?? null,
+      title: u.title ?? u.explicitTitle ?? u.id,
+      expectedOutcome: u.expectedOutcome ?? null,
+      handling: HANDLING(row),
+      app: row.apps[0] ?? null,
+      proxyPath: row.path ?? null,
+    };
   });
 }
 
