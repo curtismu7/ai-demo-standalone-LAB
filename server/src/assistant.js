@@ -1,14 +1,14 @@
 // The Scripted brain (plan phase P2): match what the visitor typed to ONE handling —
 // an in-app scenario (the 11 the engine runs), a redirect to a standalone lab (the 45
-// from Appendix A), or unknown. Regex-first, exactly like AI-DEMO2's dashboard default
+// from Appendix A), or unknown. Regex-first, exactly like the dashboard's default
 // mode ("heuristics": regex first, an LLM only if the regex fails). The model brain
 // (P2b, opt-in) replaces ONLY this matcher: it returns the same { handling, id } shape,
 // and the reply is always written from the run (or the redirect card), never by the model.
 //
 // Every in-app match carries the scenario's expected outcome; the server re-checks the
 // scenario id against the SCENARIOS table, so a model-invented id is refused (same rule
-// as customer-agent-LAB's brain.js). Amounts typed in the message ride along: the engine
-// bands the amount, the message never overrides a scenario's own amount.
+// as the customer-agent lab's brain.js). Amounts typed in the message ride along: the
+// engine bands the amount, the message never overrides a scenario's own amount.
 
 import { SCENARIOS } from './policyData.js';
 

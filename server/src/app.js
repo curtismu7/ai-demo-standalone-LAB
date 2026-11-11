@@ -11,7 +11,6 @@ import { createHealth } from './health.js';
 import { loadCast, verticalFrom, VERTICALS } from './cast.js';
 import { modeFrom, realAvailableFrom } from './config.js';
 import { buildStory, CATALOG } from './story.js';
-import { SCENARIOS } from './policyData.js';
 import { DIAGRAM_NAMES, buildDiagram } from './diagramData.js';
 import { decide, decideWithObligation, actChainDepth, DEFAULT_ACTORS, AUDIENCE, exchange } from './pdp.js';
 import { DEFAULT_DIRECTORY, LIMITS } from './pdpData.js';
@@ -23,6 +22,7 @@ import { mountShelfRoute, shelfInfo } from './shelfLink.js';
 import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.js';
 import { matchTurn } from './assistant.js';
 import { createWorkspaces, workspaceFrom } from './workspaces.js';
+import { SCENARIOS } from './policyData.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = process.env.WEB_DIST || path.resolve(HERE, '../../web/dist');
@@ -374,79 +374,58 @@ export function createApp({
     res.json({ events: roster.jml.all(), workspace: ws });
   }));
 
-  api.get('/runs', withWorkspace((ws, _req, res) => res.json(workspaces.runs(ws))));
-  // ── P2: the assistant turn (the Scripted brain) ─────────────────────────────
-  // One POST per chat turn. The matcher (assistant.js, regex-first like the dashboard's
-  // default mode) picks a handling; an in-app match RUNS THE REAL ENGINE here (consent ->
-  // authorize, exactly the scenario table's user/actor/tool/amount, with the same directory
-  // seeding the UI does before every scenario run) and the reply is built from that run,
-  // never written by a model. A redirect match returns the lab card; the UI opens it.
-  // Unknown is honest. The P2b model brain (opt-in) replaces only the matcher.
+  // ── P2: the one-page dashboard's assistant turn. The Scripted brain matches ONE prompt to
+  // ONE handling: an in-app scenario (run through the SAME engine as /api/authorize, seeded
+  // exactly the way the scenario states, recorded in the workspace), a redirect to a
+  // standalone lab (a shelf folder name — the UI resolves the card), or an honest unknown.
+  // The reply is always written from the run, never by the matcher.
   api.post('/assistant/turn', withWorkspace((ws, req, res) => {
     const body = req.body;
     if (body === null || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'bad_request' });
-    const said = typeof body.message === 'string' ? body.message.slice(0, 300) : '';
-    const match = matchTurn(said);
-
-    if (match.handling === 'redirect') {
-      const uc = CATALOG.useCases.find((u) => u.id === match.ucId);
+    if (typeof body.message !== 'string' || !body.message.trim()) return res.status(400).json({ error: 'message_required', detail: 'body.message must be non-empty text (<= 500 chars)' });
+    const turn = matchTurn(body.message.slice(0, 500));
+    if (turn.handling === 'unknown') {
+      return res.json({ handling: 'unknown', reply: { text: 'I could not match that to a scripted demo. Try one of the suggestion chips, or open Use Cases.', by: 'agent', outcome: 'UNKNOWN' } });
+    }
+    if (turn.handling === 'redirect') {
       return res.json({
-        handling: 'redirect', ucId: match.ucId, lab: match.lab,
-        title: uc?.explicitTitle || uc?.title || match.ucId,
-        say: `"${said.trim().slice(0, 80)}" is handled by a dedicated lab.`,
-        workspace: ws,
+        handling: 'redirect', ucId: turn.ucId, lab: turn.lab,
+        reply: { text: `That story lives in its own lab: ${turn.lab}. Open it from the shelf.`, by: 'agent', outcome: 'HANDOFF', ucId: turn.ucId, tool: null },
       });
     }
-
-    if (match.handling === 'unknown') {
-      return res.json({
-        handling: 'unknown',
-        say: 'I could not match that to a use case. Try a fare change, a refund, "MFA step-up", or "who can approve a transfer" — or open the Use Cases tab for all 87.',
-        workspace: ws,
-      });
-    }
-
-    // in-app: the real engine, the same path /api/authorize uses — INCLUDING the directory
-    // seeding the UI does before every scenario run: the scenario's flipTo, else the user's
-    // baseline (premiumUser privileged+premiumTier/Premium, jane no groups/Standard,
-    // demoUser privileged/Standard). Without it an earlier scenario's flip poisons this run.
-    const scenario = SCENARIOS.find((s) => s.id === match.scenarioId);
-    if (!scenario) return res.status(500).json({ error: 'scenario_missing' });
-    if (scenario.flipTo || ['demoUser', 'jane', 'premiumUser'].includes(scenario.user)) {
-      const groups = scenario.flipTo || (scenario.user === 'premiumUser' ? ['privileged', 'premiumTier'] : scenario.user === 'jane' ? [] : ['privileged']);
-      const tier = scenario.user === 'premiumUser' ? 'Premium' : 'Standard';
-      const st = workspaces.state(ws);
-      st.directory = { ...(st.directory || structuredClone(DEFAULT_DIRECTORY)), [scenario.user]: { groups, tier } };
-    }
+    // in-app: the SCENARIOS re-check (a drifted or invented id can never reach the engine)
+    const sc = SCENARIOS.find((s) => s.id === turn.scenarioId);
+    if (!sc) return res.json({ handling: 'unknown', reply: { text: 'I could not match that to a scripted demo. Try one of the suggestion chips, or open Use Cases.', by: 'agent', outcome: 'UNKNOWN' } });
+    const amount = turn.amount ?? sc.amount;
     const v = workspaces.state(ws);
     const dir = v.directory || structuredClone(DEFAULT_DIRECTORY);
-    const entry = dir[scenario.user] || { groups: [], tier: 'Standard' };
-    const token = exchange({ userSub: scenario.user, actorClientId: scenario.actor, aud: scenario.aud || AUDIENCE });
-    const amount = match.amount ?? scenario.amount;
-    const { verdict, obligation, receiptCheck } = decideWithObligation({
-      token, groups: entry.groups, tier: entry.tier, tool: scenario.tool, amount,
-      receipts: receiptsOf(v), authorizedActors: DEFAULT_ACTORS, audience: scenario.aud || AUDIENCE, now: () => Date.now(),
+    // seed the directory the way the scenario states (same rule the UI's runner follows);
+    // a scenario's explicit flipTo wins, otherwise the assumed baseline for that user
+    const groups = Array.isArray(sc.flipTo) ? sc.flipTo : (sc.user === 'premiumUser' ? ['privileged', 'premiumTier'] : sc.user === 'jane' ? [] : ['privileged']);
+    const entry = { groups, tier: sc.user === 'premiumUser' ? 'Premium' : 'Standard' };
+    dir[sc.user] = entry;
+    v.directory = dir;
+    const token = exchange({ userSub: sc.user, actorClientId: sc.actor, aud: sc.aud || AUDIENCE });
+    const { verdict, obligation } = decideWithObligation({
+      token, groups: entry.groups, tier: entry.tier, tool: sc.tool, amount,
+      receipts: receiptsOf(v), authorizedActors: DEFAULT_ACTORS, audience: AUDIENCE, now: () => Date.now(),
     });
-    workspaces.record(ws, { tool: scenario.tool, decision: verdict.decision, reason: verdict.reason, token, blocked: verdict.code, ucId: scenario.ucId });
-    const ctx = { user: scenario.user, actor: scenario.actor, tool: scenario.tool, amount, groups: entry.groups, tier: entry.tier, aud: scenario.aud || AUDIENCE };
+    const ctx = { user: sc.user, actor: sc.actor, tool: sc.tool, amount, groups: entry.groups, tier: entry.tier, aud: sc.aud };
     const trace = newTrace(req.headers.traceparent);
-    const status = verdict.decision === 'PERMIT' ? 200 : verdict.decision === 'OBLIGATION' ? 202 : 403;
-    const say = verdict.decision === 'PERMIT'
-      ? `Done: ${verdict.reason.split(':')[0].toLowerCase()} permitted. ${verdict.reason}`
-      : verdict.decision === 'OBLIGATION'
-        ? 'I have to pause here: this action needs you. The details are in the panel below.'
-        : `Authorize refused this request: ${verdict.reason} Nothing was sent to the tool.`;
-    return res.status(status).json({
-      handling: 'in-app', scenarioId: scenario.id, ucId: scenario.ucId, title: scenario.title,
-      decision: verdict.decision, stage: verdict.stage, code: verdict.code, reason: verdict.reason,
-      tool: scenario.tool, amount: amount ?? null, obligation, receiptCheck,
-      narrative: explain(verdict, ctx), lesson: lessonFor(verdict, ctx), products: productCast(verdict),
-      hops: buildHops({ verdict, ...ctx, token, trace, consent: true }), traceId: trace.traceId,
-      run: { ...verdict, tool: scenario.tool, amount: amount ?? null, ucId: scenario.ucId, traceId: trace.traceId, obligation },
-      say, workspace: ws,
-    });
+    const run = {
+      ...verdict, tool: sc.tool, user: sc.user, act: token.act ?? null,
+      chainDepth: actChainDepth(token.act), groups: entry.groups, tier: entry.tier,
+      ucId: sc.ucId, scenarioId: sc.id, workspace: ws, obligation, amount: amount ?? null,
+      narrative: explain(verdict, ctx), lesson: lessonFor(verdict, ctx),
+      products: productCast(verdict), hops: buildHops({ verdict, ...ctx, token, trace, consent: true }),
+      traceId: trace.traceId,
+    };
+    workspaces.record(ws, { tool: sc.tool, decision: verdict.decision, reason: verdict.reason, token, blocked: verdict.code, ucId: sc.ucId });
+    const by = verdict.decision === 'OBLIGATION' ? 'gateway' : 'authorize';
+    return res.json({ handling: 'in-app', ucId: sc.ucId, scenarioId: sc.id, decision: verdict.decision, say: verdict.reason, obligation: obligation ?? undefined, run, hops: run.hops, reply: { text: verdict.reason, by, outcome: verdict.decision, ucId: sc.ucId, tool: sc.tool } });
   }));
 
+  api.get('/runs', withWorkspace((ws, _req, res) => res.json(workspaces.runs(ws))));
   api.post('/reset', withWorkspace((ws, _req, res) => {
     workspaces.resetWorkspace(ws);
     res.json({ reset: 'ok', workspace: ws });

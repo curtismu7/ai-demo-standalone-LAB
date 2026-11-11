@@ -74,10 +74,10 @@ describe("SimBanner", () => {
 });
 
 describe("hash routing", () => {
-  it("defaults to #/dashboard (the PolicyGate panel content until P2)", async () => {
+  it("defaults to #/dashboard (the P2 one-page layout)", async () => {
     window.location.hash = "";
     render(<App />);
-    await waitFor(() => expect(screen.getByTestId("gate")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("dashboard-page")).toBeTruthy());
   });
 
   it("#/use-cases shows the use-cases page", async () => {
@@ -112,7 +112,8 @@ describe("hash routing", () => {
       window.location.hash = route;
       const { unmount } = render(<App />);
       await waitFor(() => expect(document.querySelector("main").children.length > 0).toBe(true));
-      expect(document.querySelectorAll("main h1")).toHaveLength(route === "" ? 0 : 1);
+      // P2: the dashboard route gained its own one-page h1 ("Customer dashboard"), so every route now has exactly one
+      expect(document.querySelectorAll("main h1")).toHaveLength(1);
       unmount();
     }
   });

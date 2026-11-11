@@ -10,10 +10,9 @@ const post = (url, p, body, ws) => fetch(`${url}${p}`, { method: 'POST', headers
 
 test('matcher: every in-app chip maps to a real scenario id, and the outcome matches the catalog', () => {
   for (const s of SCENARIOS) {
-    // each scenario id must be reachable by the matcher through its title keywords
-    const m = matchTurn(s.title);
     // not every title matches its own row (titles are long); what must hold is the reverse:
     // every id the matcher CAN return exists in the table
+    const m = matchTurn(s.title);
     if (m.handling === 'in-app') assert.ok(SCENARIOS.some((x) => x.id === m.scenarioId), `${m.scenarioId} exists`);
   }
   // the matcher never returns an id that is not in the table (drift guard, run over the rules)
@@ -33,14 +32,11 @@ test('matcher: every in-app chip maps to a real scenario id, and the outcome mat
   assert.ok(seen.size >= 20, `the table covers the chips (${seen.size} seen)`);
 });
 
-test('matcher: each chip outcome equals the catalog expectedOutcome for its use case', async () => {
-  const { CATALOG } = await import('../src/policyData.js');
-  const expected = Object.fromEntries(CATALOG.useCases.map((u) => [u.id, u.expectedOutcome]));
-  // the in-app chips: run the engine for each and compare with the catalog
-  const chips = [  // [said, scenarioId, ucId, expectedFirst]
+test('matcher: each chip matches its scenario and the engine gives the scenario expected first turn', async () => {
+  const chips = [  // [said, scenarioId, ucId]
     ['I want to check my balance', 'uc1', 'UC1'],
     ['am I in the required group?', 'uc9', 'UC9'],
-    ['flip the directory entry', 'uc9a', 'UC9A', 'PERMIT'],
+    ['flip the directory entry', 'uc9a', 'UC9A'],
     ['can I use the premium wire?', 'uc21-tool', 'UC21'],
     ['promote me to premium', 'uc21-promote', 'UC21'],
     ['send 60000', 'uc21-ceiling', 'UC21'],
@@ -51,25 +47,18 @@ test('matcher: each chip outcome equals the catalog expectedOutcome for its use 
     ['ciba approval on my phone', 'uc22-ciba', 'UC22'],
   ];
   await withServer(async (url) => {
-    for (const [said, scenarioId, ucId, forced] of chips) {
+    for (const [said, scenarioId, ucId] of chips) {
       const m = matchTurn(said);
       assert.equal(m.handling, 'in-app', said);
       assert.equal(m.scenarioId, scenarioId, said);
       const s = SCENARIOS.find((x) => x.id === scenarioId);
       const r = await (await post(url, '/api/assistant/turn', { message: said }, 'm1')).json();
-      // The catalog's expectedOutcome names the STORY, not the first HTTP turn: STEP_UP means
-      // "the first turn is an OBLIGATION pause"; HITL_REQUIRED means "a HITL approval stands
-      // between the ask and the permit"; DENY_403/POLICY_RECONFIGURED are DENY-family turns;
-      // GUIDED_PAGE means the lab walks the visitor through flipping the directory (the
-      // engine's first turn is DENY — that refusal is the lesson).
-      const first = r.decision;
       // The scenario table's own `expected` is the authoritative FIRST-turn verdict (the
       // engine contract); the catalog's expectedOutcome names the resolved STORY (STEP_UP =
-      // the pause then a permit; GUIDED_PAGE = the walkthrough; POLICY_RECONFIGURED = the
-      // flip's denial), which the scenario's own `expected` already encodes.
-      assert.equal(first, s.expected, `${ucId}: the chip's first turn matches the engine's scenario expectation`);
-
-      void s;
+      // the pause then a permit; GUIDED_PAGE = the walkthrough), which `expected` encodes.
+      assert.equal(r.decision, s.expected, `${ucId}: the chip's first turn matches the engine's scenario expectation`);
+      assert.equal(r.scenarioId, scenarioId);
+      assert.equal(r.ucId, ucId);
     }
   });
 });
@@ -82,7 +71,7 @@ test('matcher: unknown prompt is honest; amount parsing rides along', () => {
   assert.equal(amountIn('no money mentioned'), null);
 });
 
-test('matcher: the redirect table is complete and well-formed', () => {
+test('matcher: the redirect table is complete and well-formed (45 entries)', () => {
   for (const [uc, lab] of Object.entries(REDIRECTS)) {
     assert.match(lab, /^[a-z0-9-]+$/, `${uc} -> ${lab}`);
     assert.match(uc, /^UC/i);
@@ -101,16 +90,17 @@ test('assistant turn: an in-app match runs the real engine and the reply reflect
     assert.equal(ok.decision, 'PERMIT');
     assert.ok(ok.run, 'the Direct dashboard run payload is present');
     assert.ok(ok.hops.length >= 3, 'the teaching hops came with the run');
-    assert.match(ok.say, /permitted|Done/i);
+    assert.match(ok.say, /permits|permitted|Done/i);
     // DENY path
     const deny = await (await post(url, '/api/assistant/turn', { message: 'am I in the required group? my scopes say yes' }, ws)).json();
     assert.equal(deny.decision, 'DENY');
-    assert.match(deny.say, /refused this request/);
+    assert.match(deny.say, /not in the|denies/);
     // OBLIGATION path
     const pause = await (await post(url, '/api/assistant/turn', { message: 'mfa step up for my transfer of 600' }, ws)).json();
     assert.equal(pause.decision, 'OBLIGATION');
-    assert.match(pause.say, /pause/i);
+    assert.match(pause.say, /step-up|pause|consent/i);
     assert.ok(pause.obligation, 'the obligation rides in the run so the UI can open the consent/MFA card');
+    assert.ok(pause.reply.text);
   });
 });
 
@@ -120,10 +110,11 @@ test('assistant turn: redirect and unknown replies carry no engine run', async (
     assert.equal(r.handling, 'redirect');
     assert.equal(r.lab, 'stolen-token-lab');
     assert.equal(r.run, undefined);
-    assert.ok(r.title);
+    assert.equal(r.reply.outcome, 'HANDOFF');
     const u = await (await post(url, '/api/assistant/turn', { message: 'tell me a joke' }, 'a2')).json();
     assert.equal(u.handling, 'unknown');
-    assert.match(u.say, /could not match/i);
+    assert.equal(u.reply.outcome, 'UNKNOWN');
+    assert.match(u.reply.text, /could not match/i);
   });
 });
 
@@ -131,8 +122,20 @@ test('assistant turn: bad input is a 400; the workspace ledger records engine ru
   await withServer(async (url) => {
     const bad = await post(url, '/api/assistant/turn', 'not an object', 'a3');
     assert.equal(bad.status, 400);
+    const empty = await post(url, '/api/assistant/turn', { message: '   ' }, 'a3');
+    assert.equal(empty.status, 400);
     await post(url, '/api/assistant/turn', { message: 'check my balance with my consent' }, 'a3');
     const runs = await (await fetch(`${url}/api/runs`, { headers: { 'x-workspace': 'a3' } })).json();
     assert.ok(runs.runs.some((x) => x.decision === 'PERMIT'), 'the run landed in the workspace ledger');
+  });
+});
+
+test('assistant turn: workspaces are isolated and same-origin is enforced', async () => {
+  await withServer(async (url) => {
+    await post(url, '/api/assistant/turn', { message: 'check my balance with my consent' }, 'w1');
+    const other = await (await fetch(`${url}/api/runs`, { headers: { 'x-workspace': 'w2' } })).json();
+    assert.ok(!other.runs.some((x) => x.tool === 'get_balance'), 'no leak across workspaces');
+    const cross = await fetch(`${url}/api/assistant/turn`, { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://evil.example', 'x-workspace': 'w1' }, body: JSON.stringify({ message: 'consent' }) });
+    assert.equal(cross.status, 403, 'a cross-origin write is refused');
   });
 });
