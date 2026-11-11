@@ -10,6 +10,7 @@ import UseCasesPage from "./pages/UseCasesPage.jsx";
 import DashboardOnePage from "./pages/DashboardPage.jsx";
 import { readReturnContext } from "./return-link/returnTargets.js";
 import { scenarioFor } from "./handoffMap";
+import { takeReturn } from "./returned";
 import { getJson, resetWorkspace } from "./api";
 export const ROUTES = [
   { id: "dashboard", label: "Dashboard" },
@@ -31,10 +32,21 @@ const hashRoute = () => {
 export default function App() {
   // Opened from Customer Agent LAB: preselect the matching scenario (handoffMap.js), once, on load.
   const [handoff] = useState(() => readReturnContext(window.location.search));
+  // Came Back from a lab this page handed off to (?returned=<app>&uc=<id>): open the Use
+  // Cases page with that use case preselected. takeReturn() also strips the two parameters
+  // from the address bar. Ids only; an unknown app or a malformed id is ignored entirely.
+  const [returned] = useState(() => takeReturn());
   const [story, setStory] = useState(null);
   const [error, setError] = useState(null);
   const [route, setRoute] = useState(hashRoute().route);
   const [requested, setRequested] = useState(() => hashRoute().scenario || scenarioFor(handoff));
+  // Back from a hand-off: open the Use Cases page with the returned use case preselected
+  // (the launcher shows its chip; the visitor has already seen the run once).
+  useEffect(() => {
+    if (!returned) return;
+    setRoute("use-cases");
+    setRequested(returned.uc);
+  }, []); // once, on load
   const [presenter, setPresenter] = useState(false);
   const [resetSignal, setResetSignal] = useState(0);
   const [resetMsg, setResetMsg] = useState("");
