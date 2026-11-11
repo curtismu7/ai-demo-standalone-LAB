@@ -25,7 +25,7 @@ import { createWorkspaces, workspaceFrom } from './workspaces.js';
 import { SCENARIOS } from './policyData.js';
 import { toDemoHops, tokenCardsFrom } from './evidenceAdapter.js';
 import { buildDemoHops, buildTokenCards } from './hops.js';
-import { usecaseRows, handoffHref } from './usecases.js';
+import { usecaseRows, usecaseEntries, handoffHref } from './usecases.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = process.env.WEB_DIST || path.resolve(HERE, '../../web/dist');
@@ -438,22 +438,27 @@ export function createApp({
     workspaces.resetWorkspace(ws);
     res.json({ reset: 'ok', workspace: ws });
   }));
+
+  api.get('/shelf', (req, res) => { res.set('Cache-Control', 'no-store'); res.json(shelfInfo(process.env)); });
+
+  // P5: the Use Cases launcher — one row per catalog use case with where it runs. The
+  // href (null behind a plain port) is built only from the fixed PROXY_PATHS allow-list.
+  // Registered BEFORE the /api 404 catch-all below — on main this route sat after it and
+  // answered 404 (the web tests mock the API, so it went unnoticed until now).
+  api.get('/usecases', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const entries = usecaseEntries(CATALOG);
+    const rows = usecaseRows(CATALOG);
+    const uc = typeof req.query.uc === 'string' && /^[A-Za-z0-9.-]{1,40}$/.test(req.query.uc) ? req.query.uc : null;
+    const app = typeof req.query.app === 'string' && /^[a-z0-9-]{2,40}$/.test(req.query.app) ? req.query.app : null;
+    const href = uc && app ? handoffHref(rows.find((r) => r.id === uc), app, uc, req.headers['x-forwarded-prefix'] ? '/ai-demo-standalone/' : '/') : null;
+    return res.json({ schema: 'usecases/1', count: entries.length, useCases: entries, rows, href });
+  });
+
   api.use((_req, res) => res.status(404).json({ error: 'not_found' }));
   app.use('/api', api);
   mountShelfRoute(app);
   // ShelfLink (vendored, pinned) fetches GET /api/shelf; mountShelfRoute serves /shelf.
-
-  // P5: the Use Cases launcher — one row per catalog use case with where it runs. The
-  // href (null behind a plain port) is built only from the fixed PROXY_PATHS allow-list.
-  api.get('/usecases', (req, res) => {
-    res.set('Cache-Control', 'no-store');
-    const rows = usecaseRows(CATALOG);
-    const uc = typeof req.query.uc === 'string' && /^[A-Za-z0-9.-]{1,40}$/.test(req.query.uc) ? req.query.uc : null;
-    const app = typeof req.query.app === 'string' && /^[a-z0-9-]{2,40}$/.test(req.query.app) ? req.query.app : null;
-    return res.json({ rows, href: uc && app ? handoffHref(rows.find((r) => r.id === uc), app, uc, req.headers['x-forwarded-prefix'] ? '/ai-demo-standalone/' : '/') : null });
-  });
-
-  api.get('/shelf', (req, res) => { res.set('Cache-Control', 'no-store'); res.json(shelfInfo(process.env)); });
   // Errors become short JSON. Express's default handler would send an HTML stack trace with absolute file paths.
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {

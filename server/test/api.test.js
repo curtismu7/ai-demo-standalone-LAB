@@ -39,6 +39,27 @@ test('GET /api/catalog: all 87 use cases, filterable by track, tracks listed', a
   });
 });
 
+test('GET /api/usecases: the launcher rows, one per use case, with the (uc, app) href', async () => {
+  await withServer(async (url) => {
+    const j = await (await fetch(`${url}/api/usecases`)).json();
+    assert.equal(j.schema, 'usecases/1');
+    assert.equal(j.count, 87);
+    assert.equal(j.useCases.length, 87);
+    assert.equal(new Set(j.useCases.map((r) => r.id)).size, 87, 'every use case exactly once');
+    for (const r of j.useCases) {
+      assert.ok(['in-app', 'redirect', 'guide'].includes(r.handling), `${r.id}: a handling`);
+      assert.equal(typeof r.title, 'string');
+    }
+    const here = j.useCases.filter((r) => r.handling === 'in-app');
+    assert.equal(here.length, 9, 'the wired scenarios run here (P6 grows this)');
+    const off = j.useCases.find((r) => r.id === 'UC12');
+    assert.equal(off.handling, 'redirect');
+    assert.equal(off.proxyPath, '/stolen-token-lab/');
+    const guide = j.useCases.filter((r) => r.handling === 'guide');
+    assert.ok(guide.length >= 11, 'at least the Appendix guide cards are guide rows');
+  });
+});
+
 test('UC2.7-style beat: no bearer is a real 401 with WWW-Authenticate', async () => {
   await withServer(async (url) => {
     const r = await fetch(`${url}/api/authorize`, { method: 'POST', headers: { 'content-type': 'application/json', origin: url, 'x-workspace': 'w0' }, body: JSON.stringify({ tool: 'get_balance' }) });
