@@ -6,9 +6,13 @@ import DashboardPage, { StepTiles, AssistantSection, PlanSection, EvidenceSectio
 
 vi.mock("../api", () => ({
   assistantTurn: vi.fn(),
+  getInfo: vi.fn(async () => ({ mode: infoReal ? "real" : "mock", realAvailable: infoReal })),
+  realExchange: vi.fn(),
 }));
 
 import { assistantTurn } from "../api";
+
+let infoReal = false;
 
 const RUN = {
   decision: "OBLIGATION", stage: "policy", code: "STEP_UP",
@@ -275,5 +279,30 @@ describe("DashboardPage", () => {
     await user.type(screen.getByTestId("dash-ask"), "anything");
     await user.click(screen.getByTestId("dash-send"));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("could not answer"));
+  });
+});
+
+describe("RealExchangePanel", () => {
+  it("inactive without Real config: a how-to, no form, no send button", async () => {
+    infoReal = false;
+    render(<DashboardPage story={STORY} />);
+    await waitFor(() => expect(screen.getByTestId("real-exchange-panel").textContent).toContain("Real mode is not configured"));
+    expect(screen.queryByTestId("rx-send")).toBeNull();
+  });
+  it("active with Real config: both tokens required before Send enables; a PingOne refusal shows verbatim", async () => {
+    infoReal = true;
+    assistantTurn.mockResolvedValue({ ok: false, status: 0, body: {} });
+    const user = userEvent.setup();
+    render(<DashboardPage story={STORY} />);
+    await waitFor(() => expect(screen.getByTestId("rx-send")).toBeTruthy());
+    expect(screen.getByTestId("rx-send").disabled).toBe(true);
+    await user.type(screen.getByTestId("rx-subject"), "subject-token");
+    await user.type(screen.getByTestId("rx-actor"), "actor.jwt");
+    await waitFor(() => expect(screen.getByTestId("rx-send").disabled).toBe(false));
+    // a refusal comes back verbatim
+    const { realExchange } = await import("../api");
+    realExchange.mockResolvedValueOnce({ ok: false, status: 400, body: { error: "invalid_request", detail: "The provided JWT has expired" } });
+    await user.click(screen.getByTestId("rx-send"));
+    await waitFor(() => expect(screen.getByTestId("rx-outcome").textContent).toContain("The provided JWT has expired"));
   });
 });

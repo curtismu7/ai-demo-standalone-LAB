@@ -1,0 +1,22 @@
+/* Real PingOne exchange panel. Tokens only; light and dark both follow the shared stylesheet. */
+.panel.rx { margin-top: 12px; }
+.panel.rx h2 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.panel.rx .tag.ok { border-color: var(--status-ok); color: var(--status-ok); }
+.rx-fields { display: grid; gap: 10px; margin-top: 8px; }
+.rx-fields label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--text); }
+.rx-fields textarea, .rx-fields input, .rx-fields select {
+  font: inherit; font-weight: 400; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text); max-width: 100%;
+}
+.rx-fields textarea { font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; }
+.rx-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 600px) { .rx-row { grid-template-columns: 1fr; } }
+.rx-actions { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+.rx-outcome { margin-top: 10px; }
+.rx-line { margin: 0 0 6px; }
+.rx-claims { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.rx-claims th, .rx-claims td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.rx-claims th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.rx-claims tr.rx-act td { background: var(--accent-soft); }
+.rx-note, .rx-detail { font-size: 12.5px; color: var(--text-body); margin: 6px 0 0; }
+.rx-error .rx-detail { color: var(--danger-text); }
