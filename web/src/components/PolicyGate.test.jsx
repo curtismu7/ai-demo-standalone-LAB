@@ -23,8 +23,8 @@ vi.mock("../api", () => ({
   getCatalog: vi.fn(async () => ({
     count: 87, tracks: ["foundations", "controls", "attacks"],
     useCases: [
-      { id: "UC1", track: "foundations", title: "Delegated access (consent only)", expectedOutcome: "PERMIT" },
-      { id: "UC4", track: "attacks", title: "Stolen token replay", expectedOutcome: "DENY" },
+      { id: "UC1", track: "foundations", title: "Delegated access (consent only)", explicitTitle: "Delegated access: consent mints an agent token that acts for you", valueStatement: "You approve once; every action traces back.", expectedOutcome: "PERMIT" },
+      { id: "UC4", track: "attacks", title: "Stolen token replay", explicitTitle: "Token theft + replay: DPoP makes a stolen bearer token worthless", valueStatement: "A stolen token alone can't be used.", expectedOutcome: "DENY" },
       { id: "UC9", track: "controls", title: "Group entitlement gate", expectedOutcome: "DENY" },
     ],
   })),
@@ -154,12 +154,13 @@ describe("NhiPanel", () => {
 describe("CatalogList", () => {
   it("groups use cases by track and marks the selected one", () => {
     const catalog = { count: 3, useCases: [
-      { id: "UC1", track: "foundations", title: "Delegated access", expectedOutcome: "PERMIT" },
-      { id: "UC4", track: "attacks", title: "Stolen token", expectedOutcome: "DENY" },
+      { id: "UC1", track: "foundations", title: "Delegated access", explicitTitle: "Delegated access: consent mints an agent token that acts for you", expectedOutcome: "PERMIT" },
+      { id: "UC4", track: "attacks", title: "Stolen token", explicitTitle: "Token theft + replay: DPoP makes a stolen bearer token worthless", expectedOutcome: "DENY" },
     ] };
     render(<CatalogList catalog={catalog} onSelect={() => {}} selectedUc="UC1" />);
     expect(screen.getByTestId("catalog").textContent).toContain("2 tracks");
     expect(screen.getByTestId("track-foundations").textContent).toContain("UC1");
+    expect(screen.getByTestId("track-foundations").textContent).toContain("consent mints an agent token");
     expect(screen.getByTestId("track-attacks").textContent).toContain("UC4");
     expect(document.querySelector(".catalog-row.selected").textContent).toContain("UC1");
   });
@@ -168,10 +169,11 @@ describe("CatalogList", () => {
 describe("UseCaseDetail", () => {
   it("shows title, track, expected outcome, what-long and product roles; close works", async () => {
     const user = userEvent.setup();
-    const uc = { id: "UC4", title: "Stolen token replay", track: "attacks", expectedOutcome: "DENY", maturity: "works", whatLong: "A stolen bearer token is replayed.", businessValue: "Stops replay.", buyerStory: "As a bank, I want replay stopped.", productRoles: { idp: "mints", gw: "validates", authz: "evaluates the group claim" } };
+    const uc = { id: "UC4", title: "Stolen token replay", track: "attacks", expectedOutcome: "DENY", maturity: "works", whatLong: "A stolen bearer token is replayed.", valueStatement: "A stolen token alone can't be used: the attacker needs the key.", businessValue: "Stops replay.", buyerStory: "As a bank, I want replay stopped.", productRoles: { idp: "mints", gw: "validates", authz: "evaluates the group claim" } };
     render(<UseCaseDetail uc={uc} onClose={() => {}} />);
     expect(screen.getByTestId("uc-detail").textContent).toContain("UC4");
     expect(screen.getByTestId("ucd-what").textContent).toContain("replayed");
+    expect(screen.getByTestId("ucd-value").textContent).toContain("the attacker needs the key");
     expect(screen.getByTestId("ucd-roles").textContent).toContain("validates");
     expect(screen.getByTestId("ucd-roles").textContent).toContain("PingOne Authorize (PDP)");
     expect(screen.getByTestId("uc-detail").textContent).toContain("stage 2–4");
@@ -238,7 +240,7 @@ describe("PolicyGate", () => {
     render(<PolicyGate story={STORY} resetSignal={0} requestedId={null} onSelect={() => {}} />);
     await screen.findByTestId("catalog");
     await user.click(screen.getByTestId("uc-UC4"));
-    await waitFor(() => expect(screen.getByTestId("uc-detail").textContent).toContain("Stolen token replay"));
+    await waitFor(() => expect(screen.getByTestId("uc-detail").textContent).toContain("DPoP makes a stolen bearer token worthless"));
   });
 
   it("renders the facts with status labels and the scenario lesson", async () => {

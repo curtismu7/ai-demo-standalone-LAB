@@ -37,7 +37,7 @@ export function CatalogList({ catalog, onSelect, selectedUc }) {
             {ucs.map((u) => (
               <li key={u.id} className={selectedUc === u.id ? "catalog-row selected" : "catalog-row"}>
                 <button type="button" onClick={() => onSelect(u)} data-testid={`uc-${u.id}`}>
-                  <strong>{u.id}</strong> {visible(u.title)} <span className="muted">— {visible(u.expectedOutcome || "?")}</span>
+                  <strong>{u.id}</strong> {visible(u.explicitTitle || u.title)} <span className="muted">— {visible(u.expectedOutcome || "?")}</span>
                 </button>
               </li>
             ))}
@@ -55,10 +55,11 @@ export function UseCaseDetail({ uc, onClose }) {
   const roleRows = [['idp', roles.idp], ['gw', roles.gw], ['pdp', roles.pdp], ['pep', roles.pep], ['authz', roles.authz], ['pa', roles.pa]].filter(([, v]) => v);
   return (
     <section className="panel" aria-labelledby="ucd-h" data-testid="uc-detail">
-      <h2 id="ucd-h">{visible(uc.id)}: {visible(uc.title)}</h2>
+      <h2 id="ucd-h">{visible(uc.id)}: {visible(uc.explicitTitle || uc.title)}</h2>
       <p className="muted">{visible(uc.oneLiner || "")}</p>
       <p><span className="tag">track: {visible(uc.track)}</span> <span className="tag">expected: {visible(uc.expectedOutcome || "?")}</span> <span className="tag">{visible(uc.maturity || "")}</span></p>
       {uc.whatLong && <p data-testid="ucd-what">{visible(uc.whatLong)}</p>}
+      {uc.valueStatement && <p data-testid="ucd-value"><strong>Why it matters.</strong> {visible(uc.valueStatement)}</p>}
       {uc.businessValue && <p><strong>Business value.</strong> {visible(uc.businessValue)}</p>}
       {uc.buyerStory && <p><strong>Buyer story.</strong> {visible(uc.buyerStory)}</p>}
       {roleRows.length > 0 && (
