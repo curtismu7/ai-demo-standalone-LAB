@@ -62,11 +62,25 @@ export function explain(verdict, { user, actor, tool, amount, groups, tier, audi
         : verdict.reason },
     ],
   };
+  if (verdict.decision === 'OBLIGATION' && OBLIGATION_EXPLAIN[verdict.code]) return [OBLIGATION_EXPLAIN[verdict.code]];
   return perStage[verdict.stage] || perStage.policy;
 }
 
+const OBLIGATION_EXPLAIN = {
+  CONFIRM: { stage: 'policy', title: 'The policy paused the call (CONFIRM)', what: 'The amount clears the confirm threshold ($250): the agent must pause and surface a consent modal. Explicit consent only — no MFA at this band. A receipt with ConsentGiven re-evaluates the SAME call to PERMIT.' },
+  STEP_UP: { stage: 'policy', title: 'The policy paused the call (STEP_UP)', what: 'The amount clears the step-up threshold ($500) but not the deny ceiling: consent + MFA. The agent PAUSES — it cannot proceed, cannot substitute, cannot self-approve. The human completes MFA and the receipt (MfaVerified) re-evaluates the call.' },
+  HITL_CONSENT: { stage: 'policy', title: 'The policy paused the call (HITL)', what: 'This tool always requires human approval regardless of amount. The agent pauses and surfaces a consent modal; only a verified HitlApproved receipt (bound to this exact call) re-evaluates it. An approval is never an MFA, and an MFA is never an approval.' },
+  CIBA: { stage: 'policy', title: 'The policy paused the call (CIBA)', what: 'An agent is acting with no browser in which to prompt. The backend calls bc-authorize; the user approves OUT-OF-BAND on their enrolled device; the receipt (CibaApproved) re-evaluates the call. This is decoupled approval for agent-initiated money movement.' },
+};
+
 /** The lesson in one sentence, per outcome. */
 export function lessonFor(verdict, { user, actor, tool }) {
+  if (verdict.decision === 'OBLIGATION') {
+    return { CONFIRM: 'Mid-band amounts ask for explicit consent only: the agent pauses, the human taps, the same call re-evaluates.',
+      STEP_UP: 'Step-up is a pause, not a denial: the agent cannot self-approve; the human completes MFA and the bound receipt re-evaluates the call.',
+      HITL_CONSENT: 'Human-approval tools always pause the agent: only a verified, call-bound HitlApproved receipt moves it — an approval is never an MFA.',
+      CIBA: 'Agents have no browser: CIBA requests decoupled approval on the user\u2019s device, and the receipt re-evaluates the call.' }[verdict.code] || 'The policy paused the call: an obligation is a pause the human resolves, not a denial.';
+  }
   if (verdict.stage === 'protocol') return 'A missing token is a protocol answer (401), not an authorization answer: fail closed, say nothing, point at the auth scheme.';
   if (verdict.code === 'unauthorized_actor') return 'WHO is acting is an authorization question: the actor allow-list refuses unknown agents before any policy runs.';
   if (verdict.code === 'upstream_audience') return 'An audience is a destination: tokens are accepted only at the audience they were minted for.';
@@ -122,6 +136,8 @@ export function buildHops({ verdict, user, actor, tool, amount, token, trace, au
     request: `(the API answers the caller)`,
     response: verdict.decision === 'PERMIT'
       ? `HTTP/1.1 200 OK\n{ "decision": "PERMIT", "who": "${actor ? `${actor} acting for ${user}` : user}", "tool": "${tool}" }`
+      : verdict.decision === 'OBLIGATION'
+      ? `HTTP/1.1 202 Accepted\n{ "decision": "OBLIGATION", "obligation": "${verdict.code}" }\n\n(the agent pauses; the human resolves it; the receipt re-evaluates)`
       : `HTTP/1.1 403 Forbidden\n{ "decision": "DENY", "code": "${verdict.code}" }`,
   });
   return hops;

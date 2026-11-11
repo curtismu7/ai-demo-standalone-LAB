@@ -12,8 +12,10 @@ import { loadCast, verticalFrom, VERTICALS } from './cast.js';
 import { hostedFrom, modeFrom, realAvailableFrom } from './config.js';
 import { buildStory, CATALOG } from './story.js';
 import { DIAGRAM_NAMES, buildDiagram } from './diagramData.js';
-import { decide, actChainDepth, DEFAULT_ACTORS, AUDIENCE, exchange } from './pdp.js';
+import { decide, decideWithObligation, actChainDepth, DEFAULT_ACTORS, AUDIENCE, exchange } from './pdp.js';
 import { DEFAULT_DIRECTORY, LIMITS } from './pdpData.js';
+import { evaluateObligation, createChallenge, verifyAnswer, mintReceipt, receiptValid, createReceipts, HitlInputError } from './hitl.js';
+import { exchangeOne, exchangeTwo, evaluateA2a, createRegistry, actChainDepth as a2aDepth, A2AInputError, agentCard as a2aAgentCard, LIMITS as A2A_LIMITS } from './a2a.js';
 import { mountShelfRoute } from './shelfLink.js';
 import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.js';
 import { createWorkspaces, workspaceFrom } from './workspaces.js';
@@ -24,7 +26,7 @@ const CONFIG = process.env.CUSTOMER_CONFIG || path.resolve(HERE, '../../customer
 
 export function createApp({
   health = createHealth(), configFile = CONFIG, hosted = false,
-  workspaces = createWorkspaces({ makeDirectory: () => structuredClone(DEFAULT_DIRECTORY) }),
+  workspaces = createWorkspaces({ makeDirectory: () => structuredClone(DEFAULT_DIRECTORY), makeExtra: () => ({ receipts: createReceipts(), registry: createRegistry({}), generalistToken: null }) }),
 } = {}) {
   const app = express();
   app.disable('x-powered-by');
@@ -115,19 +117,23 @@ export function createApp({
     const dir = v.directory || structuredClone(DEFAULT_DIRECTORY);
     const entry = dir[body.token.sub] || { groups: [], tier: 'Standard' };
     const ucId = typeof body.ucId === 'string' ? body.ucId.slice(0, 16) : null;
-    const verdict = decide({
-      token: body.token, groups: entry.groups, tier: entry.tier, tool, amount,
-      authorizedActors: Array.isArray(body.authorizedActors) ? body.authorizedActors.slice(0, 8).map((a) => String(a).slice(0, LIMITS.id)) : DEFAULT_ACTORS,
+    // Stage 2: bands and HITL tools produce OBLIGATIONS, not denials — the agent pauses,
+    // the human answers, and the receipt re-evaluates the same call.
+    const claimed = typeof body.receipt === 'object' && body.receipt !== null ? body.receipt : null;
+    const { verdict, obligation } = decideWithObligation({
+      token: body.token, groups: entry.groups, tier: entry.tier, tool, amount, receipt: claimed,
+      authorizedActors: Array.isArray(body.authorizedActors) ? body.authorizedActors.slice(0, 8).map((x) => String(x).slice(0, LIMITS.id)) : DEFAULT_ACTORS,
       audience: typeof body.aud === 'string' && body.aud.trim() ? body.aud.trim().slice(0, 100) : AUDIENCE,
       now: () => Date.now(),
     });
     workspaces.record(ws, { tool, decision: verdict.decision, reason: verdict.reason, token: body.token, blocked: verdict.code, ucId });
     const ctx = { user: body.token.sub, actor: body.token.act?.sub || null, tool, amount, groups: entry.groups, tier: entry.tier, aud: body.aud };
     const trace = newTrace(req.headers.traceparent);
-    return res.status(verdict.decision === 'PERMIT' ? 200 : 403).json({
+    const status = verdict.decision === 'PERMIT' ? 200 : verdict.decision === 'OBLIGATION' ? 202 : 403;
+    return res.status(status).json({
       ...verdict, tool, user: body.token.sub, act: body.token.act ?? null,
       chainDepth: actChainDepth(body.token.act), groups: entry.groups, tier: entry.tier,
-      ucId, workspace: ws,
+      ucId, workspace: ws, obligation, amount: amount ?? null,
       // the teaching layer
       narrative: explain(verdict, ctx),
       lesson: lessonFor(verdict, ctx),
@@ -135,6 +141,113 @@ export function createApp({
       hops: buildHops({ verdict, ...ctx, token: body.token, trace, consent: true }),
       traceId: trace.traceId,
     });
+  }));
+
+
+  // ── Stage 2: HITL (UC7/UC8/UC22) ─────────────────────────────────────────────
+  // The gated call returns an OBLIGATION instead of a decision when the bands hit.
+  // The agent pauses; the human answers; a receipt re-evaluates the SAME call.
+  api.post('/challenge', withWorkspace((ws, req, res) => {
+    const body = req.body;
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'bad_request' });
+    const tool = typeof body.tool === 'string' && body.tool ? body.tool.slice(0, LIMITS.id) : 'get_balance';
+    const amount = body.amount == null ? null : Number(body.amount);
+    const user = typeof body.user === 'string' && body.user.trim() ? body.user.trim().slice(0, LIMITS.id) : null;
+    if (!user) return res.status(400).json({ error: 'user_required', detail: 'body.user must be non-empty text' });
+    try {
+      const ob = evaluateObligation({ tool, amount });
+      if (!ob.obligation || ob.obligation === 'DENY') return res.status(400).json({ error: 'no_challenge', detail: ob.reason });
+      const ch = createChallenge({ obligation: ob.obligation, user, tool, amount });
+      workspaces.record(ws, { tool, decision: 'CHALLENGED', reason: ob.reason, token: null, blocked: ob.obligation });
+      return res.json({ challenge: ch, obligation: ob.obligation, reason: ob.reason, workspace: ws });
+    } catch (e) {
+      if (e instanceof HitlInputError) return res.status(400).json({ error: e.code, detail: e.message });
+      throw e;
+    }
+  }));
+  api.post('/challenge/answer', withWorkspace((ws, req, res) => {
+    const body = req.body;
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'bad_request' });
+    const v = workspaces.state(ws);
+    const extra = v.extra || { receipts: createReceipts() };
+    try {
+      const check = verifyAnswer({ challenge: body.challenge, answer: body.answer });
+      if (!check.ok) return res.status(400).json({ error: check.code, detail: check.reason });
+      if (!extra.receipts.spend(body.challenge.challengeId)) return res.status(400).json({ error: 'challenge_spent', detail: 'this challenge was already answered; run the call again' });
+      const receipt = mintReceipt({ challenge: body.challenge });
+      workspaces.record(ws, { tool: body.challenge.tool, decision: 'RECEIPT', reason: `receipt bound to ${body.challenge.obligation} for ${body.challenge.user}`, token: null });
+      return res.json({ receipt, workspace: ws });
+    } catch (e) {
+      if (e instanceof HitlInputError) return res.status(400).json({ error: e.code, detail: e.message });
+      throw e;
+    }
+  }));
+
+  // ── Stage 2: A2A (UC2/2.5/2.6/2.7) ──────────────────────────────────────────
+  api.get('/a2a/agent-card', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json(a2aAgentCard({ host: `agents.${castFor(req).castHost}.example` }));
+  });
+  api.post('/a2a/exchange/one', withWorkspace((ws, req, res) => {
+    const body = req.body || {};
+    const user = typeof body.user === 'string' && body.user.trim() ? body.user.trim().slice(0, A2A_LIMITS.clientId) : null;
+    if (!user) return res.status(400).json({ error: 'user_required', detail: 'body.user must be non-empty text' });
+    const generalist = typeof body.generalist === 'string' && body.generalist.trim() ? body.generalist.trim().slice(0, A2A_LIMITS.clientId) : 'generalist-agent';
+    const scope = typeof body.scope === 'string' && body.scope.trim() ? body.scope.trim().slice(0, A2A_LIMITS.scope) : 'a2a:get_portfolio_summary';
+    try {
+      const token = exchangeOne({ userSub: user, generalistClientId: generalist, scope });
+      const v = workspaces.state(ws);
+      if (v.extra) v.extra.generalistToken = token;
+      workspaces.record(ws, { tool: 'a2a-exchange-1', decision: 'MINTED', reason: `act={${token.act.sub}} for ${token.sub}`, token: null });
+      return res.json({ token, workspace: ws });
+    } catch (e) {
+      if (e instanceof A2AInputError) return res.status(400).json({ error: e.code, detail: e.message });
+      throw e;
+    }
+  }));
+  api.post('/a2a/exchange/two', withWorkspace((ws, req, res) => {
+    const body = req.body;
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'bad_request' });
+    if (body.generalistToken == null) return res.status(400).json({ error: 'token_required', detail: 'body.generalistToken (the exchange-#1 token) is required' });
+    const specialist = typeof body.specialist === 'string' && body.specialist.trim() ? body.specialist.trim().slice(0, A2A_LIMITS.clientId) : 'portfolio-specialist';
+    const scope = typeof body.scope === 'string' && body.scope.trim() ? body.scope.trim().slice(0, A2A_LIMITS.scope) : 'a2a:get_portfolio_summary';
+    try {
+      const token = exchangeTwo({ generalistToken: body.generalistToken, specialistClientId: specialist, scope });
+      workspaces.record(ws, { tool: 'a2a-exchange-2', decision: 'MINTED', reason: `nested act {${token.act.sub} -> ${token.act.act.sub}} for ${token.sub}`, token: null });
+      return res.json({ token, workspace: ws });
+    } catch (e) {
+      if (e instanceof A2AInputError) return res.status(400).json({ error: e.code, detail: e.message });
+      throw e;
+    }
+  }));
+  api.post('/a2a/tool', withWorkspace((ws, req, res) => {
+    const body = req.body;
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'bad_request' });
+    if (body.token == null) {
+      return res.status(401).set('WWW-Authenticate', 'Bearer realm="ai-demo-standalone", error="invalid_request"').json({ decision: 'DENY', stage: 'protocol', code: 'missing_bearer', reason: 'No bearer token: the A2A gateway answers 401 before anything else.' });
+    }
+    const v = workspaces.state(ws);
+    const extra = v.extra || { registry: createRegistry({}) };
+    const verdict = evaluateA2a({ token: body.token, registeredSpecialists: extra.registry.all(), requiredScope: 'a2a:get_portfolio_summary', now: () => Date.now(), upstreamAudiences: ['mcp-portfolio.internal'] });
+    workspaces.record(ws, { tool: 'a2a-tool', decision: verdict.decision, reason: verdict.reason, token: body.token, blocked: verdict.code });
+    return res.status(verdict.decision === 'PERMIT' ? 200 : 403).json({ ...verdict, chainDepth: a2aDepth(body.token.act), registered: extra.registry.all(), workspace: ws });
+  }));
+  api.get('/a2a/registry', withWorkspace((ws, _req, res) => {
+    const v = workspaces.state(ws);
+    const extra = v.extra || { registry: createRegistry({}) };
+    res.json({ specialists: extra.registry.all(), workspace: ws });
+  }));
+  api.post('/a2a/registry/set', withWorkspace((ws, req, res) => {
+    const body = req.body;
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'bad_request' });
+    if (typeof body.specialist !== 'string' || !body.specialist.trim()) return res.status(400).json({ error: 'name_required', detail: 'body.specialist must be non-empty text' });
+    if (typeof body.registered !== 'boolean') return res.status(400).json({ error: 'bad_request', detail: 'body.registered must be a boolean' });
+    const v = workspaces.state(ws);
+    const extra = v.extra || { registry: createRegistry({}) };
+    const all = extra.registry.set(body.specialist.trim().slice(0, A2A_LIMITS.name), body.registered);
+    v.extra = extra;
+    workspaces.record(ws, { tool: 'a2a-registry-set', decision: 'FLIPPED', reason: `${body.specialist.trim()} -> ${body.registered ? 'registered' : 'revoked'}`, token: null });
+    return res.json({ specialist: body.specialist.trim(), registered: body.registered, specialists: all, workspace: ws });
   }));
 
   api.get('/runs', withWorkspace((ws, _req, res) => res.json(workspaces.runs(ws))));
@@ -151,6 +264,7 @@ export function createApp({
     const status = Number(err?.status || err?.statusCode);
     if (status === 413) return res.status(413).json({ error: 'payload_too_large' });
     if (status >= 400 && status < 500) return res.status(status).json({ error: 'bad_request' });
+    console.error('internal_error:', err?.message, err?.stack?.split('\n')[1]);
     return res.status(500).json({ error: 'internal_error' });
   });
 

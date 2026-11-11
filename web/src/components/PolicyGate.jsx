@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Json from "./Json";
-import { authorize, consent, getCatalog, getDirectory, setDirectory } from "../api";
+import { authorize, consent, getCatalog, getDirectory, setDirectory, challenge, answerChallenge, a2aExchangeOne, a2aExchangeTwo, a2aTool, a2aRegistry, a2aRegistrySet } from "../api";
 import { visible } from "../safeText";
 
 const STATUS_CLASS = { measured: "tag tag--ok", inferred: "tag", UNVERIFIED: "tag tag--warn" };
@@ -76,6 +76,7 @@ export function UseCaseDetail({ uc, onClose }) {
 const WORDS = {
   PERMIT: ["allow", "PERMITTED — the policy allows this call; it executed, fully attributable"],
   DENY: ["deny", "DENIED — the call was refused; nothing executed"],
+  OBLIGATION: ["obligation", "PAUSED — the policy returned an obligation; the agent cannot proceed until the human resolves it"],
 };
 
 export function Verdict({ run }) {
@@ -125,6 +126,119 @@ export function Hops({ hops, traceId }) {
           <p className="muted">Response</p><Json value={h.response} label={`Response of hop ${h.n}`} />
         </details>
       ))}
+    </section>
+  );
+}
+
+
+const OTP = "123123"; // the mock MFA code, same as AI-DEMO2's demo MFA
+
+/** Stage 2: resolve an obligation — consent tap, MFA OTP, CIBA approve — and re-run the call with the receipt. */
+export function ObligationPanel({ run, onResolved }) {
+  const [state, setState] = useState("idle"); // idle | challenge | answering | receipt
+  const [challengeData, setChallengeData] = useState(null);
+  const [receipt, setReceipt] = useState(null);
+  const [fail, setFail] = useState(null);
+  const ob = run?.obligation;
+  if (!run || run.decision !== "OBLIGATION" || !ob) return null;
+  const needsMfa = ob === "STEP_UP";
+  const isCiba = ob === "CIBA";
+  const isHitl = ob === "HITL_CONSENT";
+  const raise = async () => {
+    setFail(null); setState("challenge");
+    const c = await challenge({ user: run.user, tool: run.tool, amount: run.amount ?? undefined }).catch(() => ({ ok: false, body: {} }));
+    const chosen = c;
+    if (!chosen.ok || !chosen.body.challenge) { setFail(chosen.body.detail || "Could not raise the challenge."); setState("idle"); return; }
+    setChallengeData(chosen.body.challenge);
+  };
+  const resolve = async (answer) => {
+    setFail(null); setState("answering");
+    const a = await answerChallenge({ challenge: challengeData, answer }).catch(() => ({ ok: false, body: {} }));
+    if (!a.ok || !a.body.receipt) { setFail(a.body.detail || a.body.error || "Could not verify."); setState("challenge"); return; }
+    setReceipt(a.body.receipt); setState("receipt");
+  };
+  const rerun = async () => {
+    setFail(null);
+    // re-consent for a fresh token, then authorize with the receipt
+    const c = await consent({ user: run.user, actor: run.act?.sub || "demo-agent" }).catch(() => ({ ok: false, body: {} }));
+    if (!c.ok) { setFail("Could not mint the token."); return; }
+    const payload = { token: c.body.token, tool: run.tool, amount: run.amount ?? undefined, receipt, ucId: run.ucId };
+    const res = await authorize(payload).catch(() => ({ ok: false, body: {} }));
+    if (res.body.decision) onResolved(res.body); else setFail(res.body.detail || "Could not re-evaluate.");
+  };
+  return (
+    <section className="panel" aria-labelledby="ob-h" data-testid="obligation-panel">
+      <h2 id="ob-h">Human in the loop <span className="muted">{ob}</span></h2>
+      {isHitl && <p className="muted">This tool always requires human approval — the agent pauses and surfaces this modal. An approval is never an MFA.</p>}
+      {needsMfa && <p className="muted">Consent + MFA at this band. The agent cannot self-approve; the human completes the challenge.</p>}
+      {isCiba && <p className="muted">No browser to prompt in: the backend calls bc-authorize and the user approves out-of-band on their device (mock auth_req_id: <code>{challengeData?.authReqId || "—"}</code>).</p>}
+      {state === "idle" && <button type="button" onClick={raise} data-testid="ob-raise">Surface the {ob} challenge</button>}
+      {state === "challenge" && (
+        <div className="seg" role="group" aria-label="Resolve the challenge">
+          <button type="button" data-testid="ob-consent" onClick={() => resolve(needsMfa ? { consent: true, otp: null } : isCiba ? {} : { consent: true })} disabled={!needsMfa && !isCiba && false}>
+            Approve (consent)
+          </button>
+          {needsMfa && <button type="button" data-testid="ob-mfa" onClick={() => resolve({ consent: true, otp: OTP })}>Complete MFA (OTP {OTP})</button>}
+          {isCiba && <button type="button" data-testid="ob-ciba" onClick={() => resolve({ cibaApproved: true })}>Approve on device (CIBA)</button>}
+        </div>
+      )}
+      {state === "receipt" && (
+        <div>
+          <p data-testid="ob-receipt">Receipt <code>{receipt.receiptId.slice(0, 18)}…</code> bound to this exact call ({Object.entries(receipt.claims).map(([k, v]) => `${k}=${v}`).join(", ")}).</p>
+          <button type="button" onClick={rerun} data-testid="ob-rerun">Re-evaluate the SAME call with the receipt</button>
+        </div>
+      )}
+      {fail && <p className="field-error" role="alert">{fail}</p>}
+    </section>
+  );
+}
+
+/** Stage 2: the A2A handoff — two exchanges build the nested act chain; the registry decides. */
+export function A2aPanel() {
+  const [t1, setT1] = useState(null);
+  const [t2, setT2] = useState(null);
+  const [specialist, setSpecialist] = useState("portfolio-specialist");
+  const [result, setResult] = useState(null);
+  const [registry, setRegistry] = useState(null);
+  const [fail, setFail] = useState(null);
+  const loadRegistry = useCallback(async () => { const j = await a2aRegistry().catch(() => null); if (j) setRegistry(j.specialists); }, []);
+  useEffect(() => { loadRegistry(); }, [loadRegistry]);
+  const one = async () => { setFail(null); setT2(null); setResult(null); const j = await a2aExchangeOne({ user: "demoUser" }).catch(() => null); if (j?.token) setT1(j.token); else setFail("Exchange #1 failed."); };
+  const two = async () => { setFail(null); setResult(null); const j = await a2aExchangeTwo({ generalistToken: t1, specialist }).catch(() => null); if (j?.token) setT2(j.token); else setFail(j?.detail || "Exchange #2 failed."); };
+  const call = async () => {
+    setFail(null);
+    const r = await a2aTool({ token: t2 }).catch(() => ({ body: {} }));
+    setResult(r.body.decision ? r.body : null);
+    if (!r.body.decision) setFail(r.body.detail || r.body.error || "Call failed.");
+  };
+  const flip = async (registered) => { await a2aRegistrySet({ specialist: "rogue-specialist", registered }).catch(() => null); loadRegistry(); };
+  const chain = (t) => t ? `sub=${t.sub} -> act={${t.act.sub}${t.act.act ? ` -> ${t.act.act.sub}` : ""}}` : "(not minted)";
+  return (
+    <section className="panel" aria-labelledby="a2a-h" data-testid="a2a-panel">
+      <h2 id="a2a-h">A2A handoff (nested act chain)</h2>
+      <p className="muted">Two RFC 8693 exchanges build act=&#123;specialist, act:&#123;generalist&#125;&#125; — scope narrowed per hop. The gateway routes the call only when the SPECIALIST is registered.</p>
+      <label htmlFor="a2a-spec">Specialist</label>
+      <input id="a2a-spec" type="text" maxLength={64} value={specialist} onChange={(e) => setSpecialist(e.target.value)} data-testid="a2a-specialist" />
+      <div className="seg" role="group" aria-label="A2A steps">
+        <button type="button" onClick={one} data-testid="a2a-ex1">1. Consent &amp; exchange</button>
+        <button type="button" onClick={two} disabled={!t1} data-testid="a2a-ex2">2. Handoff</button>
+        <button type="button" onClick={call} disabled={!t2} data-testid="a2a-call">3. Call as the specialist</button>
+      </div>
+      <ol className="facts" data-testid="a2a-chain">
+        <li>Exchange #1: <code>{chain(t1)}</code></li>
+        <li>Exchange #2: <code>{chain(t2)}</code></li>
+      </ol>
+      {result && <p data-testid="a2a-result" className={result.decision === "PERMIT" ? "verdict__word" : ""}>{result.decision}{result.code ? ` (${result.code})` : ""} — depth {result.chainDepth}</p>}
+      {registry && (
+        <div>
+          <p className="muted">Registry: [ {registry.join(", ")} ]</p>
+          <div className="seg" role="group" aria-label="Registry flips">
+            <button type="button" data-testid="a2a-reg-add" onClick={() => flip(true)}>Register rogue-specialist</button>
+            <button type="button" data-testid="a2a-reg-remove" onClick={() => flip(false)}>Revoke rogue-specialist</button>
+          </div>
+        </div>
+      )}
+      {fail && <p className="field-error" role="alert">{fail}</p>}
     </section>
   );
 }
@@ -221,7 +335,9 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
         <Verdict run={run} />
         {run && <Hops hops={run.hops} traceId={run.traceId} />}
       </section>
+      <ObligationPanel run={run} onResolved={(r) => setRun(r)} />
       <DirectoryBoard onChanged={() => setBoardTick((n) => n + 1)} />
+      <A2aPanel />
       {selected && <UseCaseDetail uc={selected} onClose={() => setSelectedUc(null)} />}
       {catalog && <CatalogList catalog={catalog} onSelect={(u) => setSelectedUc(u.id)} selectedUc={selectedUc?.id ?? selectedUc} />}
       <section className="panel" aria-labelledby="scen-h">

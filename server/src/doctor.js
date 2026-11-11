@@ -4,7 +4,7 @@ import { assertBindAllowed, bindHost, portProblem, scanHosts, scanKeys, DEFAULT_
 import { netguardSelfTest } from './netguard.js';
 import { DEFAULT_CAST, VERTICALS, unfilled } from './cast.js';
 import { buildStory, rawStory } from './story.js';
-import { decide, exchange } from './pdp.js';
+import { decideWithObligation, exchange } from './pdp.js';
 import { DEFAULT_DIRECTORY } from './pdpData.js';
 import { modeFrom, realAvailableFrom } from './config.js';
 import { DIAGRAM_NAMES, buildDiagram } from './diagramData.js';
@@ -32,7 +32,12 @@ export async function runChecks({ env = process.env, cast = DEFAULT_CAST } = {})
     let groups = entry.groups;
     if (Array.isArray(sc.flipTo)) groups = sc.flipTo;
     const t = exchange({ userSub: sc.user, actorClientId: sc.actor || 'demo-agent', aud: sc.aud || 'ai-demo-standalone' });
-    return decide({ token: t, groups, tier: entry.tier, tool: sc.tool, amount: sc.amount }).decision !== sc.expected;
+    const { verdict: d } = decideWithObligation({ token: t, groups, tier: entry.tier, tool: sc.tool, amount: sc.amount });
+    if (d.decision === 'OBLIGATION') {
+      // an obligation is the expected stage-2 outcome when the scenario says so
+      return sc.expected !== 'OBLIGATION' || d.code !== sc.obligation;
+    }
+    return d.decision !== sc.expected;
   }).map((sc) => sc.id);
   add('scenarios', raw.scenarios.length >= 5 && !wrong.length ? 'pass' : 'fail', wrong.length ? `scenarios that do not give their expected decision: ${wrong.join(', ')}` : `${raw.scenarios.length} scenarios each give their expected decision`);
   const facts = raw.facts.filter((f) => !['measured', 'inferred', 'UNVERIFIED'].includes(f.status));

@@ -37,6 +37,16 @@
         "group gate",
         "tier"
       ]
+    },
+    {
+      "id": "hitl",
+      "term": "Human-in-the-loop (HITL)",
+      "definition": "Bands and approval tools return OBLIGATIONS, not denials: the agent pauses, the human resolves a consent/MFA/CIBA challenge, and a call-bound receipt re-evaluates the SAME call. An approval is never an MFA.",
+      "aliases": [
+        "step-up",
+        "CIBA",
+        "obligation"
+      ]
     }
   ],
   "sources": [
@@ -109,15 +119,16 @@
     },
     {
       "id": "try-uc21-promote",
-      "label": "Scenario 5: UC21: promote to Premium — the same call now permits",
-      "description": "The premiumTier group expands the tool set and raises the ceiling to $50000. Policy-driven, not hard-coded.",
+      "label": "Scenario 5: UC21: promote to Premium — the tool unlocks (then HITL pauses)",
+      "description": "Promotion first unlocks the tool (tier_tool_not_allowed is gone), then the HITL layer pauses it for approval — bands stack with groups, policy-driven, not hard-coded.",
       "group": "try-it",
       "action": {
         "type": "route",
         "href": "/#scenario-uc21-promote"
       },
       "terms": [
-        "entitlement"
+        "entitlement",
+        "hitl"
       ],
       "story": "S05"
     },
@@ -164,6 +175,48 @@
       "story": "S08"
     },
     {
+      "id": "try-uc7-stepup",
+      "label": "Scenario 9: UC7: MFA step-up — the agent pauses, the human completes MFA",
+      "description": "Mid-band ($500-$100000): consent + MFA. The agent PAUSES — it cannot self-approve. The receipt (MfaVerified) re-evaluates the SAME call.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc7-stepup"
+      },
+      "terms": [
+        "hitl"
+      ],
+      "story": "S09"
+    },
+    {
+      "id": "try-uc8-hitl",
+      "label": "Scenario 10: UC8: HITL approval — an approval is never an MFA",
+      "description": "Human-approval tools always pause the agent, whatever the amount. Only a verified, call-bound HitlApproved receipt moves it.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc8-hitl"
+      },
+      "terms": [
+        "hitl"
+      ],
+      "story": "S10"
+    },
+    {
+      "id": "try-uc22-ciba",
+      "label": "Scenario 11: UC22: CIBA — out-of-band approval on the user’s device",
+      "description": "An agent has no browser in which to prompt: the backend calls bc-authorize and the user approves out-of-band; the receipt (CibaApproved) re-evaluates the call.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc22-ciba"
+      },
+      "terms": [
+        "hitl"
+      ],
+      "story": "S11"
+    },
+    {
       "id": "concept-directory",
       "label": "Flip the directory live",
       "description": "Revoke the privileged group live; the SAME call flips on the next run — groups are read on EVERY decision.",
@@ -207,8 +260,8 @@
     },
     {
       "id": "S05",
-      "title": "UC21: promote to Premium — the same call now permits",
-      "say": "The premiumTier group expands the tool set and raises the ceiling to $50000. Policy-driven, not hard-coded."
+      "title": "UC21: promote to Premium — the tool unlocks (then HITL pauses)",
+      "say": "Promotion first unlocks the tool (tier_tool_not_allowed is gone), then the HITL layer pauses it for approval — bands stack with groups, policy-driven, not hard-coded."
     },
     {
       "id": "S06",
@@ -224,6 +277,21 @@
       "id": "S08",
       "title": "UC32: a token aimed at an upstream MCP is refused",
       "say": "An audience is a destination: a token minted for an upstream MCP server is never accepted downstream."
+    },
+    {
+      "id": "S09",
+      "title": "UC7: MFA step-up — the agent pauses, the human completes MFA",
+      "say": "Mid-band ($500-$100000): consent + MFA. The agent PAUSES — it cannot self-approve. The receipt (MfaVerified) re-evaluates the SAME call."
+    },
+    {
+      "id": "S10",
+      "title": "UC8: HITL approval — an approval is never an MFA",
+      "say": "Human-approval tools always pause the agent, whatever the amount. Only a verified, call-bound HitlApproved receipt moves it."
+    },
+    {
+      "id": "S11",
+      "title": "UC22: CIBA — out-of-band approval on the user’s device",
+      "say": "An agent has no browser in which to prompt: the backend calls bc-authorize and the user approves out-of-band; the receipt (CibaApproved) re-evaluates the call."
     }
   ]
 }

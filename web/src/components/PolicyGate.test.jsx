@@ -1,11 +1,18 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import PolicyGate, { CatalogList, Hops, UseCaseDetail, Verdict, useCaseFacts } from "./PolicyGate";
+import PolicyGate, { A2aPanel, CatalogList, Hops, ObligationPanel, UseCaseDetail, Verdict, useCaseFacts } from "./PolicyGate";
 
 vi.mock("../api", () => ({
   authorize: vi.fn(),
   consent: vi.fn(),
+  challenge: vi.fn(),
+  answerChallenge: vi.fn(),
+  a2aExchangeOne: vi.fn(),
+  a2aExchangeTwo: vi.fn(),
+  a2aTool: vi.fn(),
+  a2aRegistry: vi.fn(async () => ({ specialists: ["portfolio-specialist", "wire-specialist"] })),
+  a2aRegistrySet: vi.fn(),
   getCatalog: vi.fn(async () => ({
     count: 87, tracks: ["foundations", "controls", "attacks"],
     useCases: [
@@ -58,6 +65,52 @@ describe("Hops", () => {
   it("renders nothing without hops", () => {
     render(<Hops hops={[]} traceId="x" />);
     expect(screen.queryByTestId("hops")).toBeNull();
+  });
+});
+
+describe("ObligationPanel", () => {
+  const RUN = { decision: "OBLIGATION", obligation: "STEP_UP", user: "demoUser", act: { sub: "demo-agent" }, tool: "get_transactions", amount: 600, ucId: "UC7" };
+  it("explains the pause and walks consent -> MFA -> receipt -> re-evaluate", async () => {
+    const user = userEvent.setup();
+    const { challenge, answerChallenge, consent, authorize } = await import("../api");
+    challenge.mockResolvedValue({ ok: true, body: { challenge: { challengeId: "chg_1", obligation: "STEP_UP", user: "demoUser", tool: "get_transactions", amount: 600, needs: ["consent", "mfa"] } } });
+    answerChallenge.mockResolvedValue({ ok: true, body: { receipt: { receiptId: "rcp_1234567890abcdef", challengeId: "chg_1", obligation: "STEP_UP", user: "demoUser", tool: "get_transactions", amount: 600, claims: { MfaVerified: true, ConsentGiven: true } } } });
+    consent.mockResolvedValue({ ok: true, body: { token: { sub: "demoUser", act: { sub: "demo-agent" } } } });
+    authorize.mockResolvedValue({ ok: true, status: 200, body: { decision: "PERMIT", stage: "policy", user: "demoUser", act: { sub: "demo-agent" }, groups: ["privileged"], tier: "Standard", stages: [], obligation: null } });
+    const onResolved = vi.fn();
+    render(<ObligationPanel run={RUN} onResolved={onResolved} />);
+    expect(screen.getByTestId("obligation-panel").textContent).toContain("cannot self-approve");
+    await user.click(screen.getByTestId("ob-raise"));
+    await user.click(screen.getByTestId("ob-mfa"));
+    await waitFor(() => expect(screen.getByTestId("ob-receipt").textContent).toContain("MfaVerified=true"));
+    expect(answerChallenge).toHaveBeenCalledWith(expect.objectContaining({ answer: { consent: true, otp: "123123" } }));
+    await user.click(screen.getByTestId("ob-rerun"));
+    await waitFor(() => expect(onResolved).toHaveBeenCalled());
+    expect(authorize).toHaveBeenCalledWith(expect.objectContaining({ receipt: expect.objectContaining({ claims: { MfaVerified: true, ConsentGiven: true } }) }));
+  });
+  it("renders nothing when the run is not an obligation", () => {
+    render(<ObligationPanel run={{ decision: "PERMIT" }} onResolved={() => {}} />);
+    expect(screen.queryByTestId("obligation-panel")).toBeNull();
+  });
+});
+
+describe("A2aPanel", () => {
+  it("builds the chain across two exchanges and shows the decision; flips the registry", async () => {
+    const user = userEvent.setup();
+    const { a2aExchangeOne, a2aExchangeTwo, a2aTool, a2aRegistrySet } = await import("../api");
+    a2aExchangeOne.mockResolvedValue({ token: { sub: "demoUser", act: { sub: "generalist-agent" } } });
+    a2aExchangeTwo.mockResolvedValue({ token: { sub: "demoUser", act: { sub: "portfolio-specialist", act: { sub: "generalist-agent" } } } });
+    a2aTool.mockResolvedValue({ ok: true, body: { decision: "PERMIT", chainDepth: 2 } });
+    a2aRegistrySet.mockResolvedValue({ specialist: "rogue-specialist", registered: true, specialists: ["portfolio-specialist", "rogue-specialist"] });
+    render(<A2aPanel />);
+    await screen.findByTestId("a2a-panel");
+    await user.click(screen.getByTestId("a2a-ex1"));
+    await user.click(screen.getByTestId("a2a-ex2"));
+    expect(screen.getByTestId("a2a-chain").textContent).toContain("portfolio-specialist -> generalist-agent");
+    await user.click(screen.getByTestId("a2a-call"));
+    await waitFor(() => expect(screen.getByTestId("a2a-result").textContent).toContain("PERMIT"));
+    await user.click(screen.getByTestId("a2a-reg-add"));
+    await waitFor(() => expect(a2aRegistrySet).toHaveBeenCalledWith({ specialist: "rogue-specialist", registered: true }));
   });
 });
 

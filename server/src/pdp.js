@@ -9,6 +9,7 @@
 //                 the engine already returns the shape so the UI can grow into it)
 // Pure functions + injected clock; all values mock. No I/O inside decisions.
 import { LIMITS } from './pdpData.js';
+import { evaluateObligation, receiptValid } from './hitl.js';
 
 export const AUDIENCE = 'ai-demo-standalone';
 
@@ -116,4 +117,30 @@ export function exchange({ userSub, actorClientId, aud = AUDIENCE, now = Date.no
   if (!actor) throw new PdpInputError('actor_required', 'actorClientId is required');
   const iat = Math.floor(now() / 1000);
   return { sub, act: { sub: actor }, aud: clean(aud, 100), iat, exp: iat + Math.max(1, Math.min(ttlSeconds, 86400)), iss: 'ai-demo-standalone (mock consent)' };
+}
+
+/** The full authorize semantics: decide(), then the stage-2 obligation layer (bands + HITL
+ *  tools). Returns { verdict, obligation } — obligation is null when nothing paused the call.
+ *  A bound receipt (verified by the caller, who owns the receipt store) completes the pause. */
+export function decideWithObligation({ receipt = null, ...args } = {}) {
+  const verdict = decide(args);
+  if (verdict.decision !== 'PERMIT') return { verdict, obligation: null };
+  let obligation = null;
+  try {
+    const ob = evaluateObligation({ tool: args.tool, amount: args.amount });
+    if (ob.obligation === 'DENY') {
+      verdict.decision = 'DENY'; verdict.code = 'tier_amount_exceeded'; verdict.reason = ob.reason;
+    } else if (ob.obligation) {
+      const bind = receipt ? receiptValid({ receipt, user: args.token.sub, tool: args.tool, obligation: ob.obligation, amount: args.amount, now: args.now }) : { valid: false, code: 'no_receipt' };
+      if (bind.valid) {
+        verdict.reason = `${verdict.reason} — ${ob.obligation} satisfied by a bound receipt (${receipt.receiptId.slice(0, 12)}…): ${receipt.obligation === 'HITL_CONSENT' ? 'HitlApproved=true' : receipt.obligation === 'CIBA' ? 'CibaApproved=true' : 'MfaVerified'} presented.`;
+      } else {
+        obligation = ob.obligation;
+        verdict.decision = 'OBLIGATION';
+        verdict.code = ob.obligation;
+        verdict.reason = ob.reason;
+      }
+    }
+  } catch { /* non-numeric amount: leave the policy verdict */ }
+  return { verdict, obligation };
 }

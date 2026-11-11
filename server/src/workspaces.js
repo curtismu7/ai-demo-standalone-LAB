@@ -10,7 +10,7 @@ export function workspaceFrom(req) {
   return typeof raw === 'string' && WORKSPACE_RE.test(raw) ? raw : null;
 }
 
-export function createWorkspaces({ max = 500, ttlMs = 60 * 60 * 1000, now = Date.now, makeDirectory } = {}) {
+export function createWorkspaces({ max = 500, ttlMs = 60 * 60 * 1000, now = Date.now, makeDirectory, makeExtra } = {}) {
   const map = new Map(); // id -> { runs, at, directory }
   const sweep = () => {
     const t = now();
@@ -21,7 +21,7 @@ export function createWorkspaces({ max = 500, ttlMs = 60 * 60 * 1000, now = Date
     const byAge = [...map.entries()].sort((a, b) => a[1].at - b[1].at);
     while (map.size > max) { const [id] = byAge.shift(); map.delete(id); }
   };
-  const blank = () => ({ runs: [], directory: makeDirectory ? makeDirectory() : null, at: now() });
+  const blank = () => ({ runs: [], directory: makeDirectory ? makeDirectory() : null, extra: makeExtra ? makeExtra() : null, at: now() });
   return {
     state(id) {
       sweep();

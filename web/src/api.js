@@ -43,3 +43,27 @@ export async function setDirectory(payload) {
 }
 
 export const resetWorkspace = () => workspaceFetch("/api/reset", { method: "POST", body: "{}" }).then((r) => r.ok);
+
+// ── Stage 2: HITL + A2A ──────────────────────────────────────────────────────
+export async function challenge(payload) {
+  const r = await workspaceFetch("/api/challenge", { method: "POST", body: JSON.stringify(payload) });
+  let body = {};
+  try { body = await r.json(); } catch { /* not JSON */ }
+  return { ok: r.ok, status: r.status, body };
+}
+export async function answerChallenge(payload) {
+  const r = await workspaceFetch("/api/challenge/answer", { method: "POST", body: JSON.stringify(payload) });
+  let body = {};
+  try { body = await r.json(); } catch { /* not JSON */ }
+  return { ok: r.ok, status: r.status, body };
+}
+export const a2aExchangeOne = (payload) => workspaceFetch("/api/a2a/exchange/one", { method: "POST", body: JSON.stringify(payload) }).then((r) => r.json());
+export const a2aExchangeTwo = (payload) => workspaceFetch("/api/a2a/exchange/two", { method: "POST", body: JSON.stringify(payload) }).then((r) => r.json());
+export async function a2aTool(payload) {
+  const r = await workspaceFetch("/api/a2a/tool", { method: "POST", body: JSON.stringify(payload) });
+  let body = {};
+  try { body = await r.json(); } catch { /* not JSON */ }
+  return { ok: r.ok, status: r.status, body };
+}
+export const a2aRegistry = () => getJson("/api/a2a/registry");
+export const a2aRegistrySet = (payload) => workspaceFetch("/api/a2a/registry/set", { method: "POST", body: JSON.stringify(payload) }).then((r) => r.json());

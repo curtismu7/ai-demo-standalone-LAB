@@ -94,11 +94,11 @@ test('UC21: tier bands — premium-only tool denied on Standard, permitted on Pr
     const j1 = await (await post('/api/authorize', { token: std, tool: 'create_wire_transfer', amount: 500 }, 'w4')).json();
     assert.equal(j1.code, 'tier_tool_not_allowed');
     const { token: prem } = await (await post('/api/consent', { user: 'premiumUser' }, 'w4')).json();
-    const j2 = await (await post('/api/authorize', { token: prem, tool: 'create_wire_transfer', amount: 500 }, 'w4')).json();
-    assert.equal(j2.decision, 'PERMIT');
-    const j3 = await (await post('/api/authorize', { token: prem, tool: 'create_wire_transfer', amount: 60000 }, 'w4')).json();
-    assert.equal(j3.code, 'tier_amount_exceeded');
-    assert.match(j3.reason, /\$50000/);
+    // stage 2: the wire tool is HITL — the band test uses a read tool for the ceiling check,
+    // and the HITL path itself is covered by the dedicated tests below.
+    const j2 = await (await post('/api/authorize', { token: prem, tool: 'get_transactions', amount: 60000 }, 'w4')).json();
+    assert.equal(j2.code, 'tier_amount_exceeded');
+    assert.match(j2.reason, /\$50000/);
   });
 });
 

@@ -60,10 +60,10 @@ export const SCENARIOS = [
     lesson: 'Positive least privilege: premium-only tools are listed in policy, never implied by scopes.',
   },
   {
-    id: 'uc21-promote', ucId: 'UC21', track: 'controls', title: 'UC21: promote to Premium — the same call now permits',
+    id: 'uc21-promote', ucId: 'UC21', track: 'controls', title: 'UC21: promote to Premium — the tool unlocks (then HITL pauses)',
     user: 'premiumUser', actor: 'demo-agent', tool: 'create_wire_transfer', amount: 500,
-    expected: 'PERMIT',
-    lesson: 'The premiumTier group expands the tool set and raises the ceiling to $50000. Policy-driven, not hard-coded.',
+    expected: 'OBLIGATION', obligation: 'HITL_CONSENT',
+    lesson: 'Promotion first unlocks the tool (tier_tool_not_allowed is gone), then the HITL layer pauses it for approval — bands stack with groups, policy-driven, not hard-coded.',
   },
   {
     id: 'uc21-ceiling', ucId: 'UC21', track: 'controls', title: 'UC21: $60000 exceeds even the Premium ceiling',
@@ -82,6 +82,24 @@ export const SCENARIOS = [
     user: 'demoUser', actor: 'demo-agent', tool: 'get_balance', amount: null, aud: 'mcp-weather.internal',
     expected: 'DENY',
     lesson: 'An audience is a destination: a token minted for an upstream MCP server is never accepted downstream.',
+  },
+  {
+    id: 'uc7-stepup', ucId: 'UC7', track: 'hitl', title: 'UC7: MFA step-up — the agent pauses, the human completes MFA',
+    user: 'demoUser', actor: 'demo-agent', tool: 'get_transactions', amount: 600,
+    expected: 'OBLIGATION', obligation: 'STEP_UP',
+    lesson: 'Mid-band ($500-$100000): consent + MFA. The agent PAUSES — it cannot self-approve. The receipt (MfaVerified) re-evaluates the SAME call.',
+  },
+  {
+    id: 'uc8-hitl', ucId: 'UC8', track: 'hitl', title: 'UC8: HITL approval — an approval is never an MFA',
+    user: 'demoUser', actor: 'demo-agent', tool: 'create_transfer', amount: 100,
+    expected: 'OBLIGATION', obligation: 'HITL_CONSENT',
+    lesson: 'Human-approval tools always pause the agent, whatever the amount. Only a verified, call-bound HitlApproved receipt moves it.',
+  },
+  {
+    id: 'uc22-ciba', ucId: 'UC22', track: 'hitl', title: 'UC22: CIBA — out-of-band approval on the user\u2019s device',
+    user: 'demoUser', actor: 'demo-agent', tool: 'move_money', amount: null,
+    expected: 'OBLIGATION', obligation: 'CIBA',
+    lesson: 'An agent has no browser in which to prompt: the backend calls bc-authorize and the user approves out-of-band; the receipt (CibaApproved) re-evaluates the call.',
   },
 ];
 
