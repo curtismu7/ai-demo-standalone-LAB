@@ -3,7 +3,7 @@
 // the evidence (3), the products (4) and the talk track (5). The reply is always written
 // from the run the server returns; the Scripted brain on the server decides WHAT runs.
 // Airline copy everywhere; engine tool names stay as-is (renaming is plan phase P6).
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Json from "../components/Json";
 import { assistantTurn } from "../api";
 import { visible } from "../safeText";
@@ -213,7 +213,7 @@ export function TalkTrackSection({ run }) {
 
 const SECTIONS = ["signin", "plan", "evidence", "products", "talk"];
 
-export default function DashboardPage({ story }) {
+export default function DashboardPage({ story, requestedUc }) {
   const [transcript, setTranscript] = useState([{ who: "agent", text: GREETING }]);
   const [run, setRun] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -237,6 +237,16 @@ export default function DashboardPage({ story }) {
   // The obligation pause is answered through the EXISTING Use Cases runner (challenge +
   // challenge/answer + re-run live there); the dashboard points the visitor at it.
   const onChip = useCallback((prompt) => send(prompt), [send]);
+
+  // P5 launcher "Runs here": the use case arrives preselected; run its chip prompt once.
+  const didRun = useRef(false);
+  useEffect(() => {
+    if (didRun.current || !requestedUc) return;
+    const chip = CHIPS.find((c) => c.ucId === requestedUc) ?? (requestedUc === "UC9A" ? CHIPS.find((c) => c.ucId === "UC9A") : null);
+    if (!chip) return;
+    didRun.current = true;
+    send(chip.prompt);
+  }, [requestedUc, send]);
 
   useEffect(() => {
     const on = () => {
