@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Copy-in (nothing is wired into a page yet): the shared stylesheet `web/src/styles/standalone-ui.css`, `web/src/floating-dialog/`, `web/src/evidence/` (movie reel, sequence view, step detail, actor card) and the hop-detail pair `server/src/vendor/hopDetail.mjs` + `hop-catalog.json`, all copied from AI-DEMO-Standalone `shared/` with sha256 pins and pin tests, plus `scripts/check-ui-standard.sh` (in CI). `docs/PROVENANCE.md` lists each copy, its source commit and its pin.
+- `scripts/no-ai-demo2.test.mjs` (run by `npm test`): fails if a tracked file names an AI-DEMO2 hostname, container, image, network, volume, path or env var, uses an external Docker network or volume, COPYs from an image the Dockerfile does not build, or imports a path that leaves the repo.
 - Catalog id is D128 (it was D123 in the shelf registry, which observability-lab already holds, and D122 in this repo's own shelf entry, which is a2a-lab's). Shelf entry, content pack, README and the shelf registry now agree.
 - The port moved from 7710 to 7810, taken from the packed range 7800-7999. 7710 is diagram-prove-lab's port. The server now accepts exactly one port, 7810; compose, Dockerfile, k8s manifests, doctor, CI and tests follow.
 - README, CLAUDE.md, CHANGELOG, `docs/safety.md` and the shelf entry were rewritten for what the app is (stage 2). They described the HITL/MFA/CIBA lab, the A2A hand-off lab and an AgentCore governance lab that this repo was scaffolded from.
