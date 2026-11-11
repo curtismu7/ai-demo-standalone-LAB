@@ -47,6 +47,13 @@ export default function App() {
     return () => window.removeEventListener("hashchange", on);
   }, []);
   const pickScenario = (sid) => { try { window.history.replaceState(null, "", `#/scenario-${sid}`); } catch { /* ignore */ } };
+  // P5 launcher: "Runs here" goes to the dashboard with the use case preselected; the
+  // dashboard's assistant turn runs it (the same entry path a chip takes).
+  const runHere = (ucId) => {
+    setRoute("dashboard");
+    setRequested((v) => (v === ucId ? v : ucId));
+    try { window.history.replaceState(null, "", "#/dashboard"); } catch { /* ignore */ }
+  };
 
   useEffect(() => {
     const on = (e) => {
@@ -80,8 +87,8 @@ export default function App() {
                 {story.talkTrack.filter((t) => (route === "dashboard" || route === "use-cases" ? ["say-first", "one-engine", "groups", "tiers", "who-acting", "unverified"] : ["say-first"]).includes(t.id)).map((t) => <p key={t.id}><strong>{t.title}.</strong> {t.say}</p>)}
               </aside>
             )}
-            {route === "dashboard" && <DashboardPage story={story} />}
-            {route === "use-cases" && <UseCasesPage story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} />}            {route === "guide" && <GuidePage story={story} resetSignal={resetSignal} />}
+            {route === "dashboard" && <DashboardPage story={story} requestedUc={route === "dashboard" && requested && /^UC/.test(requested) ? requested : null} />}
+            {route === "use-cases" && <UseCasesPage story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} onRunHere={runHere} />}{route === "guide" && <GuidePage story={story} resetSignal={resetSignal} />}
             {route === "welcome" && <WelcomePage />}
             {route === DIAGRAM_ROUTE && <DiagramRoute resetSignal={resetSignal} />}
           </>

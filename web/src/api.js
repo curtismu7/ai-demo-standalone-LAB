@@ -97,3 +97,4 @@ export async function nhiRegister(payload) {
 export const nhiRotate = (agentId) => workspaceFetch("/api/nhi/rotate", { method: "POST", body: JSON.stringify({ agentId }) }).then((r) => r.json());
 export const nhiRevoke = (agentId) => workspaceFetch("/api/nhi/revoke", { method: "POST", body: JSON.stringify({ agentId }) }).then((r) => r.json());
 export const getJml = () => getJson("/api/nhi/jml");
+export const getUseCases = (uc, app) => getJson(`/api/usecases${uc ? `?uc=${encodeURIComponent(uc)}${app ? `&app=${encodeURIComponent(app)}` : ""}` : ""}`);
