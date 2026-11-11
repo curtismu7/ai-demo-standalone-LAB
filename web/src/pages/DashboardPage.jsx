@@ -10,6 +10,8 @@ import { visible } from "../safeText";
 import ChainView from "../components/ChainView.jsx";
 import TokenCardsPanel from "../components/TokenCardsPanel.jsx";
 import QuickConfigDialog, { readConfig } from "../components/QuickConfigDialog.jsx";
+import ChainMap from "../components/evidence/ChainMap.jsx";
+import { deriveChainSteps, readDensity, writeDensity } from "../components/evidence/chainSteps.js";
 
 const GREETING = "Sign in with your customer account to access travel features: bookings, loyalty, flight changes, and more. Or ask me about OAuth, PKCE, MCP, or how AI agents work.";
 
@@ -121,8 +123,14 @@ export function PlanSection({ run }) {
   );
 }
 
-/** Section 3: three columns — Authorize decision / the hops / the movie-reel placeholder (P3). */
+/** Section 3: the evidence — the Authorize decision, the 10-step chain map (click a step
+ *  to open the hop detail), the reel and the sequence view (ChainView, driven by Quick
+ *  Config when wired), and the run's raw MOCK token cards. These views live INSIDE the
+ *  Evidence section; there is no separate token-chain card. */
 export function EvidenceSection({ run, cfg }) {
+  const [density, setDensity] = useState(() => readDensity());
+  const steps = deriveChainSteps(run?.demoHops ?? []);
+  const pickDensity = (v) => { setDensity(v); writeDensity(v); };
   return (
     <section className={`tri${cfg?.theme === "white" ? " tri--white" : ""}`} id="dash-evidence" aria-label="Evidence" data-testid="evidence-section">
       <div className="panel lane lane-authorize">
@@ -133,14 +141,29 @@ export function EvidenceSection({ run, cfg }) {
             <p className="muted" data-testid="evidence-reason">{visible(run.reason || "")}</p>
           </>
         ) : <p className="muted">Decision and reason show here after a run.</p>}
+        <h3>Token chain map</h3>
+        {run && (
+          <div className="seg" role="group" aria-label="Chain map density" data-testid="density-toggle">
+            {["detailed", "compact"].map((d) => (
+              <button key={d} type="button" aria-pressed={density === d} data-testid={`chain-density-${d}`} onClick={() => pickDensity(d)}>
+                {d === "detailed" ? "Detailed" : "Compact"}
+              </button>
+            ))}
+          </div>
+        )}
+        {run ? (
+          <div data-density={density}>
+            <ChainMap steps={steps} />
+          </div>
+        ) : <p className="muted" data-testid="chain-map-empty">The ten steps of the run light up here.</p>}
       </div>
       <div className="panel lane lane-gateway">
         <h2>Chain</h2>
-        <ChainView hops={run?.hops || []} cfg={cfg} />
+        <ChainView hops={run?.demoHops || run?.hops || []} cfg={cfg} />
       </div>
       <div className="panel lane lane-mcp">
         <h2>Tokens</h2>
-        <TokenCardsPanel tokens={run?.tokens || []} />
+        <TokenCardsPanel tokens={run?.tokens10 || run?.tokens || []} />
       </div>
     </section>
   );

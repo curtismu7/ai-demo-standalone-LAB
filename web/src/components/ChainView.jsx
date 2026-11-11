@@ -8,15 +8,17 @@ import "./ChainView.css";
 
 // P3 chain view: the vendored evidence components over the run's demo-hop/1 hops.
 // P4: the Quick Config dialog chooses the view and the pace — cfg.view ("reel",
-// "sequence", "server-flow" = both stacked, "stepper" = the compact numbered list),
+// "sequence", "server-flow"/"both" = both stacked, "stepper" = the compact numbered list),
 // cfg.follow (auto-advance the reel) and cfg.slow (longest frame time) flow in here.
-// The slim rule keeps exactly these views — no extra chrome.
+// The slim rule keeps exactly these views — no extra chrome. The reel never autoplays
+// (the vendored component starts paused, which also honours prefers-reduced-motion).
 
 const PREF_SKIPPED = "cal.dash.chain.skipped";
 
 const VIEWS = [
   { id: "reel", label: "Reel" },
   { id: "sequence", label: "Sequence" },
+  { id: "both", label: "Both" },
 ];
 
 export default function ChainView({ hops = [], cfg = null }) {
@@ -80,9 +82,10 @@ export default function ChainView({ hops = [], cfg = null }) {
       ) : view === "reel" ? (
         <MovieReel hops={shown} selected={selected} onSelect={pick} />
       ) : (
-        <div className={cfg?.view === "server-flow" ? "chainv__stack" : undefined}>
-          <SequenceView hops={shown} selected={selected} onSelect={pick} actors={actors} />
+        <div className={cfg?.view === "server-flow" || cfg?.view === "both" ? "chainv__stack" : undefined}>
           {cfg?.view === "server-flow" && <MovieReel hops={shown} selected={selected} onSelect={pick} />}
+          <SequenceView hops={shown} selected={selected} onSelect={pick} actors={actors} />
+          {cfg?.view === "both" && <MovieReel hops={shown} selected={selected} onSelect={pick} />}
         </div>
       )}
       <StepDetailPanel hops={shown} selected={selected} onSelect={pick} onClose={() => setSelected(null)} />
