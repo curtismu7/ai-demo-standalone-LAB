@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Json from "./Json";
-import { authorize, consent, getCatalog, getDirectory, setDirectory, challenge, answerChallenge, a2aExchangeOne, a2aExchangeTwo, a2aTool, a2aRegistry, a2aRegistrySet, getAttacks, runAttack } from "../api";
+import { authorize, consent, getCatalog, getDirectory, setDirectory, challenge, answerChallenge, a2aExchangeOne, a2aExchangeTwo, a2aTool, a2aRegistry, a2aRegistrySet, getAttacks, runAttack, getRoster, nhiRegister, nhiRotate, nhiRevoke, getJml } from "../api";
 import { visible } from "../safeText";
 
 const STATUS_CLASS = { measured: "tag tag--ok", inferred: "tag", UNVERIFIED: "tag tag--warn" };
@@ -280,6 +280,64 @@ export function AttackGallery() {
   );
 }
 
+
+/** Stage 4: NHI — the agent's own key, its scopes, and the live lifecycle (joiner/mover/leaver). */
+export function NhiPanel() {
+  const [agents, setAgents] = useState(null);
+  const [jml, setJml] = useState(null);
+  const [name, setName] = useState("demo-agent");
+  const [scopes, setScopes] = useState(["a2a:get_balance"]);
+  const [msg, setMsg] = useState(null);
+  const [fail, setFail] = useState(null);
+  const load = useCallback(async () => {
+    const r = await getRoster().catch(() => null);
+    if (r) setAgents(r.agents);
+    const j = await getJml().catch(() => null);
+    if (j) setJml(j.events);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  const register = async () => {
+    setFail(null); setMsg(null);
+    const r = await nhiRegister({ agentId: name.trim() || "demo-agent", scopes }).catch(() => ({ ok: false, body: {} }));
+    if (r.ok) { setMsg(`${r.body.agent.agentId} registered (${r.body.agent.keyPrefix}…, scopes [ ${r.body.agent.scopes.join(", ")} ])`); load(); }
+    else setFail(r.body.detail || r.body.error || "Could not register.");
+  };
+  const act = async (fn, label) => {
+    setFail(null); setMsg(null);
+    const r = await fn(name.trim() || "demo-agent").catch(() => ({ detail: "failed" }));
+    if (r.agent) { setMsg(`${r.agent.agentId}: ${label}`); load(); } else setFail(r.detail || "failed");
+  };
+  return (
+    <section className="panel" aria-labelledby="nhi-h" data-testid="nhi-panel">
+      <h2 id="nhi-h">Agent NHI <span className="muted">joiner / mover / leaver</span></h2>
+      <p className="muted">The agent gets its OWN key with its own scopes — not a copy of the user's. Rotation kills the old key immediately; revocation is the identity-layer kill switch: every platform the agent touches loses access. Every action emits a JML event an IGA system could consume.</p>
+      <label htmlFor="nhi-name">Agent id</label>
+      <input id="nhi-name" type="text" maxLength={64} value={name} onChange={(e) => setName(e.target.value)} data-testid="nhi-name" />
+      <div className="seg" role="group" aria-label="NHI lifecycle">
+        <button type="button" data-testid="nhi-register" onClick={register}>Register (joiner)</button>
+        <button type="button" data-testid="nhi-rotate" onClick={() => act(nhiRotate, "key rotated (mover)")}>Rotate (mover)</button>
+        <button type="button" data-testid="nhi-revoke" onClick={() => act(nhiRevoke, "revoked (leaver)")}>Revoke (leaver)</button>
+      </div>
+      {msg && <p className="muted" role="status" data-testid="nhi-msg">{msg}</p>}
+      {fail && <p className="field-error" role="alert">{fail}</p>}
+      {agents && (
+        <ul className="facts" data-testid="nhi-roster">
+          {agents.length === 0 && <li>No agents registered yet in this workspace.</li>}
+          {agents.map((a) => <li key={a.agentId}><code>{visible(a.agentId)}</code> — {visible(a.status)} — {visible(a.keyPrefix)}… — scopes [ {(a.scopes || []).map((x) => visible(x)).join(", ")} ]</li>)}
+        </ul>
+      )}
+      {jml && jml.length > 0 && (
+        <div data-testid="nhi-jml">
+          <h3>JML event feed</h3>
+          <ul className="facts">
+            {jml.map((e) => <li key={e.id}><strong>{visible(e.type)}</strong> {visible(e.agentId)} — {visible(e.detail)}</li>)}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
 /** The live directory board: groups are read on EVERY decision. */
 function DirectoryBoard({ onChanged }) {
   const [directory, setDirectoryState] = useState(null);
@@ -376,6 +434,7 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
       <DirectoryBoard onChanged={() => setBoardTick((n) => n + 1)} />
       <A2aPanel />
       <AttackGallery />
+      <NhiPanel />
       {selected && <UseCaseDetail uc={selected} onClose={() => setSelectedUc(null)} />}
       {catalog && <CatalogList catalog={catalog} onSelect={(u) => setSelectedUc(u.id)} selectedUc={selectedUc?.id ?? selectedUc} />}
       <section className="panel" aria-labelledby="scen-h">

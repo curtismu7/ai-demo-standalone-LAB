@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import PolicyGate, { A2aPanel, AttackGallery, CatalogList, Hops, ObligationPanel, UseCaseDetail, Verdict, useCaseFacts } from "./PolicyGate";
+import PolicyGate, { A2aPanel, AttackGallery, CatalogList, Hops, NhiPanel, ObligationPanel, UseCaseDetail, Verdict, useCaseFacts } from "./PolicyGate";
 
 vi.mock("../api", () => ({
   authorize: vi.fn(),
@@ -15,6 +15,11 @@ vi.mock("../api", () => ({
   a2aRegistrySet: vi.fn(),
   getAttacks: vi.fn(async () => ({ attacks: [{ id: "uc12-replay", ucId: "UC12", title: "UC12: token theft + DPoP", expected: "DENY", lesson: "proofs cannot be replayed" }] })),
   runAttack: vi.fn(),
+  getRoster: vi.fn(async () => ({ agents: [{ agentId: "demo-agent", status: "active", keyPrefix: "ak-mock-qCzK", scopes: ["a2a:get_balance"] }], knownScopes: ["a2a:get_balance", "a2a:write"] })),
+  nhiRegister: vi.fn(),
+  nhiRotate: vi.fn(),
+  nhiRevoke: vi.fn(),
+  getJml: vi.fn(async () => ({ events: [{ id: "jml_1", type: "joiner", agentId: "demo-agent", detail: "registered", at: 1 }] })),
   getCatalog: vi.fn(async () => ({
     count: 87, tracks: ["foundations", "controls", "attacks"],
     useCases: [
@@ -128,6 +133,21 @@ describe("AttackGallery", () => {
     expect(screen.getByTestId("attack-tried").textContent).toContain("replayed both verbatim");
     expect(screen.getByTestId("attack-stopped").textContent).toContain("PingGateway");
     expect(screen.getByTestId("attack-lesson").textContent).toContain("not enough");
+  });
+});
+
+describe("NhiPanel", () => {
+  it("shows the roster and JML feed; register emits the joiner", async () => {
+    const user = userEvent.setup();
+    const { nhiRegister } = await import("../api");
+    nhiRegister.mockResolvedValue({ ok: true, body: { agent: { agentId: "demo-agent", keyId: "key_1", keyPrefix: "ak-mock-qCzK", scopes: ["a2a:get_balance"], status: "active" } } });
+    render(<NhiPanel />);
+    await screen.findByTestId("nhi-panel");
+    expect(screen.getByTestId("nhi-roster").textContent).toContain("demo-agent");
+    expect(screen.getByTestId("nhi-jml").textContent).toContain("joiner");
+    await user.click(screen.getByTestId("nhi-register"));
+    await waitFor(() => expect(screen.getByTestId("nhi-msg").textContent).toContain("registered"));
+    expect(nhiRegister).toHaveBeenCalledWith(expect.objectContaining({ agentId: "demo-agent", scopes: ["a2a:get_balance"] }));
   });
 });
 

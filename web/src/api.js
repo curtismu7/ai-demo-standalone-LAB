@@ -76,3 +76,15 @@ export async function runAttack(payload) {
   try { body = await r.json(); } catch { /* not JSON */ }
   return { ok: r.ok, status: r.status, body };
 }
+
+// ── Stage 4: NHI (agent identity lifecycle) ─────────────────────────────────
+export const getRoster = () => getJson("/api/nhi/roster");
+export async function nhiRegister(payload) {
+  const r = await workspaceFetch("/api/nhi/register", { method: "POST", body: JSON.stringify(payload) });
+  let body = {};
+  try { body = await r.json(); } catch { /* not JSON */ }
+  return { ok: r.ok, status: r.status, body };
+}
+export const nhiRotate = (agentId) => workspaceFetch("/api/nhi/rotate", { method: "POST", body: JSON.stringify({ agentId }) }).then((r) => r.json());
+export const nhiRevoke = (agentId) => workspaceFetch("/api/nhi/revoke", { method: "POST", body: JSON.stringify({ agentId }) }).then((r) => r.json());
+export const getJml = () => getJson("/api/nhi/jml");

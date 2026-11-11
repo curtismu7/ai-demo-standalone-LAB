@@ -17,6 +17,7 @@ import { DEFAULT_DIRECTORY, LIMITS } from './pdpData.js';
 import { evaluateObligation, createChallenge, answerChallenge, createReceipts, HitlInputError } from './hitl.js';
 import { exchangeOne, exchangeTwo, evaluateA2a, createRegistry, actChainDepth as a2aDepth, A2AInputError, agentCard as a2aAgentCard, LIMITS as A2A_LIMITS } from './a2a.js';
 import { runAttack, createRateLimiter, ATTACK_CATALOG, AttackInputError } from './attacks.js';
+import { createRoster, keyAllows, KNOWN_SCOPES, NhiInputError } from './nhi.js';
 import { mountShelfRoute } from './shelfLink.js';
 import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.js';
 import { createWorkspaces, workspaceFrom } from './workspaces.js';
@@ -30,7 +31,7 @@ const newExtra = () => ({ receipts: createReceipts(), registry: createRegistry({
 
 export function createApp({
   health = createHealth(), configFile = CONFIG, hosted = false,
-  workspaces = createWorkspaces({ makeDirectory: () => structuredClone(DEFAULT_DIRECTORY), makeExtra: () => ({ ...newExtra(), rateLimiter: createRateLimiter({ max: 8 }) }) }),
+  workspaces = createWorkspaces({ makeDirectory: () => structuredClone(DEFAULT_DIRECTORY), makeExtra: () => ({ ...newExtra(), rateLimiter: createRateLimiter({ max: 8 }), roster: createRoster() }) }),
 } = {}) {
   const app = express();
   app.disable('x-powered-by');
@@ -280,6 +281,64 @@ export function createApp({
       if (e instanceof AttackInputError) return res.status(400).json({ error: e.code, detail: e.message });
       throw e;
     }
+  }));
+
+
+  // ── Stage 4: NHI (UC-NHI1/UC-NHI2) — the agent's own identity, live lifecycle ──
+  api.get('/nhi/roster', withWorkspace((ws, _req, res) => {
+    const v = workspaces.state(ws);
+    const roster = v.extra?.roster || createRoster();
+    res.json({ agents: roster.all(), knownScopes: KNOWN_SCOPES, workspace: ws });
+  }));
+  api.post('/nhi/register', withWorkspace((ws, req, res) => {
+    const body = req.body;
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'bad_request' });
+    if (typeof body.agentId !== 'string' || !body.agentId.trim()) return res.status(400).json({ error: 'agent_required', detail: 'body.agentId must be non-empty text' });
+    if (!Array.isArray(body.scopes) || !body.scopes.length) return res.status(400).json({ error: 'scopes_required', detail: `body.scopes must be a non-empty array of known scopes: ${KNOWN_SCOPES.join(', ')}` });
+    const v = workspaces.state(ws);
+    const roster = v.extra?.roster || createRoster();
+    try {
+      const a = roster.register(body.agentId.trim().slice(0, 64), body.scopes);
+      v.extra = v.extra || {}; v.extra.roster = roster;
+      workspaces.record(ws, { tool: 'nhi-register', decision: 'JOINER', reason: `${a.agentId} registered with scopes [ ${a.scopes.join(', ')} ]`, token: null });
+      return res.json({ agent: { agentId: a.agentId, keyId: a.keyId, keyPrefix: a.keyPrefix, scopes: a.scopes, status: a.status }, workspace: ws });
+    } catch (e) {
+      if (e instanceof NhiInputError) return res.status(400).json({ error: e.code, detail: e.message });
+      throw e;
+    }
+  }));
+  api.post('/nhi/rotate', withWorkspace((ws, req, res) => {
+    const body = req.body;
+    if (typeof body?.agentId !== 'string' || !body.agentId.trim()) return res.status(400).json({ error: 'agent_required' });
+    const v = workspaces.state(ws);
+    const roster = v.extra?.roster || createRoster();
+    try {
+      const a = roster.rotate(body.agentId.trim().slice(0, 64));
+      workspaces.record(ws, { tool: 'nhi-rotate', decision: 'MOVER', reason: `${a.agentId} key rotated -> ${a.keyId}`, token: null });
+      return res.json({ agent: { agentId: a.agentId, keyId: a.keyId, keyPrefix: a.keyPrefix, status: a.status }, workspace: ws });
+    } catch (e) {
+      if (e instanceof NhiInputError) return res.status(400).json({ error: e.code, detail: e.message });
+      throw e;
+    }
+  }));
+  api.post('/nhi/revoke', withWorkspace((ws, req, res) => {
+    const body = req.body;
+    if (typeof body?.agentId !== 'string' || !body.agentId.trim()) return res.status(400).json({ error: 'agent_required' });
+    const v = workspaces.state(ws);
+    const roster = v.extra?.roster || createRoster();
+    try {
+      const a = roster.revoke(body.agentId.trim().slice(0, 64));
+      workspaces.record(ws, { tool: 'nhi-revoke', decision: 'LEAVER', reason: `${a.agentId} revoked — every platform loses access immediately`, token: null });
+      return res.json({ agent: { agentId: a.agentId, keyId: a.keyId, status: a.status }, workspace: ws });
+    } catch (e) {
+      if (e instanceof NhiInputError) return res.status(400).json({ error: e.code, detail: e.message });
+      throw e;
+    }
+  }));
+  api.get('/nhi/jml', withWorkspace((ws, _req, res) => {
+    const v = workspaces.state(ws);
+    const roster = v.extra?.roster || createRoster();
+    res.json({ events: roster.jml.all(), workspace: ws });
   }));
 
   api.get('/runs', withWorkspace((ws, _req, res) => res.json(workspaces.runs(ws))));
