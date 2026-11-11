@@ -56,6 +56,13 @@ const RULES = [
   [/consent|delegat(e|ion|ed) (token|access)|act claim|on behalf of me|check (my )?balance|balance read/i, 'in-app', 'uc1'],
   [/unknown agent|rogue agent|unregister(ed|ed) agent|agent not (registered|allowed)/i, 'in-app', 'uc6-rogue'],
   [/upstream (mcp|audience)|token (aimed|minted) (at|for) (the )?upstream/i, 'in-app', 'uc32-upstream'],
+  // P6 batch 1 (foundations): act gate, agent identity lifecycle, observability, mortgage, patterns, why-blocked
+  [/act gate|may[- ]act|revok(e|ed).{0,40}(consent|authorization|agent)|delegat(e|ion|ed).{0,20}consent.{0,20}(every|each|per) call/i, 'in-app', 'uc3-actgate'],
+  [/agent (identity|app).{0,30}(lifecycle|retire|rotate)|retire(d)? (the )?agent|orphaned agent|rotate (the )?agent credential|live agent identity|agent.{0,10}identity.{0,20}exchange/i, 'in-app', 'uc19-lifecycle'],
+  [/agent (observability|audit|trace)|traceab(le|ility)|reconstruct.{0,20}trace|full trace|audit trail/i, 'in-app', 'uc20-trace'],
+  [/my mortgage|mortgage (lookup|read|status|balance|details)|show.{0,10}mortgage/i, 'in-app', 'uc33-mortgage'],
+  [/unusual pattern|odd (activity|behavior|behaviour)|anomal(y|ies)|spot.{0,20}unusual|anything unusual/i, 'in-app', 'uc34-patterns'],
+  [/why.{0,20}(was|is).{0,20}(that|it|this).{0,20}blocked|explain.{0,20}(the )?(block|denial|deny|refus)|why.{0,20}denied|walk me through.{0,20}token chain/i, 'in-app', 'uc35-why'],
   // Redirects: the standalone labs that own these stories
   [/token (theft|replay)|stolen (token|session)|replay (attack|defense)/i, 'redirect', 'UC12'],
   [/\bjit\b|just[- ]in[- ]time (access|provision)/i, 'redirect', 'UC17'],

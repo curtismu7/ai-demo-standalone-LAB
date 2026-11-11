@@ -168,8 +168,22 @@
       "story": "S06"
     },
     {
+      "id": "try-uc3-actgate",
+      "label": "Scenario 7: UC3: the act gate — the actor is checked on every call",
+      "description": "The act claim is minted from the actor token at exchange, and the may_act consent is bridged to the PDP on EVERY call: a call whose acting agent does not match the consent is denied, and revoking the consent takes effect without waiting for the delegated token to expire.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc3-actgate"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S07"
+    },
+    {
       "id": "try-uc6-rogue",
-      "label": "Scenario 7: UC6: an unknown agent is refused at the gateway",
+      "label": "Scenario 8: UC6: an unknown agent is refused at the gateway",
       "description": "Authorization keys on WHO is acting: the actor allow-list refuses an unregistered agent before any policy runs.",
       "group": "try-it",
       "action": {
@@ -179,11 +193,11 @@
       "terms": [
         "delegation"
       ],
-      "story": "S07"
+      "story": "S08"
     },
     {
       "id": "try-uc32-upstream",
-      "label": "Scenario 8: UC32: a token aimed at an upstream MCP is refused",
+      "label": "Scenario 9: UC32: a token aimed at an upstream MCP is refused",
       "description": "An audience is a destination: a token minted for an upstream MCP server is never accepted downstream.",
       "group": "try-it",
       "action": {
@@ -193,11 +207,81 @@
       "terms": [
         "delegation"
       ],
-      "story": "S08"
+      "story": "S09"
+    },
+    {
+      "id": "try-uc19-lifecycle",
+      "label": "Scenario 10: UC19: the live agent identity — the exchange succeeds",
+      "description": "This is the registered, live agent app: its credential mints the delegated token and the call proceeds. Retire or rotate that app in the PingOne console and the SAME call dies at the exchange step — one lifecycle action, no per-tool cleanup anywhere.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc19-lifecycle"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S10"
+    },
+    {
+      "id": "try-uc20-trace",
+      "label": "Scenario 11: UC20: observability — the full trace is reconstructable",
+      "description": "Every hop is logged with the traceId and the act chain: sign-in, exchange, the Authorize decision, the tool dispatch. Who the agent was, who authorized it, what it did, what the policy decided — the full audit trail rebuilds from the evidence panels, no app-layer instrumentation.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc20-trace"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S11"
+    },
+    {
+      "id": "try-uc33-mortgage",
+      "label": "Scenario 12: UC33: My mortgage — the proof travels with every tool",
+      "description": "The identical RFC 8693 chain (sub is the human, act={demo-agent}) authorizes a mortgage lookup, not just the everyday balance read: delegated-access proof is not special-cased per tool, so the attribution coverage does not shrink as the tool surface grows.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc33-mortgage"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S12"
+    },
+    {
+      "id": "try-uc34-patterns",
+      "label": "Scenario 13: UC34: Spot unusual patterns — reasoning rides the same rails",
+      "description": "Free-form reasoning is not a shortcut: the agent decides WHAT to look at (the recent-activity read), but every underlying call still runs the same token-exchange, gateway and Authorize legs as a deterministic chip. Unusual patterns surface through the same governed pipeline.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc34-patterns"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S13"
+    },
+    {
+      "id": "try-uc35-why",
+      "label": "Scenario 14: UC35: Why was that blocked? — the explanation reads the run",
+      "description": "The agent narrates the REAL events of the run — the act chain, the group gate, the Authorize verdict — not a canned script. The explanation is only as good as the evidence the chain produced, so it cannot drift from what actually fired.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc35-why"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S14"
     },
     {
       "id": "try-uc7-stepup",
-      "label": "Scenario 9: UC7: MFA step-up — the agent pauses, the human completes MFA",
+      "label": "Scenario 15: UC7: MFA step-up — the agent pauses, the human completes MFA",
       "description": "From $500 up: consent + MFA (the tier ceiling, $2000 Standard and $50000 Premium, still denies first). The agent PAUSES — it cannot self-approve. The receipt (MfaVerified) re-evaluates the SAME call.",
       "group": "try-it",
       "action": {
@@ -207,11 +291,11 @@
       "terms": [
         "hitl"
       ],
-      "story": "S09"
+      "story": "S15"
     },
     {
       "id": "try-uc8-hitl",
-      "label": "Scenario 10: UC8: HITL approval — an approval is never an MFA",
+      "label": "Scenario 16: UC8: HITL approval — an approval is never an MFA",
       "description": "Human-approval tools always pause the agent, whatever the amount. Only a verified, call-bound HitlApproved receipt moves it.",
       "group": "try-it",
       "action": {
@@ -221,11 +305,11 @@
       "terms": [
         "hitl"
       ],
-      "story": "S10"
+      "story": "S16"
     },
     {
       "id": "try-uc22-ciba",
-      "label": "Scenario 11: UC22: CIBA — out-of-band approval on the user’s device",
+      "label": "Scenario 17: UC22: CIBA — out-of-band approval on the user’s device",
       "description": "An agent has no browser in which to prompt: the backend calls bc-authorize and the user approves out-of-band; the receipt (CibaApproved) re-evaluates the call.",
       "group": "try-it",
       "action": {
@@ -235,7 +319,7 @@
       "terms": [
         "hitl"
       ],
-      "story": "S11"
+      "story": "S17"
     },
     {
       "id": "concept-catalog",
@@ -318,26 +402,56 @@
     },
     {
       "id": "S07",
+      "title": "UC3: the act gate — the actor is checked on every call",
+      "say": "The act claim is minted from the actor token at exchange, and the may_act consent is bridged to the PDP on EVERY call: a call whose acting agent does not match the consent is denied, and revoking the consent takes effect without waiting for the delegated token to expire."
+    },
+    {
+      "id": "S08",
       "title": "UC6: an unknown agent is refused at the gateway",
       "say": "Authorization keys on WHO is acting: the actor allow-list refuses an unregistered agent before any policy runs."
     },
     {
-      "id": "S08",
+      "id": "S09",
       "title": "UC32: a token aimed at an upstream MCP is refused",
       "say": "An audience is a destination: a token minted for an upstream MCP server is never accepted downstream."
     },
     {
-      "id": "S09",
+      "id": "S10",
+      "title": "UC19: the live agent identity — the exchange succeeds",
+      "say": "This is the registered, live agent app: its credential mints the delegated token and the call proceeds. Retire or rotate that app in the PingOne console and the SAME call dies at the exchange step — one lifecycle action, no per-tool cleanup anywhere."
+    },
+    {
+      "id": "S11",
+      "title": "UC20: observability — the full trace is reconstructable",
+      "say": "Every hop is logged with the traceId and the act chain: sign-in, exchange, the Authorize decision, the tool dispatch. Who the agent was, who authorized it, what it did, what the policy decided — the full audit trail rebuilds from the evidence panels, no app-layer instrumentation."
+    },
+    {
+      "id": "S12",
+      "title": "UC33: My mortgage — the proof travels with every tool",
+      "say": "The identical RFC 8693 chain (sub is the human, act={demo-agent}) authorizes a mortgage lookup, not just the everyday balance read: delegated-access proof is not special-cased per tool, so the attribution coverage does not shrink as the tool surface grows."
+    },
+    {
+      "id": "S13",
+      "title": "UC34: Spot unusual patterns — reasoning rides the same rails",
+      "say": "Free-form reasoning is not a shortcut: the agent decides WHAT to look at (the recent-activity read), but every underlying call still runs the same token-exchange, gateway and Authorize legs as a deterministic chip. Unusual patterns surface through the same governed pipeline."
+    },
+    {
+      "id": "S14",
+      "title": "UC35: Why was that blocked? — the explanation reads the run",
+      "say": "The agent narrates the REAL events of the run — the act chain, the group gate, the Authorize verdict — not a canned script. The explanation is only as good as the evidence the chain produced, so it cannot drift from what actually fired."
+    },
+    {
+      "id": "S15",
       "title": "UC7: MFA step-up — the agent pauses, the human completes MFA",
       "say": "From $500 up: consent + MFA (the tier ceiling, $2000 Standard and $50000 Premium, still denies first). The agent PAUSES — it cannot self-approve. The receipt (MfaVerified) re-evaluates the SAME call."
     },
     {
-      "id": "S10",
+      "id": "S16",
       "title": "UC8: HITL approval — an approval is never an MFA",
       "say": "Human-approval tools always pause the agent, whatever the amount. Only a verified, call-bound HitlApproved receipt moves it."
     },
     {
-      "id": "S11",
+      "id": "S17",
       "title": "UC22: CIBA — out-of-band approval on the user’s device",
       "say": "An agent has no browser in which to prompt: the backend calls bc-authorize and the user approves out-of-band; the receipt (CibaApproved) re-evaluates the call."
     }
