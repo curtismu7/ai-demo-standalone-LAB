@@ -178,7 +178,8 @@ describe("UseCaseDetail", () => {
     expect(screen.getByTestId("ucd-value").textContent).toContain("the attacker needs the key");
     expect(screen.getByTestId("ucd-roles").textContent).toContain("validates");
     expect(screen.getByTestId("ucd-roles").textContent).toContain("PingOne Authorize (PDP)");
-    expect(screen.getByTestId("uc-detail").textContent).toContain("stage 2–4");
+    expect(screen.getByTestId("uc-detail").textContent).toContain("expected: DENY");
+    expect(screen.getByTestId("uc-detail").textContent).toContain("catalog entry");
     await user.click(screen.getByTestId("ucd-close"));
   });
   it("renders nothing without a use case", () => {
@@ -227,7 +228,7 @@ describe("PolicyGate", () => {
     expect(facts.some((f) => f.id === "solution")).toBe(true);
     expect(facts.some((f) => f.id === "tool")).toBe(true);
     expect(facts.every((f) => ["measured", "inferred", "UNVERIFIED"].includes(f.status))).toBe(true);
-    expect(useCaseFacts({ id: "UC1", track: "foundations", expectedOutcome: "PERMIT" }).some((f) => f.id === "runs-in" && f.text.includes("stage 1"))).toBe(true);
+    expect(useCaseFacts({ id: "UC1", track: "foundations", expectedOutcome: "PERMIT" }).some((f) => f.id === "runs-in" && f.text.includes("wired engine"))).toBe(true);
   });
 
   it("the facts panel switches to the selected use case's evidence", async () => {

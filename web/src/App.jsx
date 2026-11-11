@@ -1,64 +1,51 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import PolicyGate from "./components/PolicyGate";
 import DiagramTab from "./components/DiagramTab";
 import TalkTrack from "./components/TalkTrack";
-import ShelfLink from "./components/ShelfLink";
 import ReturnLink from "./return-link/ReturnLink.jsx";
+import ShellBar from "./shell/ShellBar.jsx";
+import SimBanner from "./shell/SimBanner.jsx";
+import WelcomePage from "./pages/WelcomePage.jsx";
+import UseCasesPage from "./pages/UseCasesPage.jsx";
 import { readReturnContext } from "./return-link/returnTargets.js";
-import { scenarioFor, verticalFor } from "./handoffMap";
-import { getJson, resetWorkspace, setMode } from "./api";
-
-export const TABS = [
-  { id: "gate", label: "Dashboard & catalog" },
-  { id: "diagram", label: "Diagram" },
-  { id: "talk", label: "Talk track" },
+import { scenarioFor } from "./handoffMap";
+import { getJson, resetWorkspace } from "./api";
+export const ROUTES = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "use-cases", label: "Use Cases" },
+  { id: "guide", label: "Guide" },
+  { id: "welcome", label: "Welcome" },
 ];
-// The banner is never blank and never claims "not hosted" before it knows: until /api/info or /api/scenarios answers (or if both fail)
-// it says both, honestly.
-const TAIL = "Nothing here calls a real gateway, identity provider or tenant.";
-const WHAT = "the AI-DEMO2 dashboard as one mock app. A mock PDP, a mock delegated-token chain, a mock directory.";
-export const BANNER_UNKNOWN = `SIMULATED / HOSTED SIMULATION: ${WHAT} ${TAIL}`;
-const BANNER_LOCAL = `SIMULATED: ${WHAT} ${TAIL}`;
-const BANNER_HOSTED = `HOSTED SIMULATION: ${WHAT} ${TAIL}`;
+const DIAGRAM_ROUTE = "diagram"; // the stage-1 diagram view stays reachable under #/diagram (noted in the P1 PR)
 
-const hashParts = () => {
-  const h = window.location.hash.replace("#", "");
+const hashRoute = () => {
+  const h = window.location.hash.replace(/^#\/?/, "");
   const m = /^scenario-([a-z0-9-]{1,40})$/.exec(h);
-  if (m) return { tab: "gate", scenario: m[1] };
-  return { tab: TABS.some((t) => t.id === h) ? h : "gate", scenario: null };
+  if (m) return { route: "use-cases", scenario: m[1] };
+  if (h === DIAGRAM_ROUTE) return { route: DIAGRAM_ROUTE, scenario: null };
+  return { route: ROUTES.some((r) => r.id === h) ? h : "dashboard", scenario: null };
 };
 
+// ui-pattern: allow P3 the dashboard frame is the wide catalog layout this lab ships with; P3 narrows it in a later phase
 export default function App() {
-  // Opened from Customer Agent LAB: preselect the matching scenario and vertical (handoffMap.js), once, on load.
+  // Opened from Customer Agent LAB: preselect the matching scenario (handoffMap.js), once, on load.
   const [handoff] = useState(() => readReturnContext(window.location.search));
-  const [vertical, setVertical] = useState(() => verticalFor(handoff) || "retail");
   const [story, setStory] = useState(null);
-  const [info, setInfo] = useState(undefined); // undefined = loading, null = failed
   const [error, setError] = useState(null);
-  const [tab, setTab] = useState(hashParts().tab);
-  const [requested, setRequested] = useState(() => hashParts().scenario || scenarioFor(handoff));
+  const [route, setRoute] = useState(hashRoute().route);
+  const [requested, setRequested] = useState(() => hashRoute().scenario || scenarioFor(handoff));
   const [presenter, setPresenter] = useState(false);
   const [resetSignal, setResetSignal] = useState(0);
   const [resetMsg, setResetMsg] = useState("");
-  const tabsRef = useRef(null);
 
-  useEffect(() => { getJson("/api/info").then(setInfo, () => setInfo(null)); }, []);
-  useEffect(() => { getJson(`/api/scenarios?vertical=${encodeURIComponent(vertical)}`).then((j) => { setStory(j); setError(null); }, (e) => setError(e.message)); }, [vertical]);
+  useEffect(() => { getJson("/api/scenarios").then((j) => { setStory(j); setError(null); }, (e) => setError(e.message)); }, []);
+  const hashGuard = { handled: false };
   useEffect(() => {
-    const on = () => { const p = hashParts(); setTab(p.tab); setRequested(p.scenario); };
+    const on = () => { if (hashGuard.handled) return; hashGuard.handled = true; const p = hashRoute(); setRoute((r) => (p.route === r ? r : p.route)); setRequested((v) => (p.scenario === v ? v : p.scenario)); };
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
   }, []);
-  const select = (id) => { setTab(id); setRequested(null); try { window.history.replaceState(null, "", `#${id}`); } catch { /* ignore */ } };
-  const pickScenario = (sid) => { try { window.history.replaceState(null, "", `#scenario-${sid}`); } catch { /* ignore */ } };
-
-  // Keep the active tab fully in view in the scrolling tab strip (375px).
-  useEffect(() => {
-    const strip = tabsRef.current; const el = document.getElementById(`tab-${tab}`);
-    if (!strip || !el) return;
-    const left = el.offsetLeft - strip.offsetLeft;
-    if (left < strip.scrollLeft || left + el.offsetWidth > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = Math.max(0, left - 8);
-  }, [tab]);
+  const pickScenario = (sid) => { try { window.history.replaceState(null, "", `#/scenario-${sid}`); } catch { /* ignore */ } };
 
   useEffect(() => {
     const on = (e) => {
@@ -76,81 +63,57 @@ export default function App() {
     setResetMsg(ok ? "Reset: your workspace's directory flips and runs are back to defaults." : "Reset failed on the server; the view was reset.");
   }, []);
 
-  const onKeyTab = (e, i) => {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    const next = TABS[(i + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
-    select(next.id);
-    document.getElementById(`tab-${next.id}`)?.focus();
-  };
-
-  const hosted = story ? !!story.hosted : info ? !!info.hosted : null;
-  const banner = story ? story.banner : hosted === true ? BANNER_HOSTED : hosted === false ? BANNER_LOCAL : BANNER_UNKNOWN;
   return (
     <div className={`app${presenter ? " app--presenter" : ""}`}>
-      <header>
-        <p className="banner" role="status" data-testid="banner">{banner}</p>
-        <ReturnLink app="ai-demo-standalone" />
-        <div className="head">
-          <div>
-            <h1>AI Demo Standalone</h1>
-            {!presenter && story && <p className="intro">{story.intro}</p>}
-          </div>
-          <div className="head__tools">
-            <span className="chip" data-testid="mode">Mode: {info ? info.mode : "mock"}{hosted === true ? " (hosted)" : hosted === false ? " (local)" : ""}</span>
-            {!presenter && info && (
-              <button
-                type="button"
-                aria-pressed={info.mode === "real"}
-                data-testid="mode-real"
-                title={info.realAvailable ? "Switch between Mock and Real. Real is owner-run and RESERVED in this build: the toggle reports it, the live-gateway data path is not wired yet." : "Real is not configured: set the AIDEMOLAB_REAL_* environment (owner-run). Mock keeps working."}
-                disabled={!info.realAvailable && info.mode !== "real"}
-                onClick={async () => {
-                  const target = info.mode === "real" ? "mock" : "real";
-                  const res = await setMode(target).catch(() => ({ ok: false }));
-                  if (res.ok) { window.location.reload(); }
-                  else setResetMsg(res.body?.detail || "Could not switch mode.");
-                }}
-              >
-                {info.mode === "real" ? "Real (press to switch to Mock)" : "Mock (press to switch to Real)"}
-              </button>
-            )}
-            {!presenter && (
-              <label className="inline">Vertical{" "}
-                <select value={vertical} onChange={(e) => setVertical(e.target.value)}>
-                  {(story ? story.verticals : ["retail"]).map((v) => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </label>
-            )}
-            <ReturnLink app="ai-demo-standalone" variant="header" />
-            <ShelfLink />
-            <button type="button" onClick={reset} data-testid="reset">Reset</button>
-            <button type="button" aria-pressed={presenter} onClick={() => setPresenter((v) => !v)} data-testid="presenter">{presenter ? "Exit presenter (Esc)" : "Presenter (P)"}</button>
-          </div>
-        </div>
-      </header>
+      <ShellBar route={route} onReset={reset}>
+        <ReturnLink app="ai-demo-standalone" variant="header" />
+      </ShellBar>
       <main>
+        <SimBanner />
+        <ReturnLink app="ai-demo-standalone" />
         <p className="sr-only" role="status" aria-live="polite">{resetMsg}</p>
-        <div role="tablist" aria-label="Lab sections" className="tabs" ref={tabsRef}>
-          {TABS.map((t, i) => (
-            <button key={t.id} id={`tab-${t.id}`} role="tab" type="button" aria-selected={tab === t.id} aria-controls={`panel-${t.id}`} tabIndex={tab === t.id ? 0 : -1}
-              onClick={() => select(t.id)} onKeyDown={(e) => onKeyTab(e, i)}>{t.label}</button>
-          ))}
-        </div>
-        <div id={`panel-${tab}`} role="tabpanel" aria-labelledby={`tab-${tab}`}>
-          {error ? <p className="app-error" role="alert">Could not load the lab ({error}). Is the server running?</p> : !story ? <p className="muted">Loading...</p> : (
-            <>
-              {presenter && tab !== "talk" && (
-                <aside className="presenter-say" data-testid="presenter-say" aria-label="Talk track">
-                  {story.talkTrack.filter((t) => (tab === "gate" ? ["say-first", "one-engine", "groups", "tiers", "who-acting", "unverified"] : ["say-first"]).includes(t.id)).map((t) => <p key={t.id}><strong>{t.title}.</strong> {t.say}</p>)}
-                </aside>
-              )}
-              {tab === "gate" && <PolicyGate key={vertical} story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} />}
-              {tab === "diagram" && <DiagramTab vertical={vertical} resetSignal={resetSignal} />}
-              {tab === "talk" && <TalkTrack talk={story.talkTrack} />}
-            </>
-          )}
-        </div>
+        {error ? <p className="app-error" role="alert">Could not load the lab ({error}). Is the server running?</p> : !story ? <p className="muted">Loading...</p> : (
+          <>
+            {presenter && route !== "guide" && (
+              <aside className="presenter-say" data-testid="presenter-say" aria-label="Talk track">
+                {story.talkTrack.filter((t) => (route === "dashboard" || route === "use-cases" ? ["say-first", "one-engine", "groups", "tiers", "who-acting", "unverified"] : ["say-first"]).includes(t.id)).map((t) => <p key={t.id}><strong>{t.title}.</strong> {t.say}</p>)}
+              </aside>
+            )}
+            {route === "dashboard" && <DashboardPage story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} />}
+            {route === "use-cases" && <UseCasesPage story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} />}
+            {route === "guide" && <GuidePage story={story} resetSignal={resetSignal} />}
+            {route === "welcome" && <WelcomePage />}
+            {route === DIAGRAM_ROUTE && <DiagramRoute resetSignal={resetSignal} />}
+          </>
+        )}
       </main>
     </div>
+  );
+}
+
+// The dashboard route keeps the existing PolicyGate panel content until the P2 rebuild replaces it.
+function DashboardPage({ story, resetSignal, requestedId, onSelect }) {
+  if (!story.scenarios.length) return <p className="muted">No scenarios are wired yet.</p>;
+  return <PolicyGate story={story} resetSignal={resetSignal} requestedId={requestedId} onSelect={onSelect} />;
+}
+
+// The Guide page: the diagram view plus the talk track, under one h1.
+function GuidePage({ story, resetSignal }) {
+  return (
+    <>
+      <h1>Guide</h1>
+      <DiagramTab resetSignal={resetSignal} />
+      <TalkTrack talk={story.talkTrack} />
+    </>
+  );
+}
+
+// The stage-1 diagram tab keeps its own view under #/diagram so nothing is lost; the Guide page renders it too.
+function DiagramRoute({ resetSignal }) {
+  return (
+    <>
+      <h1>Diagram</h1>
+      <DiagramTab resetSignal={resetSignal} />
+    </>
   );
 }

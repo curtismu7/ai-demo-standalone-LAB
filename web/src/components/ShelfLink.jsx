@@ -20,7 +20,7 @@ export default function ShelfLink({ url, traceparent, headers, className = "" })
     if (url) { setHref(url); return undefined; }
     let alive = true;
     const init = { credentials: "omit", headers: { Accept: "application/json", ...(headers ?? {}), ...(traceparent ? { traceparent: traceparent() } : {}) } };
-    fetch("/api/shelf", init)
+    fetch("/shelf", init)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (alive && d?.shelfUrl) setHref(d.shelfUrl); })
       .catch(() => { /* stay hidden: no shelf, no button */ });

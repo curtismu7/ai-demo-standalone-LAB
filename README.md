@@ -75,7 +75,7 @@ The page you see now (a catalog and run panel, with the HITL and A2A panels) is 
 | 10 | UC8 HITL approval (`create_transfer`, $100) | hitl | OBLIGATION `HITL_CONSENT` | Approval tools always pause; an approval is never an MFA |
 | 11 | UC22 CIBA (`move_money`) | hitl | OBLIGATION `CIBA` | An agent has no browser: approval happens out-of-band on the user's device |
 
-The seeded directory has three users: `demoUser` (`privileged`, Standard), `premiumUser` (`privileged`, `premiumTier`, Premium) and `jane` (no groups, Standard). Three vertical packs (`retail`, `health`, `finance`) change the brand wording only.
+The seeded directory has three users: `demoUser` (`privileged`, Standard), `premiumUser` (`privileged`, `premiumTier`, Premium) and `jane` (no groups, Standard). One airline cast (`airline`, Meridian Air) fills the brand wording; the vertical selector was removed in P1.
 
 ## Run it
 
@@ -135,16 +135,14 @@ All under `/api`. Writes are same-origin only; every request carries a workspace
 | `POST /api/a2a/registry/set` | `{ specialist, registered }`: register or revoke one; the next call moves |
 | `GET /api/runs` | This workspace's last 20 runs |
 | `POST /api/reset` | Clear this workspace's directory flips, runs, challenges and registry |
-| `GET /shelf` | The shelf URL, if one is configured. Mounted at `/shelf`, not under `/api` (see Known gaps) |
+| `GET /shelf` | The shelf URL, if one is configured. Mounted at `/shelf`, not under `/api`   |
 
-The web page has three tabs (Dashboard & catalog, Diagram, Talk track), a Mock / Real toggle, a vertical picker, Reset and presenter mode (`P`). Opened from Customer Agent LAB with `?from=customer-agent&uc=<id>`, it preselects the matching scenario and shows a Back link.
+The web page has hash routes (#/dashboard, #/use-cases, #/guide, #/welcome; the diagram also under #/diagram), a dark shell bar with a Mock / Real toggle, Reset and presenter mode (`P`). Opened from Customer Agent LAB with `?from=customer-agent&uc=<id>`, it preselects the matching scenario and shows a Back link.
 
 ## Known gaps
 
 - **Receipts are a teaching mechanism, not a security boundary.** The server issues and consumes them, but a receipt is an unsigned record that anyone who knows its `receiptId` can present; the workspace id (`X-Workspace`) is not authenticated, so whoever sends it shares that workspace's store; `POST /api/consent` mints a mock token for any user without a login; and the store lives in process memory (a restart clears it). `POST /api/challenge` does not run the policy, so a challenge can be raised for a call the policy would deny (for example a user outside the group, or an amount above the tier ceiling): the receipt cannot permit what the policy denies, but the challenge is not refused up front.
-- **Some page text still describes the stage-1 build:** the intro, the "stages" fact and the catalog hint say HITL and the other tracks "land in the next stages", and the use-case detail says HITL runs in "stage 2-4". HITL and A2A are wired now; that text is out of date.
-- **The header's Shelf link never shows.** The page asks `GET /api/shelf`, but the server mounts the route at `/shelf`, so the page gets a 404.
-- **Removed 2026-11-11:** the `k8s/` manifests and the `AIDEMOLAB_HOSTED` / hosted-banner wording (the SE mock build is deferred; standalone apps are not hosted). Also fixed: the header Shelf link now answers on `GET /api/shelf` (the vendored ShelfLink's path; `/shelf` still serves the same payload), and compose carries `restart: unless-stopped`.
+- **Fixed in P1 and in the server cleanup:** the intro, the "stages" fact, the catalog hint and the use-case detail no longer say HITL and the other tracks "land in the next stages" — HITL and A2A are wired now, and the text says so. The header's Shelf link works (`GET /api/shelf` answers the vendored ShelfLink's path; `/shelf` still serves the same payload). The `k8s/` manifests and the `AIDEMOLAB_HOSTED` / hosted-banner wording are gone (no hosted mode; local Docker only), and compose carries `restart: unless-stopped`.
 - **The UI does not follow the family UI standard** (dark shell-bar header, simulation banner first, card grid). The rebuild in "Direction" replaces the page, so the standard is applied there.
 - **`server/src/shelfLink.js` still reads `SHELF_URL` from `~/Development/.env`** when the variable is not set in the environment; the compose file sets `SHELF_URL`, so the Docker form does not depend on it.
 

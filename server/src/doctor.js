@@ -46,7 +46,7 @@ export async function runChecks({ env = process.env, cast = DEFAULT_CAST } = {})
   const holes = unfilled(text, DEFAULT_CAST);
   add('story-tokens', holes.length ? 'fail' : 'pass', holes.length ? `unfilled {{tokens}}: ${[...new Set(holes)].join(', ')}` : 'every {{cast}} token is filled');
   const badVert = Object.entries(VERTICALS).filter(([, v]) => unfilled(text, v).length).map(([k]) => k);
-  add('verticals', badVert.length ? 'fail' : 'pass', badVert.length ? `verticals missing a token: ${badVert.join(', ')}` : `${Object.keys(VERTICALS).length} vertical packs fill every token`);
+  add('verticals', badVert.length ? 'fail' : 'pass', badVert.length ? `the cast is missing a token: ${badVert.join(', ')}` : `${Object.keys(VERTICALS).length} cast (${Object.keys(VERTICALS).join(', ')}) fills every token`);
 
   const filled = JSON.stringify([buildStory(cast)]);
   const hosts = scanHosts(filled);
