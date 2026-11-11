@@ -19,8 +19,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      # A spare port in the range: the local container may hold 7680 on this runner.
-      - run: PORT=7719 npm run doctor
+      - run: PORT=7810 npm run doctor
   secrets:
     runs-on: ubuntu-latest
     steps:

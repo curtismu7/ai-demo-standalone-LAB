@@ -14,19 +14,20 @@ test('bind: loopback only unless AIDEMOLAB_BIND is set', () => {
   assert.equal(assertBindAllowed('0.0.0.0', { AIDEMOLAB_BIND: '0.0.0.0' }), '0.0.0.0');
 });
 
-test('ports: 7710-7719 only, never a reserved or another agent\'s one', () => {
-  assert.equal(portProblem(7710), null); assert.equal(portProblem(7719), null);
-  for (const p of [5000, 7679, 7649, 5200, 8080, 5173, 3900, 4000, 4400, 4510, 4600, 4601, 4840, 18080, 19080, 19090, 4771, 4700]) assert.ok(portProblem(p), String(p));
+test('ports: only this app\'s one allocated port, 7810; never a reserved or another app\'s one', () => {
+  assert.equal(portProblem(7810), null);
+  // 7710 is diagram-prove-lab's port: this app moved off it.
+  for (const p of [5000, 7679, 7649, 5200, 7710, 7719, 7809, 7811, 8080, 5173, 3900, 4000, 4400, 4510, 4600, 4601, 4840, 18080, 19080, 19090, 4771, 4700]) assert.ok(portProblem(p), String(p));
   assert.ok(portProblem(NaN));
-  assert.equal(resolvePort({}), 7710);
-  assert.equal(resolvePort({ PORT: '7715' }), 7715);
-  assert.throws(() => resolvePort({ PORT: '7689' }));
-  assert.equal(resolvePort({ PORT: '7719' }), 7719);
+  assert.equal(resolvePort({}), 7810);
+  assert.equal(resolvePort({ PORT: '7810' }), 7810);
+  assert.throws(() => resolvePort({ PORT: '7710' }));
+  assert.throws(() => resolvePort({ PORT: '7811' }));
 });
 
 test('reserved hosts and the host scan', () => {
   assert.ok(isReservedHost('a.b.invalid')); assert.ok(isReservedHost('mcp.northwind.example')); assert.ok(!isReservedHost('example.com'), 'the rulebook allows only .example and .invalid'); assert.ok(!isReservedHost('example.org')); assert.ok(!isReservedHost('sub.example.com'));
-  assert.deepEqual(scanHosts('https://as.example.invalid/x and mail a@agent.example and http://localhost:7710/'), []);
+  assert.deepEqual(scanHosts('https://as.example.invalid/x and mail a@agent.example and http://localhost:7810/'), []);
   assert.deepEqual(scanHosts('https://example.com/mcp'), ['example.com']);
   assert.deepEqual(scanHosts('see https://real.com/x and 10.1.2.3'), ['10.1.2.3', 'real.com']);
 });
@@ -46,17 +47,17 @@ test('cleanText strips control and bidi characters and caps the length', () => {
 const run = (mw, req) => { const out = {}; const res = { status(c) { out.status = c; return this; }, json(b) { out.body = b; return this; } }; mw(req, res, () => { out.next = true; }); return out; };
 
 test('hostCheck refuses a non-loopback Host (DNS rebinding)', () => {
-  assert.ok(run(hostCheck, { headers: { host: 'localhost:7710' } }).next);
-  assert.ok(run(hostCheck, { headers: { host: '[::1]:7710' } }).next);
-  assert.equal(run(hostCheck, { headers: { host: 'evil.example.invalid:7710' } }).status, 403);
+  assert.ok(run(hostCheck, { headers: { host: 'localhost:7810' } }).next);
+  assert.ok(run(hostCheck, { headers: { host: '[::1]:7810' } }).next);
+  assert.equal(run(hostCheck, { headers: { host: 'evil.example.invalid:7810' } }).status, 403);
   assert.equal(run(hostCheck, { headers: {} }).status, 403);
 });
 
 test('sameOriginWrites: GET passes, cross-origin and cross-site writes refused', () => {
-  const h = { host: 'localhost:7710' };
+  const h = { host: 'localhost:7810' };
   assert.ok(run(sameOriginWrites, { method: 'GET', headers: { ...h, origin: 'http://evil.example.invalid' } }).next);
   assert.ok(run(sameOriginWrites, { method: 'POST', headers: h }).next, 'no Origin (curl) is allowed');
-  assert.ok(run(sameOriginWrites, { method: 'POST', headers: { ...h, origin: 'http://localhost:7710' } }).next);
+  assert.ok(run(sameOriginWrites, { method: 'POST', headers: { ...h, origin: 'http://localhost:7810' } }).next);
   assert.equal(run(sameOriginWrites, { method: 'POST', headers: { ...h, origin: 'http://localhost:9999' } }).status, 403);
   assert.equal(run(sameOriginWrites, { method: 'POST', headers: { ...h, origin: 'null' } }).status, 403);
   assert.equal(run(sameOriginWrites, { method: 'DELETE', headers: { ...h, 'sec-fetch-site': 'cross-site' } }).status, 403);
@@ -65,7 +66,7 @@ test('sameOriginWrites: GET passes, cross-origin and cross-site writes refused',
 });
 
 test('behind the ingress (Host rewritten to loopback) only the configured public host counts as same-origin', () => {
-  const loopback = { host: '127.0.0.1:7710' };
+  const loopback = { host: '127.0.0.1:7810' };
   const post = (origin) => run(sameOriginWrites, { method: 'POST', headers: { ...loopback, origin } });
   const saved = process.env.AIDEMOLAB_PUBLIC_HOST;
   try {

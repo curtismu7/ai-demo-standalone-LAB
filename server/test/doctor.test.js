@@ -11,9 +11,9 @@ test('every doctor check passes on a clean default environment', async () => {
   }
 });
 
-test('a port outside 7710-7719 fails, and a wildcard bind needs the opt-in', async () => {
+test('a port other than 7810 fails, and a wildcard bind needs the opt-in', async () => {
   assert.equal((await runChecks({ env: { PORT: '5010' } })).find((c) => c.id === 'port-range').level, 'fail');
-  assert.equal((await runChecks({ env: { PORT: '7710', AIDEMOLAB_BIND: '0.0.0.0' } })).find((c) => c.id === 'bind').level, 'pass');
+  assert.equal((await runChecks({ env: { PORT: '7810', AIDEMOLAB_BIND: '0.0.0.0' } })).find((c) => c.id === 'bind').level, 'pass');
 });
 
 test('MODE other than mock fails the doctor, and the hosted build says so', async () => {

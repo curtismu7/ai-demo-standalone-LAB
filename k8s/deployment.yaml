@@ -27,18 +27,18 @@ spec:
           image: __IMAGE__
           imagePullPolicy: IfNotPresent
           ports:
-            - { name: http, containerPort: 7710 }
+            - { name: http, containerPort: 7810 }
           env:
             - { name: MODE, value: mock }
             - { name: AIDEMOLAB_HOSTED, value: "1" }
             - { name: AIDEMOLAB_PUBLIC_HOST, value: __SE_HOST__ }
-            - { name: PORT, value: "7710" }
+            - { name: PORT, value: "7810" }
             - { name: AIDEMOLAB_BIND, value: 0.0.0.0 }
           readinessProbe:
-            httpGet: { path: /api/health, port: http, httpHeaders: [{ name: Host, value: "127.0.0.1:7710" }] }
+            httpGet: { path: /api/health, port: http, httpHeaders: [{ name: Host, value: "127.0.0.1:7810" }] }
             periodSeconds: 10
           livenessProbe:
-            httpGet: { path: /api/health, port: http, httpHeaders: [{ name: Host, value: "127.0.0.1:7710" }] }
+            httpGet: { path: /api/health, port: http, httpHeaders: [{ name: Host, value: "127.0.0.1:7810" }] }
             initialDelaySeconds: 10
             periodSeconds: 20
           resources:

@@ -10,7 +10,7 @@ RUN npm run build -w web
 
 FROM node:26-alpine
 WORKDIR /app
-ENV NODE_ENV=production PORT=7710 MODE=mock
+ENV NODE_ENV=production PORT=7810 MODE=mock
 COPY package.json package-lock.json ./
 COPY web/package.json web/
 COPY server/package.json server/
@@ -20,7 +20,7 @@ COPY server/data server/data
 COPY server/diagrams server/diagrams
 COPY --from=build /app/web/dist web/dist
 USER node
-EXPOSE 7710
+EXPOSE 7810
 # Inside the container the server must listen on all interfaces, so AIDEMOLAB_BIND is set here on purpose.
 # The compose file publishes the port on 127.0.0.1 only; do not publish it more widely.
 ENV AIDEMOLAB_BIND=0.0.0.0

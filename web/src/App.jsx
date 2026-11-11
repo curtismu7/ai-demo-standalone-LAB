@@ -16,9 +16,10 @@ export const TABS = [
 // The banner is never blank and never claims "not hosted" before it knows: until /api/info or /api/scenarios answers (or if both fail)
 // it says both, honestly.
 const TAIL = "Nothing here calls a real gateway, identity provider or tenant.";
-export const BANNER_UNKNOWN = `SIMULATED / HOSTED SIMULATION: a mock A2A delegation chain, a mock Agent Card registry and a mock RFC 8693 exchange. ${TAIL}`;
-const BANNER_LOCAL = `SIMULATED: a mock A2A delegation chain, a mock Agent Card registry and a mock RFC 8693 exchange. ${TAIL}`;
-const BANNER_HOSTED = `HOSTED SIMULATION: a mock A2A delegation chain, a mock Agent Card registry and a mock RFC 8693 exchange. ${TAIL}`;
+const WHAT = "the AI-DEMO2 dashboard as one mock app. A mock PDP, a mock delegated-token chain, a mock directory.";
+export const BANNER_UNKNOWN = `SIMULATED / HOSTED SIMULATION: ${WHAT} ${TAIL}`;
+const BANNER_LOCAL = `SIMULATED: ${WHAT} ${TAIL}`;
+const BANNER_HOSTED = `HOSTED SIMULATION: ${WHAT} ${TAIL}`;
 
 const hashParts = () => {
   const h = window.location.hash.replace("#", "");
