@@ -87,7 +87,7 @@ export const SCENARIOS = [
     id: 'uc7-stepup', ucId: 'UC7', track: 'hitl', title: 'UC7: MFA step-up — the agent pauses, the human completes MFA',
     user: 'demoUser', actor: 'demo-agent', tool: 'get_transactions', amount: 600,
     expected: 'OBLIGATION', obligation: 'STEP_UP',
-    lesson: 'Mid-band ($500-$100000): consent + MFA. The agent PAUSES — it cannot self-approve. The receipt (MfaVerified) re-evaluates the SAME call.',
+    lesson: 'From $500 up: consent + MFA (the tier ceiling, $2000 Standard and $50000 Premium, still denies first). The agent PAUSES — it cannot self-approve. The receipt (MfaVerified) re-evaluates the SAME call.',
   },
   {
     id: 'uc8-hitl', ucId: 'UC8', track: 'hitl', title: 'UC8: HITL approval — an approval is never an MFA',

@@ -14,7 +14,7 @@ import { buildStory, CATALOG } from './story.js';
 import { DIAGRAM_NAMES, buildDiagram } from './diagramData.js';
 import { decide, decideWithObligation, actChainDepth, DEFAULT_ACTORS, AUDIENCE, exchange } from './pdp.js';
 import { DEFAULT_DIRECTORY, LIMITS } from './pdpData.js';
-import { evaluateObligation, createChallenge, verifyAnswer, mintReceipt, receiptValid, createReceipts, HitlInputError } from './hitl.js';
+import { evaluateObligation, createChallenge, answerChallenge, createReceipts, HitlInputError } from './hitl.js';
 import { exchangeOne, exchangeTwo, evaluateA2a, createRegistry, actChainDepth as a2aDepth, A2AInputError, agentCard as a2aAgentCard, LIMITS as A2A_LIMITS } from './a2a.js';
 import { runAttack, createRateLimiter, ATTACK_CATALOG, AttackInputError } from './attacks.js';
 import { mountShelfRoute } from './shelfLink.js';
@@ -25,9 +25,12 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = process.env.WEB_DIST || path.resolve(HERE, '../../web/dist');
 const CONFIG = process.env.CUSTOMER_CONFIG || path.resolve(HERE, '../../customer.config.json');
 
+// Per-workspace stores beside the directory: challenges + receipts (hitl.js), the A2A specialist registry.
+const newExtra = () => ({ receipts: createReceipts(), registry: createRegistry({}), generalistToken: null });
+
 export function createApp({
   health = createHealth(), configFile = CONFIG, hosted = false,
-  workspaces = createWorkspaces({ makeDirectory: () => structuredClone(DEFAULT_DIRECTORY), makeExtra: () => ({ receipts: createReceipts(), registry: createRegistry({}), generalistToken: null, rateLimiter: createRateLimiter({ max: 8 }) }) }),
+  workspaces = createWorkspaces({ makeDirectory: () => structuredClone(DEFAULT_DIRECTORY), makeExtra: () => ({ ...newExtra(), rateLimiter: createRateLimiter({ max: 8 }) }) }),
 } = {}) {
   const app = express();
   app.disable('x-powered-by');
@@ -61,6 +64,13 @@ export function createApp({
     }
     return res.json({ source: body.source });
   });
+
+  // The workspace's challenge/receipt store (created on first use if injected workspaces have none).
+  const receiptsOf = (v) => {
+    v.extra = v.extra || newExtra();
+    v.extra.receipts = v.extra.receipts || createReceipts();
+    return v.extra.receipts;
+  };
 
   const withWorkspace = (handler) => (req, res) => {
     const ws = workspaceFrom(req);
@@ -119,10 +129,11 @@ export function createApp({
     const entry = dir[body.token.sub] || { groups: [], tier: 'Standard' };
     const ucId = typeof body.ucId === 'string' ? body.ucId.slice(0, 16) : null;
     // Stage 2: bands and HITL tools produce OBLIGATIONS, not denials — the agent pauses,
-    // the human answers, and the receipt re-evaluates the same call.
+    // the human answers, and the receipt re-evaluates the same call. The receipt is checked
+    // against this workspace's store (issued here, unspent, binds the call) and consumed.
     const claimed = typeof body.receipt === 'object' && body.receipt !== null ? body.receipt : null;
-    const { verdict, obligation } = decideWithObligation({
-      token: body.token, groups: entry.groups, tier: entry.tier, tool, amount, receipt: claimed,
+    const { verdict, obligation, receiptCheck } = decideWithObligation({
+      token: body.token, groups: entry.groups, tier: entry.tier, tool, amount, receipt: claimed, receipts: receiptsOf(v),
       authorizedActors: Array.isArray(body.authorizedActors) ? body.authorizedActors.slice(0, 8).map((x) => String(x).slice(0, LIMITS.id)) : DEFAULT_ACTORS,
       audience: typeof body.aud === 'string' && body.aud.trim() ? body.aud.trim().slice(0, 100) : AUDIENCE,
       now: () => Date.now(),
@@ -134,7 +145,7 @@ export function createApp({
     return res.status(status).json({
       ...verdict, tool, user: body.token.sub, act: body.token.act ?? null,
       chainDepth: actChainDepth(body.token.act), groups: entry.groups, tier: entry.tier,
-      ucId, workspace: ws, obligation, amount: amount ?? null,
+      ucId, workspace: ws, obligation, amount: amount ?? null, receiptCheck,
       // the teaching layer
       narrative: explain(verdict, ctx),
       lesson: lessonFor(verdict, ctx),
@@ -157,8 +168,10 @@ export function createApp({
     if (!user) return res.status(400).json({ error: 'user_required', detail: 'body.user must be non-empty text' });
     try {
       const ob = evaluateObligation({ tool, amount });
-      if (!ob.obligation || ob.obligation === 'DENY') return res.status(400).json({ error: 'no_challenge', detail: ob.reason });
-      const ch = createChallenge({ obligation: ob.obligation, user, tool, amount });
+      if (!ob.obligation) return res.status(400).json({ error: 'no_challenge', detail: ob.reason });
+      const receipts = receiptsOf(workspaces.state(ws));
+      const ch = createChallenge({ obligation: ob.obligation, user, tool, amount, now: receipts.now });
+      receipts.track(ch); // the server keeps the challenge; the answer is checked against this copy
       workspaces.record(ws, { tool, decision: 'CHALLENGED', reason: ob.reason, token: null, blocked: ob.obligation });
       return res.json({ challenge: ch, obligation: ob.obligation, reason: ob.reason, workspace: ws });
     } catch (e) {
@@ -169,14 +182,11 @@ export function createApp({
   api.post('/challenge/answer', withWorkspace((ws, req, res) => {
     const body = req.body;
     if (body === null || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'bad_request' });
-    const v = workspaces.state(ws);
-    const extra = v.extra || { receipts: createReceipts() };
     try {
-      const check = verifyAnswer({ challenge: body.challenge, answer: body.answer });
-      if (!check.ok) return res.status(400).json({ error: check.code, detail: check.reason });
-      if (!extra.receipts.spend(body.challenge.challengeId)) return res.status(400).json({ error: 'challenge_spent', detail: 'this challenge was already answered; run the call again' });
-      const receipt = mintReceipt({ challenge: body.challenge });
-      workspaces.record(ws, { tool: body.challenge.tool, decision: 'RECEIPT', reason: `receipt bound to ${body.challenge.obligation} for ${body.challenge.user}`, token: null });
+      const answered = answerChallenge({ receipts: receiptsOf(workspaces.state(ws)), challenge: body.challenge, answer: body.answer });
+      if (!answered.ok) return res.status(400).json({ error: answered.code, detail: answered.reason });
+      const { receipt } = answered;
+      workspaces.record(ws, { tool: receipt.tool, decision: 'RECEIPT', reason: `receipt bound to ${receipt.obligation} for ${receipt.user}`, token: null });
       return res.json({ receipt, workspace: ws });
     } catch (e) {
       if (e instanceof HitlInputError) return res.status(400).json({ error: e.code, detail: e.message });

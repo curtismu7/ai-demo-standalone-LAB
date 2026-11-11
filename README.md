@@ -19,14 +19,18 @@ Each answer carries the teaching layer: a per-stage narrative, a one-sentence le
 
 ### HITL obligations (UC7, UC8, UC22)
 
-| Obligation | Raised by | The human must |
-| --- | --- | --- |
-| `CONFIRM` | amount >= $250 | consent (no MFA at this band) |
-| `STEP_UP` | amount >= $500 | consent and MFA (the mock OTP is `123123`) |
-| `HITL_CONSENT` | the tools `create_transfer`, `create_wire_transfer`, `approve_large_transfer`, at any amount | consent. An approval is never an MFA |
-| `CIBA` | the tool `move_money` (an agent-initiated action with no browser) | approve out-of-band on their device (mock `auth_req_id`) |
+| Obligation | Raised by | The human must | The receipt carries |
+| --- | --- | --- | --- |
+| `CONFIRM` | amount >= $250 | consent (no MFA at this band) | `ConsentGiven: true`, `MfaVerified: false` |
+| `STEP_UP` | amount >= $500 | consent and MFA (the mock OTP is `123123`) | `ConsentGiven: true`, `MfaVerified: true` |
+| `HITL_CONSENT` | the tools `create_transfer`, `create_wire_transfer`, `approve_large_transfer`, at any amount | consent. An approval is never an MFA | `HitlApproved: true` |
+| `CIBA` | the tool `move_money` (an agent-initiated action with no browser) | approve out-of-band on their device (mock `auth_req_id`) | `CibaApproved: true` |
 
-A challenge lasts 5 minutes and can be answered once. Answering mints a receipt (`HitlApproved`, `CibaApproved`, or `MfaVerified` + `ConsentGiven`) bound to the user, the tool, the obligation and the amount; presenting it to `POST /api/authorize` in `receipt` re-evaluates the SAME call to `PERMIT`. A receipt for another user, tool, obligation or amount, or older than 5 minutes, leaves the call paused. The bands are checked after the policy, so the tier ceiling ($2000 Standard, $50000 Premium) can still deny first; the $100000 hard-deny ceiling in `hitl.js` is above every tier ceiling and never fires.
+**Challenges and receipts are issued by the server.** `POST /api/challenge` stores the challenge in the workspace; `POST /api/challenge/answer` looks it up by `challengeId` and checks the answer against the stored copy (editing `needs` or the band in transit changes nothing; a challenge the server never issued answers `challenge_unknown`). A challenge lasts 5 minutes and can be answered once (`challenge_spent`). Answering issues a receipt into the same per-workspace store (bounded, 5-minute TTL) bound to the user, the tool, the obligation and the amount: `HitlApproved`, `CibaApproved`, or `ConsentGiven` with `MfaVerified`. `MfaVerified` is `true` only on a STEP_UP receipt, after the OTP was verified; a CONFIRM receipt carries `MfaVerified: false`.
+
+Presenting a receipt to `POST /api/authorize` in `receipt` re-evaluates the SAME call to `PERMIT` and **consumes** it: a receipt permits one call. The server looks the receipt up by `receiptId` and compares the call with what it stored, never with the copy in the request. A receipt that was not issued in this workspace, is already spent, is older than 5 minutes, or does not match the call's user, tool, amount (a missing amount only matches a missing amount) or obligation leaves the call paused: the answer is still `202` `OBLIGATION` (an obligation is a pause, never a denial), and `receiptCheck` in the response names the refusal (`receipt_not_found`, `receipt_spent`, `receipt_expired`, `receipt_user_mismatch`, `receipt_tool_mismatch`, `receipt_amount_mismatch`, `receipt_obligation_mismatch`). A refused attempt does not burn a genuine receipt. Reset clears the workspace's challenges and receipts.
+
+The bands are checked after the policy, and there is no separate hard-deny band above them: the tier ceilings ($2000 Standard, $50000 Premium) are the hard limits, and the policy denies before the obligation layer runs.
 
 ### A2A hand-off (UC2, UC2.5, UC2.6, UC2.7)
 
@@ -78,7 +82,7 @@ The seeded directory has three users: `demoUser` (`privileged`, Standard), `prem
 - `./scripts/run.sh`: host-run on port 7810 (Node >= 26), installs and builds if needed, runs the doctor, starts the server.
 - Docker (OrbStack): `HOST_PORT=7810 docker compose up --build -d`, published on `127.0.0.1` only.
 - Through the shared lab-proxy: `https://local.ping-devops.com:8443/ai-demo-standalone/`.
-- Tests: `npm ci && npm test && npm run build`. Real counts from a run on the stage-2 tree, 2026-11-10 (Node 26): **48 server tests, 25 web tests (3 files) and 19 root packaging tests, 92 in all**, all passing.
+- Tests: `npm ci && npm test && npm run build`. Real counts from a run after the receipt fixes, 2026-11-10 (Node 26): **65 server tests, 25 web tests (3 files) and 19 root packaging tests, 109 in all**, all passing.
 
 ## Run from a clone
 
@@ -107,7 +111,7 @@ If 7810 is taken:
 
 ## API
 
-All under `/api`. Writes are same-origin only; every request carries a workspace id in the `X-Workspace` header (lower-case letters, digits and `-`, up to 40; default `default`), and Reset clears only that workspace (directory flips, runs, spent challenges, the specialist registry).
+All under `/api`. Writes are same-origin only; every request carries a workspace id in the `X-Workspace` header (lower-case letters, digits and `-`, up to 40; default `default`), and Reset clears only that workspace (directory flips, runs, challenges and receipts, the specialist registry).
 
 | Route | What it does |
 | --- | --- |
@@ -120,9 +124,9 @@ All under `/api`. Writes are same-origin only; every request carries a workspace
 | `GET /api/directory` | This workspace's directory (groups and tier per user), read on every decision |
 | `POST /api/directory/set` | Set one user's `groups` (up to 8) and `tier` (`Standard` or `Premium`) |
 | `POST /api/consent` | Mock consent: mint a delegated token (`sub` = user, `act` = `{ sub: actor }`, 1 hour) |
-| `POST /api/authorize` | The gated call: `{ token, tool, amount?, aud?, ucId?, receipt? }`. `200` PERMIT, `202` OBLIGATION (`obligation` names which), `403` DENY, `401` no bearer (with `WWW-Authenticate`); all return the decision, narrative, lesson, products, hops and trace id |
-| `POST /api/challenge` | Raise the challenge for a call that came back OBLIGATION: `{ user, tool, amount? }` returns the challenge (`needs`, 5-minute expiry, `authReqId` for CIBA) |
-| `POST /api/challenge/answer` | The human's answer: `{ challenge, answer: { consent?, otp?, cibaApproved? } }` returns a bound receipt; a challenge can be answered once (`challenge_spent`) |
+| `POST /api/authorize` | The gated call: `{ token, tool, amount?, aud?, ucId?, receipt? }`. `200` PERMIT, `202` OBLIGATION (`obligation` names which), `403` DENY, `401` no bearer (with `WWW-Authenticate`); all return the decision, narrative, lesson, products, hops and trace id. A presented `receipt` is checked against the workspace's store and consumed when it permits; `receiptCheck` (`{ valid, code, reason }`, or `null` with no receipt) says why a receipt was refused |
+| `POST /api/challenge` | Raise the challenge for a call that came back OBLIGATION: `{ user, tool, amount? }` returns the challenge (`needs`, 5-minute expiry, `authReqId` for CIBA); the server keeps it |
+| `POST /api/challenge/answer` | The human's answer: `{ challenge, answer: { consent?, otp?, cibaApproved? } }` looks `challenge.challengeId` up and returns a receipt bound to the stored call; a challenge can be answered once (`challenge_spent`); one the server never issued is `challenge_unknown` |
 | `GET /api/a2a/agent-card` | The generalist's Agent Card (mock A2A well-known document) |
 | `POST /api/a2a/exchange/one` | RFC 8693 exchange #1: `{ user, generalist?, scope? }` returns the generalist token |
 | `POST /api/a2a/exchange/two` | Exchange #2: `{ generalistToken, specialist?, scope? }` returns the nested-act token, scope narrowed |
@@ -137,7 +141,7 @@ The web page has three tabs (Dashboard & catalog, Diagram, Talk track), a Mock /
 
 ## Known gaps
 
-- **Receipts are not verified against the server.** `POST /api/authorize` checks a presented `receipt` only for binding (user, tool, obligation, amount, age): it does not look it up, so a hand-written receipt object that was never issued is accepted, and a real receipt can be presented again inside its 5 minutes and permits again. Only the challenge answer is single-use. The bound-receipt idea is shown honestly; consume-on-use and issue-time lookup are not built.
+- **Receipts are a teaching mechanism, not a security boundary.** The server issues and consumes them, but a receipt is an unsigned record that anyone who knows its `receiptId` can present; the workspace id (`X-Workspace`) is not authenticated, so whoever sends it shares that workspace's store; `POST /api/consent` mints a mock token for any user without a login; and the store lives in process memory (a restart clears it). `POST /api/challenge` does not run the policy, so a challenge can be raised for a call the policy would deny (for example a user outside the group, or an amount above the tier ceiling): the receipt cannot permit what the policy denies, but the challenge is not refused up front.
 - **Some page text still describes the stage-1 build:** the intro, the "stages" fact and the catalog hint say HITL and the other tracks "land in the next stages", and the use-case detail says HITL runs in "stage 2-4". HITL and A2A are wired now; that text is out of date.
 - **The header's Shelf link never shows.** The page asks `GET /api/shelf`, but the server mounts the route at `/shelf`, so the page gets a 404.
 - **Leftovers from the scaffold, unused:** the `k8s/` manifests and the `AIDEMOLAB_HOSTED` / hosted-banner wording belong to the SE mock build, which is deferred and not allowed for standalone apps (no hosted mode). They are not part of this app's ship form (local Docker only).

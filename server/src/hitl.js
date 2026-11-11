@@ -3,12 +3,19 @@
 // CIBA push), a receipt is presented back, and the policy RE-EVALUATES the same call.
 // Bands (from simulatedAuthorizeService, mock values): confirm $250 = consent only;
 // step-up $500 = consent + MFA; transfers always need HITL approval; agent-initiated
-// sensitive actions with no browser get CIBA. Receipts are per workspace and bound to the
-// challenge they came from — a receipt cannot be replayed for a different call.
+// sensitive actions with no browser get CIBA. There is no separate hard-deny band: the tier
+// ceilings in pdp.js ($2000 Standard, $50000 Premium) are the effective hard limits, and the
+// policy denies before this layer runs.
+// Challenges and receipts are issued by the SERVER into a per-workspace store (createReceipts:
+// bounded, 5 minute TTL). A receipt is looked up there, checked against user + tool + obligation
+// + amount as the server stored them, and CONSUMED on the call it permits — a hand-written,
+// replayed, expired or mismatched receipt leaves the call paused.
 import { LIMITS } from './pdpData.js';
 import { clean } from './clean.js';
 
-export const BANDS = { confirm: 250, stepUp: 500, deny: 100000 };
+export const BANDS = { confirm: 250, stepUp: 500 };
+export const TTL_SECONDS = 300; // a challenge and a receipt each live 5 minutes
+export const STORE_MAX = 200; // per workspace, per kind of record (challenges, answered ids, receipts)
 
 export class HitlInputError extends Error {
   constructor(code, detail) { super(detail); this.code = code; }
@@ -22,14 +29,13 @@ export function evaluateObligation({ tool, amount = null, hitlTools = ['create_t
   if (amount == null) return { obligation: null, reason: 'no amount to band' };
   const a = Number(amount);
   if (!Number.isFinite(a) || a < 0) throw new HitlInputError('bad_amount', 'amount must be a non-negative number');
-  if (a > BANDS.deny) return { obligation: 'DENY', reason: `$${a} exceeds the hard deny ceiling of $${BANDS.deny}` };
-  if (a >= BANDS.stepUp) return { obligation: 'STEP_UP', reason: `$${a} clears the step-up threshold ($${BANDS.stepUp}) but not the deny ceiling: consent + MFA required.` };
+  if (a >= BANDS.stepUp) return { obligation: 'STEP_UP', reason: `$${a} clears the step-up threshold ($${BANDS.stepUp}): consent + MFA required.` };
   if (a >= BANDS.confirm) return { obligation: 'CONFIRM', reason: `$${a} clears the confirm threshold ($${BANDS.confirm}): explicit consent required, no MFA.` };
   return { obligation: null, reason: `$${a} is below the confirm threshold — no obligation` };
 }
 
 /** A challenge: what the human must satisfy, bound to the exact call that raised it. */
-export function createChallenge({ obligation, user, tool, amount = null, now = Date.now, ttlSeconds = 300, rand = () => Math.random().toString(36).slice(2, 12) } = {}) {
+export function createChallenge({ obligation, user, tool, amount = null, now = Date.now, ttlSeconds = TTL_SECONDS, rand = () => Math.random().toString(36).slice(2, 12) } = {}) {
   if (!['CONFIRM', 'STEP_UP', 'HITL_CONSENT', 'CIBA'].includes(obligation)) throw new HitlInputError('bad_obligation', 'obligation must be CONFIRM, STEP_UP, HITL_CONSENT or CIBA');
   const id = `chg_${rand()}${rand()}`.slice(0, 40);
   const iat = Math.floor(now() / 1000);
@@ -56,11 +62,14 @@ export function verifyAnswer({ challenge, answer, now = Date.now } = {}) {
     }
     if (n === 'ciba_approval' && answer.cibaApproved !== true) return { ok: false, code: 'ciba_pending', reason: 'the user has not approved on their device yet (mock: approve once)' };
   }
-  return { ok: true, code: null, reason: 'all needs satisfied' };
+  // mfaVerified is true only when this challenge asked for MFA and the OTP above matched.
+  return { ok: true, code: null, reason: 'all needs satisfied', mfaVerified: needs.includes('mfa') };
 }
 
-/** The receipt minted from a satisfied challenge, bound to user+tool+obligation. */
-export function mintReceipt({ challenge, now = Date.now, rand = () => Math.random().toString(36).slice(2, 12) } = {}) {
+/** The receipt minted from a satisfied challenge, bound to user+tool+obligation+amount.
+ *  MfaVerified is true only when the caller reports a verified MFA answer (verifyAnswer's
+ *  mfaVerified): a CONFIRM-band consent receipt carries MfaVerified=false. */
+export function mintReceipt({ challenge, mfaVerified = false, now = Date.now, rand = () => Math.random().toString(36).slice(2, 12) } = {}) {
   if (challenge == null || typeof challenge !== 'object') throw new HitlInputError('bad_challenge', 'challenge is required');
   return {
     receiptId: `rcp_${rand()}${rand()}`.slice(0, 44),
@@ -72,31 +81,90 @@ export function mintReceipt({ challenge, now = Date.now, rand = () => Math.rando
     issuedAt: Math.floor(now() / 1000),
     claims: challenge.obligation === 'HITL_CONSENT' ? { HitlApproved: true }
       : challenge.obligation === 'CIBA' ? { CibaApproved: true }
-      : { MfaVerified: true, ConsentGiven: true },
+      : { MfaVerified: mfaVerified === true, ConsentGiven: true },
   };
 }
 
-/** Is this receipt valid for THIS call? Binding check: same user, same tool, same obligation,
- *  unexpired, and (when an amount is given) the same amount that raised the challenge. */
+const money = (n) => (n == null ? 'no amount' : `$${n}`);
+
+/** Is this receipt valid for THIS call? Binding check: same user, same tool, same amount (a
+ *  missing amount only matches a missing amount), same obligation, and unexpired. Pass the
+ *  receipt AS THE SERVER STORED IT (createReceipts().redeem does), never the caller's copy. */
 export function receiptValid({ receipt, user, tool, obligation, amount = null, now = Date.now } = {}) {
   if (receipt == null || typeof receipt !== 'object' || Array.isArray(receipt)) return { valid: false, code: 'no_receipt', reason: 'no receipt presented' };
   if (receipt.user !== clean(user, LIMITS.id)) return { valid: false, code: 'receipt_user_mismatch', reason: `the receipt belongs to ${receipt.user}, not ${user}` };
   if (receipt.tool !== clean(tool, LIMITS.id)) return { valid: false, code: 'receipt_tool_mismatch', reason: `the receipt was issued for ${receipt.tool}, not ${tool}` };
+  const issuedFor = receipt.amount == null ? null : Number(receipt.amount);
+  const callAmount = amount == null ? null : Number(amount);
+  if (issuedFor !== callAmount) return { valid: false, code: 'receipt_amount_mismatch', reason: `the receipt was issued for ${money(issuedFor)}, not ${money(callAmount)}` };
   if (receipt.obligation !== obligation) return { valid: false, code: 'receipt_obligation_mismatch', reason: `the receipt satisfies ${receipt.obligation}, not ${obligation}` };
-  if (amount != null && receipt.amount != null && Number(receipt.amount) !== Number(amount)) return { valid: false, code: 'receipt_amount_mismatch', reason: `the receipt was issued for $${receipt.amount}, not $${amount}` };
-  if (receipt.issuedAt * 1000 + 5 * 60 * 1000 <= now()) return { valid: false, code: 'receipt_expired', reason: 'the receipt expired (5 minutes)' };
+  if (receipt.issuedAt * 1000 + TTL_SECONDS * 1000 <= now()) return { valid: false, code: 'receipt_expired', reason: 'the receipt expired (5 minutes)' };
   return { valid: true, code: null, reason: 'receipt binds this exact call' };
 }
 
-/** A per-workspace store of satisfied challenges (single-use receipts: one challenge, one receipt). */
-export function createReceipts() {
-  const spent = new Set();
+/**
+ * The per-workspace store behind challenges and receipts. The server issues every challenge and
+ * receipt into it and trusts nothing the caller sends back except the id:
+ *   - a challenge is answered against the copy stored here (a caller cannot edit `needs`);
+ *   - a receipt is accepted only if this store issued it, it is unspent, and it binds the call;
+ *   - a receipt is consumed when it permits a call (single use); a refused attempt does not burn it.
+ * Bounded: at most `max` records per kind (oldest dropped first); records are dropped one TTL
+ * after they expire, so a stale id still gets a clear "expired" answer for a while.
+ */
+export function createReceipts({ now = Date.now, max = STORE_MAX } = {}) {
+  const pending = new Map(); // challengeId -> challenge awaiting an answer
+  const answered = new Set(); // challengeIds already answered
+  const issued = new Map(); // receiptId -> { receipt, used }
+  const cap = (c) => { while (c.size > max) c.delete(c.keys().next().value); };
+  const prune = () => {
+    const t = now();
+    for (const [id, c] of pending) if ((c.expiresAt + TTL_SECONDS) * 1000 <= t) pending.delete(id);
+    for (const [id, e] of issued) if ((e.receipt.issuedAt + 2 * TTL_SECONDS) * 1000 <= t) issued.delete(id);
+  };
   return {
+    now,
+    /** Remember a challenge this server just issued. */
+    track(challenge) { prune(); pending.set(challenge.challengeId, challenge); cap(pending); },
+    /** The challenge as the server issued it, or null (never issued here, or already answered). */
+    challenge(id) { return typeof id === 'string' ? pending.get(id) ?? null : null; },
+    /** Mark a challenge answered (single use). False when it already was. */
     spend(challengeId) {
-      if (!challengeId || spent.has(challengeId)) return false;
-      spent.add(challengeId);
+      if (!challengeId || answered.has(challengeId)) return false;
+      answered.add(challengeId); pending.delete(challengeId); cap(answered);
       return true;
     },
-    spent(challengeId) { return spent.has(challengeId); },
+    spent(challengeId) { return answered.has(challengeId); },
+    /** Remember a receipt this server just minted. */
+    issue(receipt) { prune(); issued.set(receipt.receiptId, { receipt, used: false }); cap(issued); },
+    /** Check a presented receipt against the store and the call; consume it when it is valid. */
+    redeem({ receipt, user, tool, obligation, amount = null }) {
+      if (receipt == null || typeof receipt !== 'object' || Array.isArray(receipt)) return { valid: false, code: 'no_receipt', reason: 'no receipt presented' };
+      const entry = typeof receipt.receiptId === 'string' ? issued.get(receipt.receiptId) : undefined;
+      if (!entry) return { valid: false, code: 'receipt_not_found', reason: 'this server never issued that receipt in this workspace: a hand-written receipt is not accepted' };
+      if (entry.used) return { valid: false, code: 'receipt_spent', reason: 'this receipt was already used; a receipt permits one call' };
+      const check = receiptValid({ receipt: entry.receipt, user, tool, obligation, amount, now });
+      if (!check.valid) return check;
+      entry.used = true;
+      return { ...check, receipt: entry.receipt };
+    },
+    size() { return { challenges: pending.size, answered: answered.size, receipts: issued.size }; },
   };
+}
+
+/** The human answers a challenge: look it up in the store, verify the answer against the stored
+ *  copy, spend it, and issue the receipt into the store. Returns { ok: true, receipt } or
+ *  { ok: false, code, reason }; throws HitlInputError for a malformed request. */
+export function answerChallenge({ receipts, challenge, answer } = {}) {
+  if (challenge == null || typeof challenge !== 'object' || Array.isArray(challenge)) throw new HitlInputError('bad_challenge', 'challenge is required');
+  if (answer == null || typeof answer !== 'object' || Array.isArray(answer)) throw new HitlInputError('bad_answer', 'answer is required');
+  const id = challenge.challengeId;
+  if (receipts.spent(id)) return { ok: false, code: 'challenge_spent', reason: 'this challenge was already answered; run the call again' };
+  const stored = receipts.challenge(id);
+  if (!stored) return { ok: false, code: 'challenge_unknown', reason: 'this server never issued that challenge in this workspace; raise one with POST /api/challenge' };
+  const check = verifyAnswer({ challenge: stored, answer, now: receipts.now });
+  if (!check.ok) return check;
+  receipts.spend(id);
+  const receipt = mintReceipt({ challenge: stored, mfaVerified: check.mfaVerified, now: receipts.now });
+  receipts.issue(receipt);
+  return { ok: true, receipt };
 }
