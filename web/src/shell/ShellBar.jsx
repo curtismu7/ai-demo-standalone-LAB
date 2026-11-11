@@ -67,7 +67,7 @@ export default function ShellBar({ route, onReset, children }) {
         {onReset && <button type="button" onClick={onReset} data-testid="reset">Reset</button>}
         <button type="button" data-testid="presenter" title="Presenter mode (P key)">Presenter</button>
       </span>
-      {modeMsg && <p className="sr-only" role="status">{modeMsg}</p>}
+      {modeMsg && <p className="mode-msg" role="status" data-testid="mode-msg">{modeMsg}</p>}
     </header>
   );
 }

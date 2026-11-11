@@ -167,7 +167,12 @@ button { font-weight: 600; letter-spacing: 0.01em; }
 .tt { border-left: 4px solid var(--th-accent); }
 .why-callout b { color: var(--th-text); }
 
-/* Dashboard: section separators between the five stacked panels */
-.dashboard-page > section { border-top: 3px solid var(--th-border); }
-.dashboard-page > section::before { content: ""; display: block; height: 1px; background: var(--th-border-strong); margin: -1px 0 10px; }
-.dashboard-page > section h2 { padding-top: 2px; }
+/* Dashboard: section separators between the five stacked panels. The rule lives on the
+   section's border, never as a ::before element — a ::before inside a grid section becomes
+   a grid item and shoves every panel one column over. */
+.dashboard-page > section { border-top: 3px solid var(--th-border); padding-top: 10px; }
+.dashboard-page > section h2 { margin-top: 0; }
+
+/* The Real-is-reserved message: visible under the shell bar, auto-dismisses */
+.mode-msg { position: absolute; top: 100%; right: 16px; z-index: 40; margin: 6px 0 0; padding: 8px 14px; border: 1px solid var(--th-status-warning); border-radius: var(--radius-md); background: var(--th-status-warning-bg); color: var(--th-status-warning-text); font-size: var(--font-size-sm); font-weight: 600; box-shadow: 0 2px 8px rgba(2, 6, 23, 0.18); }
+.shell-bar { position: relative; }
