@@ -398,12 +398,11 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
     const drop = () => token !== runToken.current;
     setFail(null);
     const sc = story.scenarios.find((s) => s.id === sid) || story.scenarios[0];
-    // seed the directory the way the scenario states
-    const entry = sc.flipTo ? { groups: sc.flipTo, tier: "Standard" } : null;
-    if (entry) {
-      await setDirectory({ user: sc.user, groups: entry.groups, tier: "Standard" }).catch(() => null);
-      if (drop()) return;
-    }
+    // seed the directory the way the scenario states; scenarios without an explicit flip
+    // reset their user to the assumed baseline so an earlier flip can't poison this page
+    const groups = sc.flipTo ? sc.flipTo : (sc.user === "premiumUser" ? ["privileged", "premiumTier"] : sc.user === "jane" ? [] : ["privileged"]);
+    await setDirectory({ user: sc.user, groups, tier: sc.user === "premiumUser" ? "Premium" : "Standard" }).catch(() => null);
+    if (drop()) return;
     const c = await consent({ user: sc.user, actor: sc.actor, aud: sc.aud }).catch(() => ({ ok: false, body: {} }));
     if (drop()) return;
     if (!c.ok) { setRun(null); setFail(c.body.detail || "Could not mint the delegated token."); return; }
@@ -448,6 +447,7 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
         {run && <Hops hops={run.hops} traceId={run.traceId} />}
       </section>
       {/* key: a scenario switch must reset the panel's challenge/receipt state (reviewer item 1) */}
+      <ObligationPanel key={run?.traceId ?? "none"} run={run} onResolved={(r) => setRun(r)} />
       <div className="walkbar"><div className="in">
         <button type="button" className="btn" disabled={idx <= 0} onClick={() => { const p = story.scenarios[idx - 1]; setId(p.id); if (onSelect) onSelect(p.id); }} data-testid="wiz-prev">&larr; Back</button>
         <div className="where" aria-live="polite" data-testid="wiz-where">Use case {idx + 1} of {story.scenarios.length}: {scenario.ucId}</div>
