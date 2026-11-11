@@ -1,0 +1,373 @@
+/* VENDORED from AI-DEMO2 (read-only source; owner decision: reuse means copy, never import).
+   Source: AI-DEMO2 demo_api_ui/src/components/TokenChainNodeRail.css at origin/main 2c7ca86e0.
+   Copied per the ai-demo-standalone-LAB build plan, Appendix C. LAB ADJUSTMENTS marked below. */
+/* LAB ADJUSTMENT: the source's hard-coded hex colours are mapped to the family tokens
+   (--th-* from web/src/tokens.css, --lane-* from the shared stylesheet). Where the source
+   had a dark-theme override with a different hex, both now read one token that is already
+   theme-aware (light-dark()), so the [data-theme="dark"] blocks that only recoloured
+   literals are dropped. No purple. */
+/* The shared tokens have no --th-status-ok/danger pair; alias the family's status tokens.
+   --th-status-error-text existed in the lab's own tokens (used by the source). */
+.tcnr {
+  --th-status-ok: var(--status-ok, #16a34a);
+  --th-status-ok-text: var(--status-ok, #16a34a);
+  --th-status-danger: var(--danger-text, #d20e0f);
+  --th-status-danger-text: var(--danger-text, #d20e0f);
+}
+
+// VENDORED from AI-DEMO2 (read-only source; owner decision: reuse means copy, never import).
+// Source: AI-DEMO2 demo_api_ui/src/components/TokenChainNodeRail.css at origin/main 2c7ca86e0fbd2c43f7f043900391c5bda1114b69.
+// Copied per the ai-demo-standalone-LAB build plan, Appendix C. LAB ADJUSTMENTS marked below.
+
+/* demo_api_ui/src/components/TokenChainNodeRail.css
+ *
+ * Horizontal chain map above the Token Chain step cards.
+ *
+ * Two rules inherited from REGRESSION_PLAN §4 and deliberately followed here:
+ *   - dark styling is keyed to :root[data-theme="dark"], NEVER
+ *     @media (prefers-color-scheme: dark)  (2026-08-02 — the rail went dark on
+ *     load with no control because the OS setting drove it)
+ *   - no declaration below 11px  (same entry raised the rail's font floor from
+ *     9px because it was unreadable in a demo)
+ */
+
+.tcnr {
+  border-bottom: 1px solid var(--th-border);
+  padding: 8px 0 4px;
+  margin-bottom: 8px;
+}
+
+.tcnr-head {
+  display: flex;
+  align-items: center;
+  /* Wrap: at a 371px phone the Detailed/Compact switch ran 163px past the card edge (page scrolled sideways). */
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  padding: 0 2px 6px;
+}
+
+.tcnr-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--th-text-muted);
+}
+
+.tcnr-count {
+  font-size: var(--font-size-xs);
+  color: var(--th-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* walk-through controls — Run is the primary action, so it leads */
+.tcnr-run {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: var(--th-bg-page);
+  color: var(--th-text);
+  border-radius: var(--radius-pill);
+  padding: 5px 13px 5px 11px;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tcnr-run:hover { background: var(--th-bg-page); }
+
+.tcnr-run-ico {
+  width: 0;
+  height: 0;
+  border-left: 7px solid currentColor;
+  border-top: 4.5px solid transparent;
+  border-bottom: 4.5px solid transparent;
+}
+
+.tcnr-run[data-state="running"] .tcnr-run-ico {
+  width: 7px;
+  height: 8px;
+  border: 0;
+  border-left: 2.5px solid currentColor;
+  border-right: 2.5px solid currentColor;
+}
+
+.tcnr-speed {
+  border: 1px solid var(--th-border-strong);
+  background: var(--th-bg-card);
+  color: var(--th-text);
+  border-radius: var(--radius-md);
+  padding: 3px 6px;
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tcnr-present {
+  border: 1px solid var(--th-border-strong);
+  background: var(--th-bg-card);
+  color: var(--th-text);
+  border-radius: var(--radius-md);
+  padding: 4px 11px;
+  font-size: var(--font-size-xs);
+  font-weight: 650;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tcnr-present:hover { border-color: var(--th-status-info); color: var(--th-status-info); }
+
+.tcnr-density {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--th-bg-inset);
+  border-radius: var(--radius-md);
+  padding: 2px;
+}
+
+.tcnr-density button {
+  border: 0;
+  background: transparent;
+  color: var(--th-text-muted);
+  border-radius: var(--radius-sm);
+  padding: 3px 9px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tcnr-density button.active {
+  background: var(--th-bg-card);
+  color: var(--th-text);
+  box-shadow: 0 1px 2px rgba(5, 23, 39, 0.12);
+}
+
+.tcnr-track {
+  list-style: none;
+  margin: 0;
+  padding: 2px 2px 6px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+/* flex-start, not the flex default `stretch`: the track is a flex row, so a
+   stretched item makes every card as tall as the tallest one. The Exchange hop
+   carries a 7-scope struck-through diff, so on a real run every other card grew
+   ~90px of dead white below its own text. Cards now size to their own content. */
+.tcnr-item {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+}
+
+.tcnr-node {
+  width: 124px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  background: var(--th-bg-card);
+  border: 1px solid var(--th-border);
+  border-top: 3px solid var(--th-border-strong);
+  border-radius: var(--radius-lg);
+  padding: 7px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.tcnr-node:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(5, 23, 39, 0.1);
+}
+
+.tcnr-node-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tcnr-node-n {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--th-bg-inset);
+  color: var(--th-text-muted);
+  border: 2px solid var(--th-border-strong);
+}
+
+.tcnr-node-lane {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--th-text-muted);
+}
+
+.tcnr-node-title {
+  font-size: var(--font-size-2xs);
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--th-text);
+}
+
+/* Each compact fact can wrap twice; the full text stays in the step detail
+   panel, which is where it is read. Font size unchanged — the 11px floor from
+   REGRESSION_PLAN §4 still holds. */
+.tcnr-node-fact {
+  font-size: var(--font-size-xs);
+  line-height: 1.3;
+  color: var(--th-text-muted);
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tcnr-node-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 60px;
+  overflow: hidden;
+}
+
+/* status — semantic, independent of the per-vertical accent */
+.tcnr-node--done { border-top-color: var(--th-status-ok); }
+.tcnr-node--done .tcnr-node-n { border-color: var(--th-status-ok); color: var(--th-status-ok-text); }
+
+.tcnr-node--pending { border-top-color: var(--th-border); }
+
+/* a hop still in flight - amber, and distinct from the selected node */
+.tcnr-node--active { border-top-color: var(--th-status-warning); }
+.tcnr-node--active .tcnr-node-n { border-color: var(--th-status-warning); color: var(--th-status-warning-text); }
+.tcnr-node--active .tcnr-node-fact { color: var(--th-status-warning); font-weight: 650; }
+
+.tcnr-node--notinpath { opacity: 0.62; }
+
+.tcnr-node--denied { border-top-color: var(--th-status-danger); }
+.tcnr-node--denied .tcnr-node-n { border-color: var(--th-status-danger); color: var(--th-status-danger-text); }
+.tcnr-node--denied .tcnr-node-fact { color: var(--th-status-danger); font-weight: 650; }
+
+.tcnr-node--error { border-top-color: var(--th-status-warning); }
+.tcnr-node--error .tcnr-node-n { border-color: var(--th-status-warning); color: var(--th-status-warning-text); }
+.tcnr-node--error .tcnr-node-fact { color: var(--th-status-warning); font-weight: 650; }
+
+.tcnr-node--sel {
+  border-color: var(--th-status-info);
+  box-shadow: 0 0 0 2px rgba(18, 83, 141, 0.16);
+}
+.tcnr-node--sel .tcnr-node-n {
+  background: var(--th-bg-page);
+  border-color: var(--th-bg-page);
+  color: var(--th-text);
+}
+
+/* ── compact: the original small numbered circles ───────────────────── */
+.tcnr[data-density="compact"] .tcnr-track { gap: 0; }
+
+.tcnr[data-density="compact"] .tcnr-node {
+  width: 62px;
+  align-items: center;
+  text-align: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 2px 0 0;
+  gap: 3px;
+}
+
+.tcnr[data-density="compact"] .tcnr-node:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.tcnr[data-density="compact"] .tcnr-node-top { flex-direction: column; gap: 0; }
+.tcnr[data-density="compact"] .tcnr-node-lane,
+.tcnr[data-density="compact"] .tcnr-node-fact { display: none; }
+
+.tcnr[data-density="compact"] .tcnr-node-title {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--th-text-muted);
+  max-width: 60px;
+}
+
+.tcnr[data-density="compact"] .tcnr-node--sel .tcnr-node-title {
+  color: var(--th-text);
+  font-weight: 700;
+}
+
+.tcnr-node:focus-visible {
+  outline: 2px solid var(--th-status-info);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tcnr-node { transition: none; }
+}
+
+/* ── dark: app-controlled only. Never keyed to the OS setting. ───────── */
+:root[data-theme="dark"] .tcnr { border-bottom-color: var(--th-bg-page); }
+:root[data-theme="dark"] .tcnr-title { color: var(--th-text); }
+:root[data-theme="dark"] .tcnr-count { color: var(--th-text-muted); }
+:root[data-theme="dark"] .tcnr-run { background: var(--th-bg-page); color: var(--th-text); }
+:root[data-theme="dark"] .tcnr-run:hover { background: var(--th-status-info); }
+:root[data-theme="dark"] .tcnr-speed { background: var(--th-bg-card); border-color: var(--th-border); color: var(--th-text); }
+:root[data-theme="dark"] .tcnr-present { background: var(--th-bg-card); border-color: var(--th-border); color: var(--th-text); }
+:root[data-theme="dark"] .tcnr-present:hover { border-color: var(--th-status-info-text); color: var(--th-status-info-text); }
+:root[data-theme="dark"] .tcnr-density { background: var(--th-bg-inset); }
+:root[data-theme="dark"] .tcnr-density button { color: var(--th-text); }
+:root[data-theme="dark"] .tcnr-density button.active { background: var(--th-bg-card); color: var(--th-text); }
+:root[data-theme="dark"] .tcnr-node { background: var(--th-bg-card); border-color: var(--th-border); border-top-color: var(--th-bg-page); }
+:root[data-theme="dark"] .tcnr-node-n { background: var(--th-bg-page); border-color: var(--th-border); color: var(--th-text); }
+:root[data-theme="dark"] .tcnr-node-lane { color: var(--th-text-muted); }
+/* A gateway step is the point of the reel: its lane name is red and bold in
+   both themes. Listed for dark too, or the rule above outranks it there. */
+.tcnr-node-lane--gateway,
+:root[data-theme="dark"] .tcnr-node-lane--gateway {
+  color: var(--danger-text);
+  font-weight: 700;
+}
+:root[data-theme="dark"] .tcnr-node-title { color: var(--th-text); }
+:root[data-theme="dark"] .tcnr-node-fact { color: var(--th-text-muted); }
+:root[data-theme="dark"] .tcnr-node--done { border-top-color: var(--th-status-ok-text); }
+:root[data-theme="dark"] .tcnr-node--done .tcnr-node-n { border-color: var(--th-status-ok-text); color: var(--th-status-ok-text); }
+:root[data-theme="dark"] .tcnr-node--active { border-top-color: var(--th-status-warning-text); }
+:root[data-theme="dark"] .tcnr-node--active .tcnr-node-n { border-color: var(--th-status-warning-text); color: var(--th-status-warning-text); }
+:root[data-theme="dark"] .tcnr-node--active .tcnr-node-fact { color: var(--th-status-warning-text); }
+:root[data-theme="dark"] .tcnr-node--denied { border-top-color: var(--th-status-danger-text); }
+:root[data-theme="dark"] .tcnr-node--denied .tcnr-node-n { border-color: var(--th-status-danger-text); color: var(--th-status-danger-text); }
+:root[data-theme="dark"] .tcnr-node--denied .tcnr-node-fact { color: var(--th-status-danger-text); }
+:root[data-theme="dark"] .tcnr-node--error { border-top-color: var(--th-status-warning-text); }
+:root[data-theme="dark"] .tcnr-node--error .tcnr-node-n { border-color: var(--th-status-warning-text); color: var(--th-status-warning-text); }
+:root[data-theme="dark"] .tcnr-node--error .tcnr-node-fact { color: var(--th-status-warning-text); }
+:root[data-theme="dark"] .tcnr-node--sel { border-color: var(--th-status-info-text); box-shadow: 0 0 0 2px rgba(158, 193, 255, 0.2); }
+:root[data-theme="dark"] .tcnr-node--sel .tcnr-node-n { background: var(--th-bg-page); border-color: var(--th-status-info-text); color: var(--th-text); }
+:root[data-theme="dark"] .tcnr[data-density="compact"] .tcnr-node { background: transparent; }
+:root[data-theme="dark"] .tcnr[data-density="compact"] .tcnr-node-title { color: var(--th-text-muted); }
+:root[data-theme="dark"] .tcnr[data-density="compact"] .tcnr-node--sel .tcnr-node-title { color: var(--th-text); }
+
+/* Node facts describe the CHANGE. The scope diff is stated as a shape
+   ("narrowed 9 → 3") rather than chip-by-chip: at node width the per-scope
+   chips wrapped into an unreadable block, and the full diff already has a
+   home in the step detail panel. */
+.tcnr-node-fact--narrowed { font-weight: 650; }
+.tcnr-node-fact--nochange { font-style: italic; opacity: 0.8; }
+
+/* Preview: the reel before any run. Same cards, dashed and unclickable, so it reads as waiting rather than broken. */
+.tcnr--preview .tcnr-node { border-style: dashed; cursor: default; opacity: 0.8; }
+.tcnr--preview .tcnr-node:hover { transform: none; }

@@ -1,0 +1,99 @@
+// VENDORED from AI-DEMO2 (read-only source; owner decision: reuse means copy, never import).
+// Source: AI-DEMO2 demo_api_ui/src/components/shared/JsonHighlight.css at origin/main 2c7ca86e0fbd2c43f7f043900391c5bda1114b69.
+// Copied per the ai-demo-standalone-LAB build plan, Appendix C. LAB ADJUSTMENTS marked below.
+
+/* ============================================================
+   JsonHighlight.css — shared colour-coded JSON palette
+   Default palette is tuned for LIGHT backgrounds.
+   Add `jh-dark` to the surrounding <pre> for dark code blocks.
+   ============================================================ */
+
+/* Light (default) */
+.jh-key { color: var(--th-status-info); }
+.jh-string { color: var(--status-ok); }
+.jh-number { color: var(--th-status-warning-text); }
+/* true / false / null: neutral body ink, regular weight. Red bold read as an error inside success cards;
+   red is kept for .jh-critical (error, status, result...). Theme token, so it flips with the theme. */
+.jh-keyword { color: var(--th-text-body); font-weight: 400; }
+.jh-punct { color: var(--th-text); }
+.jh-plain { color: inherit; }
+.jh-empty { color: var(--th-text); font-style: italic; }
+/* Bright red, not amber-on-amber: the old #92400e ink on the var(--th-status-warning-bg) wash was
+   unreadable in the token-claims blocks ("look for this yellow text, you can
+   not read it. Make bright red", 2026-08-10). */
+/* Ink and wash are measured together (the ink sits on its own wash): var(--danger-text) on the 0.10 wash is 5.44:1 on the
+   white card and 4.79:1 on the light inset (var(--danger-text) was 4.63 / 4.08). jsonHighlightContrast.test.js pins it. */
+.jh-focus { background: rgba(210, 14, 15, 0.10); color: var(--danger-text); font-weight: 700; border-radius: 3px; }
+
+/* Critical fields (decision, outcome, error, status, result) — red */
+.jh-critical { color: var(--danger-text); font-weight: 600; }
+
+/* Dark — applied via `jh-dark` on the container */
+.jh-dark .jh-key { color: var(--th-status-info-text); }
+.jh-dark .jh-string { color: var(--status-ok); }
+.jh-dark .jh-number { color: var(--th-status-warning-text); }
+/* jh-dark sits on a dark ground in either theme, so it takes the always-white token, not the theme ink. */
+.jh-dark .jh-keyword { color: var(--th-text-invert); font-weight: 400; }
+.jh-dark .jh-punct { color: var(--th-text); }
+.jh-dark .jh-plain { color: inherit; }
+.jh-dark .jh-empty { color: var(--th-text); }
+/* #ff5252 on its own 0.18 wash was 4.31:1 on the dark card and 3.86:1 on the dark inset. var(--danger-text): 6.07 / 5.43. */
+.jh-dark .jh-focus { background: rgba(255, 82, 82, 0.18); color: var(--danger-text); }
+
+/* Critical fields in dark mode */
+.jh-dark .jh-critical { color: var(--danger-text); font-weight: 600; }
+
+/* ============================================================
+   Layout — wrapping root, per-line indent guides, copy button
+   ============================================================ */
+
+.jh-root {
+  position: relative;
+  display: block;
+}
+
+.jh-line {
+  display: block;
+}
+
+/* One guide per 2-space indent level, replacing the leading whitespace
+   with a span carrying a left border — draws a vertical rule only as
+   deep as each line actually nests. */
+.jh-guide {
+  display: inline-block;
+  width: 2ch;
+  border-left: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.jh-dark .jh-guide {
+  border-left-color: rgba(255, 255, 255, 0.14);
+}
+
+.jh-copy {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--th-border);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 5px;
+  cursor: pointer;
+  line-height: 1.6;
+}
+
+.jh-copy:hover {
+  background: var(--th-text);
+}
+
+.jh-dark .jh-copy {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--th-text);
+}
+
+.jh-dark .jh-copy:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
