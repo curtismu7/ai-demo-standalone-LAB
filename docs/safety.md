@@ -1,9 +1,12 @@
 # Safety
 
 - Loopback bind only (`AIDEMOLAB_BIND` is the explicit opt-in the container uses); the compose file publishes `127.0.0.1` only (a test pins it).
-- Host header must be a loopback name; writes must be same-origin.
-- Netguard blocks every outbound connection (fetch, socket, DNS, UDP) with a self-test, and a test asserts zero attempts.
-- `POST /api/evaluate` accepts custom JSON but bounds it: body 8 KB, depth 6, 200 claims, 20 array items, 512-character values, 8 required claims, path shape checked by a fixed regex. Walks are iterative; there is no `eval`, `Function` or `vm`. Claim values are rendered as text only.
-- Tokens are MOCK-ISSUED by this app and shown raw for education; there is no real credential, signature or key anywhere. No EC keygen is used.
-- Story and posture text is data; hosts end in `.example`; ARNs use the obviously fake account id 000000000000.
-- No tenant, credential or customer identifier ships. `customer.config.json` only sets four display strings and is git-ignored.
+- The server accepts exactly one port, 7810 (`PORT_MIN = PORT_MAX = 7810`); the doctor and a test refuse any other.
+- Host header must be a loopback name or on `LAB_ALLOWED_HOSTS` (the lab-proxy name); writes must be same-origin (`Origin` and `Sec-Fetch-Site` are checked, `X-Forwarded-Host` is trusted only for the proxy case).
+- Netguard blocks every outbound connection (fetch, socket, DNS, UDP) with a self-test, and a test asserts zero attempts. The mock PDP, the HITL engine and the A2A engine run in-process, so nothing here has a reason to leave the machine.
+- Inputs are bounded: JSON bodies are capped at 8 KB; user, actor, tool and specialist names at 64 characters, group names at 40, audiences at 100, scopes at 200, a use-case id at 16; at most 8 groups per directory entry and 8 allowed actors per call; `amount` must be a non-negative finite number or the call is denied (or the challenge refused). A workspace id must match `^[a-z0-9-]{1,40}$`; the server keeps at most 500 workspaces, each for one hour and with its last 20 runs. There is no `eval`, `Function` or `vm`.
+- Text from a caller (user, actor, tool, group and specialist names) is rendered as text only; control and bidirectional characters are shown as visible escapes in the page (`web/src/safeText.js`), and control characters are stripped on the server (`server/src/clean.js`, `pdp.js`, `a2a.js`).
+- Tokens, challenges and receipts are MOCK-ISSUED by this app (`iss: "ai-demo-standalone (mock consent)"` and the mock exchange issuers) and shown raw for education; there is no real credential, signature or key anywhere, so a receipt is a plain object the app checks for binding only (see Known gaps in the README). The demo MFA code `123123` is a labelled mock value. No EC keygen is used.
+- The directory, groups, tiers, ceilings and bands are demo values. Story, narrative, hop and Agent Card text is data; every host ends in `.example` or `.invalid`; the upstream audiences `mcp-weather.internal` and `mcp-portfolio.internal` are invented labels in a token's `aud` claim, not hosts anything connects to.
+- Real mode is reserved: it needs `AIDEMOLAB_REAL_URL`, `AIDEMOLAB_REAL_CLIENT_ID` and `AIDEMOLAB_REAL_CLIENT_SECRET` (owner-run); the values are never read into a response, and this build has no live data path. `POST /api/mode` answers 409 while they are absent.
+- No tenant, credential or customer identifier ships. `customer.config.json` only sets four display strings and is git-ignored. The container filesystem is read-only, capabilities are dropped and the process runs as `node`, not root.

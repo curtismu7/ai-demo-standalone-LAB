@@ -1,6 +1,6 @@
 // Preflight checks shared by `npm run doctor` and GET /api/health. Never prints a secret, needs no network.
 // Each check: { id, level: 'pass' | 'info' | 'fail', detail }.
-import { assertBindAllowed, bindHost, portProblem, scanHosts, scanKeys, DEFAULT_PORT, PORT_MIN, PORT_MAX } from './safety.js';
+import { assertBindAllowed, bindHost, portProblem, scanHosts, scanKeys, DEFAULT_PORT } from './safety.js';
 import { netguardSelfTest } from './netguard.js';
 import { DEFAULT_CAST, VERTICALS, unfilled } from './cast.js';
 import { buildStory, rawStory } from './story.js';
@@ -24,7 +24,7 @@ export async function runChecks({ env = process.env, cast = DEFAULT_CAST } = {})
 
   const port = env.PORT === undefined || env.PORT === '' ? DEFAULT_PORT : Number(env.PORT);
   const problem = portProblem(port);
-  add('port-range', problem ? 'fail' : 'pass', problem || `${port} is inside ${PORT_MIN}-${PORT_MAX} and not reserved`);
+  add('port-range', problem ? 'fail' : 'pass', problem || `${port} is this app's allocated port and not reserved`);
 
   const raw = rawStory();
   const wrong = raw.scenarios.filter((sc) => {

@@ -1,28 +1,84 @@
-# A2A LAB
+# AI Demo Standalone
 
 Tier: Demo.
 Repo: https://github.com/curtismu7/ai-demo-standalone-LAB
+Catalog id: D128. Port: 7810.
 
-An agent attempts a money movement; a mock authorization policy decides by amount band and agent context — PERMIT below the confirm bar, human consent (HITL) in the confirm band, MFA step-up at the MFA bar, hard DENY above the ceiling — and CIBA requests out-of-band approval on the user's own device for a sensitive agent-initiated action, regardless of amount. This is the standalone mock of the AI-DEMO2 HITL track (UC7 / UC8 / UC22 and the `authorizeObligations` / `hitlCredit` / CIBA services) — same decision contract, no real policy engine or tenant.
+A mock of the AI-DEMO2 dashboard as one standalone app. It carries the dashboard's whole use-case catalog (87 use cases in 8 tracks) and runs them against one mock policy decision point (PDP). Nothing calls a real identity provider, gateway or tenant: the PDP, the directory and every token are mock values, labelled as such.
 
-Three ideas:
+## What it does today
 
-1. **The amount bands.** One policy decides by band: below the confirm bar the call permits, the confirm band requires explicit human consent, at or above the MFA bar it requires device MFA, above the hard ceiling it denies. Verified live in AI-DEMO2: $300 → HITL, $600 → step-up, $2500 → DENY. The bands are admin-editable and read on EVERY request — change them and the same call flips, with no restart.
-2. **Highest gate wins.** DENY > STEP_UP > HITL, and most-specific obligation classification (HITL_CONSENT before HITL) so one policy intent can never gate twice in one engine and pass in another.
-3. **Approvals are receipts, not vibes.** Single-use (consume-on-use, so a replay re-challenges), amount-bound (approving $300 cannot discharge $600), and the MFA credit expires after five minutes. CIBA is triggered by the agent context plus the sensitivity of the action, NOT by amount: a $150 transfer in-browser needs no step-up, but an AGENT moving money gets out-of-band approval on the user's phone — a compromised browser or rogue agent cannot self-approve.
+One decision engine answers every wired use case. A call is checked in four stages, in order (`server/src/pdp.js`, `hitl.js`):
 
-Mock + Real (rule 19): Mock is fully offline (mock gate, mock MFA, mock CIBA). Real toggle mechanics follow rule 19: unconfigured, it is disabled with a how-to tooltip and `POST /api/mode` answers 409. In this build Real is RESERVED — the toggle reports a configured `AIDEMOLAB_REAL_*` env, but no live policy-engine data path is wired yet; Mock is the story.
+1. **Token.** `sub` present, not expired, `aud` is this app's audience. A missing bearer is a real `401` with `WWW-Authenticate`, before anything else.
+2. **Gateway.** The `act` chain is validated: the actor must be on the actor allow-list (`demo-agent`), and a token whose audience names an upstream MCP server (`mcp-weather.internal`, `mcp-portfolio.internal`) is refused.
+3. **Policy.** The directory is read on EVERY decision. The user must be in the `privileged` group (regardless of the token's scopes); the premium-only tools (`create_wire_transfer`, `approve_large_transfer`) need the `premiumTier` group; the amount must fit the tier ceiling (Standard $2000, Premium $50000).
+4. **Obligation layer (HITL).** A call the policy would permit can still be PAUSED instead of decided. Amount bands and approval tools return an OBLIGATION (HTTP `202`), not a denial: the agent pauses, a human resolves a challenge, and a receipt re-evaluates the same call. Details in the next section.
 
-Scaffold copied from mcp-gateway-lab-LAB (fork rule 4 attribution); every surface here is this lab's own. No cross-repo imports.
+Each answer carries the teaching layer: a per-stage narrative, a one-sentence lesson, which Ping product plays which role (PingFederate as IdP, PingGateway as gateway, PingOne Authorize as PDP, all stand-ins), and the "tech proof": mock request and response text for every hop with a W3C `traceparent`.
 
-Scaffold copied from hitl-mfa-lab-LAB (fork rule 4 attribution); every surface here is this lab's own. No cross-repo imports.
+### HITL obligations (UC7, UC8, UC22)
+
+| Obligation | Raised by | The human must |
+| --- | --- | --- |
+| `CONFIRM` | amount >= $250 | consent (no MFA at this band) |
+| `STEP_UP` | amount >= $500 | consent and MFA (the mock OTP is `123123`) |
+| `HITL_CONSENT` | the tools `create_transfer`, `create_wire_transfer`, `approve_large_transfer`, at any amount | consent. An approval is never an MFA |
+| `CIBA` | the tool `move_money` (an agent-initiated action with no browser) | approve out-of-band on their device (mock `auth_req_id`) |
+
+A challenge lasts 5 minutes and can be answered once. Answering mints a receipt (`HitlApproved`, `CibaApproved`, or `MfaVerified` + `ConsentGiven`) bound to the user, the tool, the obligation and the amount; presenting it to `POST /api/authorize` in `receipt` re-evaluates the SAME call to `PERMIT`. A receipt for another user, tool, obligation or amount, or older than 5 minutes, leaves the call paused. The bands are checked after the policy, so the tier ceiling ($2000 Standard, $50000 Premium) can still deny first; the $100000 hard-deny ceiling in `hitl.js` is above every tier ceiling and never fires.
+
+### A2A hand-off (UC2, UC2.5, UC2.6, UC2.7)
+
+Two chained RFC 8693 exchanges build a nested act chain: exchange #1 makes the generalist agent act for the user (`act={generalist}`), exchange #2 hands off to a specialist (`act={specialist, act:{generalist}}`) with the scope narrowed to what the generalist held (UC2, UC2.5). The A2A gateway routes the call only when the SPECIALIST is in the Agent Card registry (seeded: `portfolio-specialist`, `wire-specialist`; UC2.6, and you can register or revoke one live per workspace). A plain `act={agent}` token is refused (`chain_not_nested`), a token without the scope is refused (`scope_narrowed_away`), and a call with no bearer is a real `401` (UC2.7). The web page has an A2A panel for this; it is not one of the scenario chips.
+
+### What is wired, and what is not
+
+Stage 2 is shipped. **Wired:** the foundations and controls scenarios, HITL (UC7, UC8, UC22) and the A2A hand-off (UC2, UC2.5, UC2.6, UC2.7). **Not wired:** the **attacks** (11), **learn** (23), **tools** (8), **nhi** (2) and **demo** (8) tracks are catalog entries only: each has its one-liner, buyer story, business value, product roles and expected outcome from the dashboard's own config, and the app does not run them. Use cases in foundations, controls and hitl that are not one of the scenarios below, or the A2A panel, are catalog entries too.
+
+| Track | Use cases |
+| --- | --- |
+| foundations | 15 |
+| learn | 23 |
+| controls | 16 |
+| hitl | 4 |
+| demo | 8 |
+| attacks | 11 |
+| tools | 8 |
+| nhi | 2 |
+
+**Real is reserved.** The Mock / Real toggle follows rule 19 (`POST /api/mode` with exactly `{ "source": "mock" | "real" }`, `409` when Real is not configured), and `GET /api/info` reports `realAvailable` when `AIDEMOLAB_REAL_URL`, `AIDEMOLAB_REAL_CLIENT_ID` and `AIDEMOLAB_REAL_CLIENT_SECRET` are all present. This build has no live data path behind it, so Mock is the only working mode.
+
+## Direction
+
+This app will become a look-alike of the AI-DEMO2 `/dashboard` page, the **Customer dashboard**: account cards, a "Banking assistant" chat column and a token-chain panel, with this app's 87-use-case catalog and mock PDP behind it. The design mocks are in the AI-DEMO2 repo under `demo_api_ui/design/`: `customer-dashboard-2026.html` and `customer-dashboard-2026-agent-ui.html`. They are a read-only visual reference; nothing is imported from AI-DEMO2.
+
+The page you see now (a catalog and run panel, with the HITL and A2A panels) is the stage-1/2 interface and will be replaced by that rebuild. The server, the PDP, the HITL and A2A engines, the catalog and the API below stay.
+
+## The eleven live scenarios
+
+| # | Use case | Track | Result | What it teaches |
+| --- | --- | --- | --- | --- |
+| 1 | UC1 consent mints `act={agent}`; the balance read permits | foundations | PERMIT | One consent, one delegated token: `sub` is the user, `act` names the actor |
+| 2 | UC9 not in the required group | controls | DENY (policy) | Groups are read on every decision; scopes cannot override them |
+| 3 | UC9A flip the directory entry | controls | DENY (policy) | Revoke `privileged` and the SAME call denies, with no code change |
+| 4 | UC21 Standard tier cannot invoke the premium wire | controls | DENY (policy) | Premium-only tools are listed in policy, never implied by scopes |
+| 5 | UC21 promote to Premium | controls | OBLIGATION `HITL_CONSENT` | The tool unlocks, then the HITL layer pauses it: bands stack with groups |
+| 6 | UC21 $60000 exceeds even the Premium ceiling | controls | DENY (policy) | Tiers cap amounts |
+| 7 | UC6 an unknown agent is refused at the gateway | foundations | DENY (gateway) | The actor allow-list runs before any policy |
+| 8 | UC32 a token aimed at an upstream MCP is refused | controls | DENY (gateway) | An audience is a destination |
+| 9 | UC7 MFA step-up ($600) | hitl | OBLIGATION `STEP_UP` | The agent pauses; the human completes MFA; the receipt re-evaluates the call |
+| 10 | UC8 HITL approval (`create_transfer`, $100) | hitl | OBLIGATION `HITL_CONSENT` | Approval tools always pause; an approval is never an MFA |
+| 11 | UC22 CIBA (`move_money`) | hitl | OBLIGATION `CIBA` | An agent has no browser: approval happens out-of-band on the user's device |
+
+The seeded directory has three users: `demoUser` (`privileged`, Standard), `premiumUser` (`privileged`, `premiumTier`, Premium) and `jane` (no groups, Standard). Three vertical packs (`retail`, `health`, `finance`) change the brand wording only.
 
 ## Run it
 
-- `./scripts/run.sh` — host-run on port 7710 (Node >= 26), opens the browser.
-- Docker: `HOST_PORT=7710 docker compose up --build -d` (published on 127.0.0.1 only).
-- Through the shared lab-proxy: `https://local.ping-devops.com:8443/ai-demo-standalone/` (never a raw loopback URL).
-- Tests: `npm ci && npm test` — 66 server + 18 web + 5 packaging tests.
+- `./scripts/run.sh`: host-run on port 7810 (Node >= 26), installs and builds if needed, runs the doctor, starts the server.
+- Docker (OrbStack): `HOST_PORT=7810 docker compose up --build -d`, published on `127.0.0.1` only.
+- Through the shared lab-proxy: `https://local.ping-devops.com:8443/ai-demo-standalone/`.
+- Tests: `npm ci && npm test && npm run build`. Real counts from a run on the stage-2 tree, 2026-11-10 (Node 26): **48 server tests, 25 web tests (3 files) and 19 root packaging tests, 92 in all**, all passing.
 
 ## Run from a clone
 
@@ -37,40 +93,61 @@ npm run doctor
 npm start
 ```
 
-Open http://127.0.0.1:7710/ (the server serves the built page). `GET /api/health` answers `demo-health/1`. Or with Docker: `HOST_PORT=7710 docker compose up --build -d` from the same folder.
+Open http://127.0.0.1:7810/ (the server serves the built page). `GET /api/health` answers `demo-health/1`.
 
 ## Ports, and what to do if the port is taken
 
-```
-Ports: ai-demo-standalone-LAB listens on 7710 by default (allowed range 7710-7719).
-Docker publishes it on 127.0.0.1:7710 only.
+ai-demo-standalone-LAB has ONE port, **7810**, taken from the packed range 7800-7999 (it first used 7710, which diagram-prove-lab already holds). The server refuses any other port on purpose (`npm run doctor` says so), and Docker publishes it on `127.0.0.1:7810` only.
 
-If the port is taken:
-1. Find what is using it:
-   lsof -iTCP:7710 -sTCP:LISTEN -n -P
-2. If it is an old copy of this lab (npm start), stop that process: kill <PID>.
-   If it is this lab's container: docker compose down (from this folder).
-3. If it is something else, stop it and free 7710. The server refuses ports outside
-   7710-7719 on purpose (npm run doctor says so).
-4. Then start again: npm start, or docker compose up -d.
-```
+If 7810 is taken:
 
-## Scenarios
+1. Find what is using it: `lsof -iTCP:7810 -sTCP:LISTEN -n -P`.
+2. If it is an old copy of this app (`npm start`), stop that process: `kill <PID>`. If it is this app's container, run `docker compose down` from this folder.
+3. Otherwise stop the other process, or free the port, then start again with `npm start` or `docker compose up -d`.
 
-1. **HITL: $300 needs human consent** — the agent pauses, a consent modal is surfaced, and only an explicit human approval (a single-use receipt) lets it proceed (UC8).
-2. **MFA: $600 steps up to device MFA** — step-up outranks the consent gate; the demo OTP is 123123, a labelled demo bypass (UC7).
-3. **CIBA: $150, approved out-of-band on the phone** — bc-authorize, the on-page phone panel, the agent polls; amount-independent by design (UC22).
-4. **DENY: $2500 exceeds the hard limit** — DENY outranks every obligation; nothing can clear it (the UC6 band).
-5. **REPLAY: the same approved receipt cannot be used twice** — consume-on-use; the retry re-challenges.
-6. **BOUND: approving $300 does not authorize $600** — the receipt is amount-bound; the $600 call steps up.
+## API
 
-## Surface
+All under `/api`. Writes are same-origin only; every request carries a workspace id in the `X-Workspace` header (lower-case letters, digits and `-`, up to 40; default `default`), and Reset clears only that workspace (directory flips, runs, spent challenges, the specialist registry).
 
-- `GET/POST /api/policy` — read / set this workspace's bands (normalized; a crossing edit falls back to the defaults, never wider).
-- `POST /api/transfer` — the gated tool call; 428 = a human beat is required, 403 = deny, 200 = permitted (the decision, reason, receipt and W3C-traceparent hops are the answer).
-- `POST /api/mfa/challenge`, `POST /api/mfa/verify` — the MFA beat (demo OTP `123123`).
-- `POST /api/ciba/bc-authorize`, `GET /api/ciba/poll/:authReqId`, `POST /api/ciba/respond` — the CIBA beat.
-- `GET /api/scenarios` — the story as data. `GET /api/diagram` — the diagram-studio data. `GET /api/health` — `demo-health/1`.
-- Workspaces: every visitor carries an `X-Workspace` id; Reset clears only that workspace.
+| Route | What it does |
+| --- | --- |
+| `GET /api/health` | `demo-health/1`, GET only |
+| `GET /api/info` | `mode`, `source`, `simulated`, `hosted`, `realAvailable` |
+| `POST /api/mode` | Rule 19 toggle, body exactly `{ "source": "mock" \| "real" }`; `409` when Real is not configured |
+| `GET /api/scenarios?vertical=` | The story as data: banner, intro, rule, the eleven scenarios, tools, facts, talk track |
+| `GET /api/catalog?track=` | The 87-use-case catalog (`count`, `tracks`, `useCases`), optionally one track |
+| `GET /api/diagram?name=` | The decision-chain diagram (diagram-studio/1 data) |
+| `GET /api/directory` | This workspace's directory (groups and tier per user), read on every decision |
+| `POST /api/directory/set` | Set one user's `groups` (up to 8) and `tier` (`Standard` or `Premium`) |
+| `POST /api/consent` | Mock consent: mint a delegated token (`sub` = user, `act` = `{ sub: actor }`, 1 hour) |
+| `POST /api/authorize` | The gated call: `{ token, tool, amount?, aud?, ucId?, receipt? }`. `200` PERMIT, `202` OBLIGATION (`obligation` names which), `403` DENY, `401` no bearer (with `WWW-Authenticate`); all return the decision, narrative, lesson, products, hops and trace id |
+| `POST /api/challenge` | Raise the challenge for a call that came back OBLIGATION: `{ user, tool, amount? }` returns the challenge (`needs`, 5-minute expiry, `authReqId` for CIBA) |
+| `POST /api/challenge/answer` | The human's answer: `{ challenge, answer: { consent?, otp?, cibaApproved? } }` returns a bound receipt; a challenge can be answered once (`challenge_spent`) |
+| `GET /api/a2a/agent-card` | The generalist's Agent Card (mock A2A well-known document) |
+| `POST /api/a2a/exchange/one` | RFC 8693 exchange #1: `{ user, generalist?, scope? }` returns the generalist token |
+| `POST /api/a2a/exchange/two` | Exchange #2: `{ generalistToken, specialist?, scope? }` returns the nested-act token, scope narrowed |
+| `POST /api/a2a/tool` | The specialist call: `{ token }`. `200` PERMIT, `403` DENY (`unregistered_specialist`, `chain_not_nested`, `scope_narrowed_away`, ...), `401` no bearer |
+| `GET /api/a2a/registry` | The specialists registered in this workspace |
+| `POST /api/a2a/registry/set` | `{ specialist, registered }`: register or revoke one; the next call moves |
+| `GET /api/runs` | This workspace's last 20 runs |
+| `POST /api/reset` | Clear this workspace's directory flips, runs, challenges and registry |
+| `GET /shelf` | The shelf URL, if one is configured. Mounted at `/shelf`, not under `/api` (see Known gaps) |
 
-Safety: loopback Host check (+ `LAB_ALLOWED_HOSTS` behind the lab-proxy), same-origin writes, no outbound network, bounded payloads, `nosniff`, read-only container fs, non-root. The demo OTP and every decision value are labelled demo values. See `docs/safety.md` and `docs/talk-track.md` (generated from the same data the UI reads).
+The web page has three tabs (Dashboard & catalog, Diagram, Talk track), a Mock / Real toggle, a vertical picker, Reset and presenter mode (`P`). Opened from Customer Agent LAB with `?from=customer-agent&uc=<id>`, it preselects the matching scenario and shows a Back link.
+
+## Known gaps
+
+- **Receipts are not verified against the server.** `POST /api/authorize` checks a presented `receipt` only for binding (user, tool, obligation, amount, age): it does not look it up, so a hand-written receipt object that was never issued is accepted, and a real receipt can be presented again inside its 5 minutes and permits again. Only the challenge answer is single-use. The bound-receipt idea is shown honestly; consume-on-use and issue-time lookup are not built.
+- **Some page text still describes the stage-1 build:** the intro, the "stages" fact and the catalog hint say HITL and the other tracks "land in the next stages", and the use-case detail says HITL runs in "stage 2-4". HITL and A2A are wired now; that text is out of date.
+- **The header's Shelf link never shows.** The page asks `GET /api/shelf`, but the server mounts the route at `/shelf`, so the page gets a 404.
+- **Leftovers from the scaffold, unused:** the `k8s/` manifests and the `AIDEMOLAB_HOSTED` / hosted-banner wording belong to the SE mock build, which is deferred and not allowed for standalone apps (no hosted mode). They are not part of this app's ship form (local Docker only).
+- **The UI does not follow the family UI standard** (dark shell-bar header, simulation banner first, card grid). The rebuild in "Direction" replaces the page, so the standard is applied there.
+- **`server/src/shelfLink.js` still reads `SHELF_URL` from `~/Development/.env`** when the variable is not set in the environment; the compose file sets `SHELF_URL`, so the Docker form does not depend on it.
+
+## Safety
+
+Loopback Host check (plus `LAB_ALLOWED_HOSTS` behind the lab-proxy), same-origin writes, zero outbound network (netguard, with a self-test and a test that asserts zero attempts), 8 KB bodies, `nosniff`, read-only container filesystem, non-root, `127.0.0.1`-only publish pinned by a test. Every decision value, token, challenge, receipt and the demo OTP (`123123`) is a labelled mock value. See `docs/safety.md` and `docs/talk-track.md` (generated from the same data the UI reads).
+
+## Attribution
+
+The scaffold (workspaces, safety, doctor, netguard, return-link, diagram components) was copied from sibling -LAB repos of this family (mcp-gateway-lab-LAB and hitl-mfa-lab-LAB); the PDP, data and UI are this lab's own. The catalog (`server/data/catalog.json`) was extracted on 2026-11-11 from the AI-DEMO2 dashboard's `useCases.js` config as read-only shapes; the mock decisions live here. The HITL and A2A engines follow the shapes of the sibling HITL and A2A labs (shapes only). No cross-repo imports.

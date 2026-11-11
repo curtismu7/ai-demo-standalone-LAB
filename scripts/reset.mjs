@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Reset a running lab: clears the default workspace's evaluations.
-//   node scripts/reset.mjs [base-url]      (default http://localhost:${PORT:-7680})
+//   node scripts/reset.mjs [base-url]      (default http://localhost:${PORT:-7810})
 // Loopback only: refuses any other host. Needs the server already running; sends the same-origin header the server requires.
 import { isLoopbackHost } from '../server/src/safety.js';
 
-export async function reset(base = `http://localhost:${process.env.PORT || 7680}`) {
+export async function reset(base = `http://localhost:${process.env.PORT || 7810}`) {
   const u = new URL(base);
   if (!isLoopbackHost(u.hostname)) throw new Error(`refusing ${u.hostname}: loopback only`);
   const r = await fetch(new URL('/api/reset', u), { method: 'POST', headers: { 'content-type': 'application/json', origin: u.origin }, body: '{}' });

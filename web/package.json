@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "React + Vite UI for the HITL MFA lab.",
+  "description": "React + Vite UI for AI Demo Standalone.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

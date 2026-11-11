@@ -29,7 +29,7 @@ test('no secret, tenant id, credential or real host sits in the manifests', () =
 
 test('the public ingress terminates TLS on its own host, is rate limited, and rewrites Host to loopback', () => {
   const ing = read('k8s/ingress.yaml');
-  for (const re of [/tls:/, /secretName: ai-demo-standalone-tls/, /limit-rps/, /limit-connections/, /proxy-body-size/, /ssl-redirect: "true"/, /upstream-vhost: "127\.0\.0\.1:7710"/]) assert.match(ing, re);
+  for (const re of [/tls:/, /secretName: ai-demo-standalone-tls/, /limit-rps/, /limit-connections/, /proxy-body-size/, /ssl-redirect: "true"/, /upstream-vhost: "127\.0\.0\.1:7810"/]) assert.match(ing, re);
   const cert = read('k8s/certificate.yaml');
   assert.match(cert, /kind: Certificate/);
   assert.match(cert, /secretName: ai-demo-standalone-tls/);

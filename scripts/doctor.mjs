@@ -12,10 +12,10 @@ let failed = 0;
 const report = (level, name, detail) => { if (level === 'fail') failed++; console.log(`${level.toUpperCase().padEnd(4)}  ${name}: ${detail}`); };
 for (const c of await runChecks()) report(c.level, c.id, c.detail);
 
-const port = Number(process.env.PORT) || 7710;
+const port = Number(process.env.PORT) || 7810;
 await new Promise((resolve) => {
   const s = net.createServer();
-  s.once('error', (e) => { report('fail', 'port-free', `${port} is not free (${e.code}). Set PORT in .env to a free port in 7710-7719`); resolve(); });
+  s.once('error', (e) => { report('fail', 'port-free', `${port} is not free (${e.code}). Free 7810 (this app's one allocated port) or stop what is using it`); resolve(); });
   s.listen(port, '127.0.0.1', () => s.close(() => { report('pass', 'port-free', `${port} is free`); resolve(); }));
 });
 process.exit(failed ? 1 : 0);

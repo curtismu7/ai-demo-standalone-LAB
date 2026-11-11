@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "AI Demo Standalone: an agent's money movement gated by a mock authorization policy \u2014 amount bands (PERMIT / HITL consent / MFA step-up / DENY) plus CIBA out-of-band approval on the user's own device. Standalone mock of the AI-DEMO2 HITL track (UC7/UC8/UC22).",
+  "description": "AI Demo Standalone: a mock of the AI-DEMO2 dashboard. All 87 use cases in one catalog, run against one mock PDP (token, gateway, policy). Foundations and controls tracks are wired.",
   "license": "MIT",
   "workspaces": [
     "server",
