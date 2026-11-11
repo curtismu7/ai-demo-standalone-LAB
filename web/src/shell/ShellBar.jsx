@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { setMode } from "../api";
+import { setMode, getInfo } from "../api";
 
 const ROUTES = [
   { id: "dashboard", href: "#/dashboard", label: "Dashboard" },
@@ -19,6 +19,10 @@ export default function ShellBar({ route, onReset, children }) {
   });
   const [size, setSize] = useState("auto");
   const [modeMsg, setModeMsg] = useState("");
+  const [realAvailable, setRealAvailable] = useState(false);
+  const [mode, setModeState] = useState("mock");
+
+  useEffect(() => { getInfo().then((i) => { setRealAvailable(Boolean(i?.realAvailable)); setModeState(i?.mode || "mock"); }).catch(() => {}); }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -27,18 +31,23 @@ export default function ShellBar({ route, onReset, children }) {
     document.documentElement.style.fontSize = size === "large" ? "18px" : "";
   }, [size]);
 
-  // Real is RESERVED (rule 19): clicking Real calls POST /api/mode, which answers 409 while Real is unconfigured.
-  const pickReal = async () => {
-    const res = await setMode("real").catch(() => ({ ok: false, body: {} }));
-    setModeMsg(res.ok ? "Switched to Real." : res.body?.detail || "Real mode is not configured for this lab.");
+  // Rule 19: clicking Real (or Mock) calls POST /api/mode. Real answers 409 while unconfigured;
+  // when configured (AIDEMOLAB_REAL_*), Real activates the real PingOne exchange on the dashboard.
+  const pickMode = async (source) => {
+    const res = await setMode(source).catch(() => ({ ok: false, body: {} }));
+    if (res.ok) setModeState(source);
+    setModeMsg(res.ok
+      ? (source === "real" ? "Switched to Real: the dashboard's Real PingOne exchange panel is active." : "Switched to Mock: everything is simulated again.")
+      : res.body?.detail || "Real mode is not configured for this lab.");
   };
+  const pickReal = () => pickMode("real");
 
   return (
     <header className="shell-bar">
       <span className="shell-brand">
         <img className="shell-logo" src="/ping-logo.png" alt="Ping Identity" width="30" height="30" />
         <span aria-hidden="true">✈</span>
-        AI Demo <span className="shell-badge" data-testid="mock-badge">MOCK</span>
+        AI Demo <span className="shell-badge" data-testid="mock-badge">{mode === "real" ? "REAL TOKENS" : "MOCK"}</span>
       </span>
       <nav className="shell-nav" aria-label="Sections">
         {ROUTES.map((r) => (
@@ -47,12 +56,12 @@ export default function ShellBar({ route, onReset, children }) {
       </nav>
       <span className="shell-right">
         <span className="seg" role="group" aria-label="Data source" data-testid="mode-toggle">
-          <button type="button" aria-pressed="true" data-testid="mode-mock">Mock</button>
+          <button type="button" aria-pressed={mode !== "real"} data-testid="mode-mock" onClick={() => pickMode("mock")}>Mock</button>
           <button
             type="button"
-            aria-pressed="false"
+            aria-pressed={mode === "real"}
             data-testid="mode-real"
-            title="Real mode is not configured for this lab"
+            title={realAvailable ? "Real mode: the dashboard's Real PingOne exchange panel is active" : "Real mode is not configured for this lab"}
             onClick={pickReal}
           >Real</button>
         </span>

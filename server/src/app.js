@@ -10,6 +10,7 @@ import { hostCheck, sameOriginWrites } from './safety.js';
 import { createHealth } from './health.js';
 import { loadCast, verticalFrom, VERTICALS } from './cast.js';
 import { modeFrom, realAvailableFrom } from './config.js';
+import { realExchange, realExchangeConfigured, NO_REAL_EXCHANGE } from './realExchange.js';
 import { buildStory, CATALOG } from './story.js';
 import { DIAGRAM_NAMES, buildDiagram } from './diagramData.js';
 import { decide, decideWithObligation, actChainDepth, DEFAULT_ACTORS, AUDIENCE, exchange, TOOL_REQUIRED_SCOPE } from './pdp.js';
@@ -85,6 +86,15 @@ export function createApp({
       return res.status(409).json({ error: 'real_not_configured', detail: 'Real mode needs a live policy engine configuration (AIDEMOLAB_REAL_* env, owner-run). Mock keeps working.' });
     }
     return res.json({ source: body.source });
+  });
+
+  // Real PingOne token exchange (RFC 8693, third-party JWT as the actor token). Owner-configured via
+  // AIDEMOLAB_REAL_*; the netguard allowlist covers exactly its endpoint hosts. Secret write-only; tokens hashed.
+  api.post('/real-exchange', async (req, res) => {
+    if (!realExchangeConfigured()) return res.status(409).json({ error: 'real_not_configured', detail: NO_REAL_EXCHANGE });
+    const r = await realExchange(req.body);
+    if (!r.ok) return res.status(r.status).json({ error: r.error, detail: r.errorDescription });
+    return res.json({ source: 'real', ...r });
   });
 
   // The workspace's challenge/receipt store (created on first use if injected workspaces have none).

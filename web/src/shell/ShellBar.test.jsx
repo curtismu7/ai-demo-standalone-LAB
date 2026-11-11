@@ -9,6 +9,7 @@ vi.mock("../api", () => ({
   getJson: vi.fn(async (url) => { calls.push(url); return { banner: "SIMULATED", intro: "i", scenarios: [{ id: "uc1", title: "UC1", user: "demoUser", actor: "demo-agent", tool: "get_balance", expected: "PERMIT", lesson: "l" }], talkTrack: [{ id: "say-first", title: "Say first", say: "s" }] }; }),
   resetWorkspace: vi.fn(async () => true),
   setMode: vi.fn(async (source) => modeResponses.shift() || { ok: false, status: 409, body: { error: "real_not_configured", detail: "Real mode needs a live policy engine configuration." } }),
+  getInfo: vi.fn(async () => ({ mode: "mock", realAvailable: false })),
 }));
 vi.mock("../components/PolicyGate", () => ({ default: () => <section data-testid="gate">gate</section> }));
 vi.mock("../components/DiagramTab", () => ({ default: () => <section data-testid="diagram">diagram</section> }));

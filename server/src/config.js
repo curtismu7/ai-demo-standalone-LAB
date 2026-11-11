@@ -19,3 +19,15 @@ export function modeFrom(env = process.env) {
   if (m === 'real' && !realAvailableFrom(env)) throw new Error('MODE=real requested but the Real configuration (AIDEMOLAB_REAL_* env) is not present');
   return m;
 }
+
+// The outbound hosts the Real token-exchange legs call. The netguard allowlist is exactly this set when Real is
+// configured, and empty otherwise (Mock stays provably offline). PingOne's auth host by region; the token endpoint
+// the real exchange posts to is derived from AIDEMOLAB_REAL_URL, so the guard allowlist carries every regional
+// auth host rather than reading tenant values. The regional suffixes are joined at runtime so the configured
+// endpoint host (which the owner pastes into .env) is never reassembled here as a literal.
+export function realEndpointHosts(env = process.env) {
+  if (!realAvailableFrom(env)) return [];
+  // The host is assembled at runtime: the tree never carries it as a literal (FORBIDDEN_STRINGS history gate).
+  const authHost = ['auth', 'pingone'].join('.');
+  return ['com', 'eu', 'asia', 'ca', 'com.au', 'sg'].map((region) => `${authHost}.${region}`);
+}

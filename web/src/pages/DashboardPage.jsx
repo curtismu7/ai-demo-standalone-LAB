@@ -8,6 +8,8 @@ import Json from "../components/Json";
 import { assistantTurn } from "../api";
 import { visible } from "../safeText";
 import ChainView from "../components/ChainView.jsx";
+import RealExchangePanel from "../components/RealExchangePanel.jsx";
+import { getInfo } from "../api";
 import TokenCardsPanel from "../components/TokenCardsPanel.jsx";
 import QuickConfigDialog, { readConfig } from "../components/QuickConfigDialog.jsx";
 import ChainMap from "../components/evidence/ChainMap.jsx";
@@ -227,6 +229,7 @@ export function TalkTrackSection({ run }) {
 const SECTIONS = ["signin", "plan", "evidence", "products", "talk"];
 
 export default function DashboardPage({ story, requestedUc }) {
+  const [realAvailable, setRealAvailable] = useState(false);
   const [transcript, setTranscript] = useState([{ who: "agent", text: GREETING }]);
   const [run, setRun] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -235,6 +238,9 @@ export default function DashboardPage({ story, requestedUc }) {
   const [qcOpen, setQcOpen] = useState(false);
   const [cfg, setCfg] = useState(() => readConfig());
   const onCfg = useCallback((key, value) => setCfg((c) => ({ ...c, [key]: value })), []);
+
+  // The Real PingOne exchange panel is active only when Real mode is configured (AIDEMOLAB_REAL_*).
+  useEffect(() => { getInfo().then((i) => setRealAvailable(Boolean(i?.realAvailable))).catch(() => setRealAvailable(false)); }, []);
 
   const send = useCallback(async (message) => {
     setBusy(true); setFail(null);
@@ -290,6 +296,7 @@ export default function DashboardPage({ story, requestedUc }) {
       </div>
       <AssistantSection transcript={transcript} run={run} onSend={send} onChip={onChip} busy={busy} fail={fail} />
       <PlanSection run={run} />
+      <RealExchangePanel realAvailable={realAvailable} />
       <EvidenceSection run={run} cfg={cfg} />
       <ProductsSection run={run} />
       <TalkTrackSection run={run} />

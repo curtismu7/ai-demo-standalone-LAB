@@ -3,9 +3,11 @@ import { installNetguard } from './netguard.js';
 import { startHttpServer, createApp } from './app.js';
 import { allPassed, runChecks } from './doctor.js';
 import { assertBindAllowed, bindHost, resolvePort } from './safety.js';
-import { modeFrom, realAvailableFrom } from './config.js';
+import { modeFrom, realAvailableFrom, realEndpointHosts } from './config.js';
 
-installNetguard(); // before anything else can open a socket
+// The outbound allowlist is exactly what Real mode calls (the PingOne auth hosts) when Real is configured
+// via AIDEMOLAB_REAL_*, and empty otherwise: Mock mode stays provably offline.
+installNetguard({ outboundAllow: realEndpointHosts() }); // before anything else can open a socket
 
 try { process.loadEnvFile(fileURLToPath(new URL('../../.env', import.meta.url))); } catch { /* no .env */ }
 

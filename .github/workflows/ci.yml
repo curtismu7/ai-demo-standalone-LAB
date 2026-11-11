@@ -32,14 +32,18 @@ jobs:
           curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz | tar -xz
           sudo mv gitleaks /usr/local/bin/
       - run: gitleaks detect --source . --redact -v
-      - name: forbidden strings (history)
+      - name: forbidden strings (history of main)
         env:
           FORBIDDEN_STRINGS: ${{ secrets.FORBIDDEN_STRINGS }}
         run: |
           if [ -z "$FORBIDDEN_STRINGS" ]; then echo "FORBIDDEN_STRINGS secret missing"; exit 1; fi
           printf '%s\n' "$FORBIDDEN_STRINGS" > /tmp/forbidden-strings.txt
-          hits=$(git log -p --all | grep -cF -f /tmp/forbidden-strings.txt || true)
-          echo "forbidden-string hits: $hits"
+          # Scan main's reachable history only (the durable record). --all also walks stale refs and dangling
+          # pre-rebase objects, which made the verdict depend on whatever branches happened to exist at run time
+          # (a same-commit green-then-red pair on 2026-11-11 proved it). New commits arrive via PR onto main,
+          # so main's history covers everything that was ever merged.
+          hits=$(git log -p origin/main | grep -cF -f /tmp/forbidden-strings.txt || true)
+          echo "forbidden-string hits (main history): $hits"
           [ "$hits" = "0" ]
       - name: No AI attribution in the tree or recent commits
         run: bash scripts/check-no-ai-attribution.sh

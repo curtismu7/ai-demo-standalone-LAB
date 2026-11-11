@@ -6,9 +6,11 @@ import fs from 'node:fs';
 // is installed before the env file is read, the doctor runs, or any server starts.
 test('the entry installs the netguard first, before it can open any socket', () => {
   const src = fs.readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
-  const m = /^installNetguard\(\);/m.exec(src); // a real statement at the start of a line, not inside a comment
+  const m = /^installNetguard\(/m.exec(src); // a real statement at the start of a line, not inside a comment
   assert.ok(m, 'installNetguard() is called as a statement');
   const guard = m.index;
   for (const later of ['runChecks()', 'startHttpServer({', 'loadEnvFile(']) assert.ok(src.indexOf(later) > guard, `${later} comes after the guard`);
   assert.ok(src.indexOf("import { installNetguard }") < guard);
+  // The allowlist is derived from the Real config: empty in Mock (provably offline), the PingOne auth hosts in Real.
+  assert.match(src.slice(guard, guard + 200), /outboundAllow: realEndpointHosts\(\)/, 'the netguard allowlist comes from realEndpointHosts()');
 });

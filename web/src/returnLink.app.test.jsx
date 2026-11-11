@@ -7,6 +7,7 @@ import { SCENARIOS } from "../../server/src/policyData.js";
 const calls = [];
 vi.mock("./api", () => ({
   getJson: vi.fn(async (url) => { calls.push(url); return { banner: "SIMULATED", intro: "i", verticals: ["airline"], scenarios: [], talkTrack: [] }; }),
+  getInfo: vi.fn(async () => ({ mode: "mock", realAvailable: false })),
 }));
 vi.mock("./shell/ShellBar", () => ({ default: ({ children }) => <header>{children}</header> }));
 vi.mock("./shell/SimBanner", () => ({ default: () => <p data-testid="banner">SIMULATED</p> }));

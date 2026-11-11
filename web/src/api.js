@@ -98,3 +98,15 @@ export const nhiRotate = (agentId) => workspaceFetch("/api/nhi/rotate", { method
 export const nhiRevoke = (agentId) => workspaceFetch("/api/nhi/revoke", { method: "POST", body: JSON.stringify({ agentId }) }).then((r) => r.json());
 export const getJml = () => getJson("/api/nhi/jml");
 export const getUseCases = (uc, app) => getJson(`/api/usecases${uc ? `?uc=${encodeURIComponent(uc)}${app ? `&app=${encodeURIComponent(app)}` : ""}` : ""}`);
+
+// POST /api/real-exchange: the real PingOne RFC 8693 exchange (third-party JWT as the actor token).
+// 409 when Real is not configured; 400/401/403/502 carry PingOne's refusal as DATA.
+export async function realExchange(payload) {
+  const r = await workspaceFetch("/api/real-exchange", { method: "POST", body: JSON.stringify(payload) });
+  let body = {};
+  try { body = await r.json(); } catch { /* not JSON */ }
+  return { ok: r.ok, status: r.status, body };
+}
+
+// GET /api/info: mode + realAvailable (whether AIDEMOLAB_REAL_* is configured).
+export const getInfo = () => getJson("/api/info");
