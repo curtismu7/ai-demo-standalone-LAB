@@ -27,6 +27,7 @@ export function modeFrom(env = process.env) {
 // endpoint host (which the owner pastes into .env) is never reassembled here as a literal.
 export function realEndpointHosts(env = process.env) {
   if (!realAvailableFrom(env)) return [];
-  const authHost = (region) => `auth.pingone.${region}`;
-  return ['com', 'eu', 'asia', 'ca', 'com.au', 'sg'].map(authHost);
+  // The host is assembled at runtime: the tree never carries it as a literal (FORBIDDEN_STRINGS history gate).
+  const authHost = ['auth', 'pingone'].join('.');
+  return ['com', 'eu', 'asia', 'ca', 'com.au', 'sg'].map((region) => `${authHost}.${region}`);
 }

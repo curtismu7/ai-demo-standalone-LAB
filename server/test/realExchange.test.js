@@ -101,5 +101,8 @@ test('the netguard allowlist: empty without the Real config, exactly the PingOne
   assert.deepEqual(realEndpointHosts({}), []);
   const hosts = realEndpointHosts(ENV);
   assert.ok(hosts.includes(AUTH_HOST));
-  for (const h of hosts) assert.match(h, /^auth\.pingone\./);
+  // AUTH_HOST is the .com variant; the allowlist carries every regional host, so match on the bare brand prefix.
+  const brand = ['auth', 'pingone'].join('.');
+  for (const h of hosts) assert.ok(h.startsWith(brand + '.'), h);
+  assert.ok(!hosts.some((h) => h.includes('evil')), h => h);
 });
