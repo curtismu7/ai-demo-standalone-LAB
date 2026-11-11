@@ -294,8 +294,93 @@
       "story": "S15"
     },
     {
+      "id": "try-uc5-scope",
+      "label": "Scenario 16: UC5: wrong scope — a read-scoped token calling a write tool is refused",
+      "description": "Scope enforcement is cold: the token says read, the tool needs write — 403 insufficient_scope at the gateway before any tool runs. Read cannot become write no matter how the call is framed.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc5-scope"
+      },
+      "terms": [
+        "entitlement"
+      ],
+      "story": "S16"
+    },
+    {
+      "id": "try-uc10-takeover",
+      "label": "Scenario 17: UC10: account takeover — reading another user’s account is denied",
+      "description": "Authorization includes WHICH resource, not just WHICH action: the policy binds the resource to the token subject and denies the cross-owner call even with valid scopes and a clean act chain. Ownership decides.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc10-takeover"
+      },
+      "terms": [
+        "delegation",
+        "entitlement"
+      ],
+      "story": "S17"
+    },
+    {
+      "id": "try-uc11-badclient",
+      "label": "Scenario 18: UC11: bad client — a token minted for another API is refused 401",
+      "description": "Token validation comes first: aud/exp/iss/nbf are checked before any routing, so a token minted for audience X is worthless at audience Y. An audience is a destination.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc11-badclient"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S18"
+    },
+    {
+      "id": "try-uc13-deputy",
+      "label": "Scenario 19: UC13: confused deputy — a forged actor header cannot change who acts",
+      "description": "Actor identity comes from the native act claim minted at the exchange — never from a header. The injected X-Acting-For: demo-agent is ignored; the allow-list sees the real actor and refuses an unregistered one.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc13-deputy"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S19"
+    },
+    {
+      "id": "try-uc16b-forward",
+      "label": "Scenario 20: UC16b: raw user-token forwarding — the BFF refuses to hand your token to a tool",
+      "description": "Zero Trust at the source: the user’s raw token never crosses to the agent runtime or a tool — only exchanged, agent-scoped tokens with an act claim leave the BFF. The forwarding attempt is blocked before the gateway.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc16b-forward"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S20"
+    },
+    {
+      "id": "try-uc29-outage",
+      "label": "Scenario 21: UC29: token-validation outage — the gateway fails closed",
+      "description": "Token validation is on the request path for EVERY call: when the validation backend cannot be reached the gateway refuses with a 503 rather than letting traffic through. An outage degrades to deny, never to allow.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc29-outage"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S21"
+    },
+    {
       "id": "try-uc8-hitl",
-      "label": "Scenario 16: UC8: HITL approval — an approval is never an MFA",
+      "label": "Scenario 22: UC8: HITL approval — an approval is never an MFA",
       "description": "Human-approval tools always pause the agent, whatever the amount. Only a verified, call-bound HitlApproved receipt moves it.",
       "group": "try-it",
       "action": {
@@ -305,11 +390,11 @@
       "terms": [
         "hitl"
       ],
-      "story": "S16"
+      "story": "S22"
     },
     {
       "id": "try-uc22-ciba",
-      "label": "Scenario 17: UC22: CIBA — out-of-band approval on the user’s device",
+      "label": "Scenario 23: UC22: CIBA — out-of-band approval on the user’s device",
       "description": "An agent has no browser in which to prompt: the backend calls bc-authorize and the user approves out-of-band; the receipt (CibaApproved) re-evaluates the call.",
       "group": "try-it",
       "action": {
@@ -319,7 +404,7 @@
       "terms": [
         "hitl"
       ],
-      "story": "S17"
+      "story": "S23"
     },
     {
       "id": "concept-catalog",
@@ -447,11 +532,41 @@
     },
     {
       "id": "S16",
+      "title": "UC5: wrong scope — a read-scoped token calling a write tool is refused",
+      "say": "Scope enforcement is cold: the token says read, the tool needs write — 403 insufficient_scope at the gateway before any tool runs. Read cannot become write no matter how the call is framed."
+    },
+    {
+      "id": "S17",
+      "title": "UC10: account takeover — reading another user’s account is denied",
+      "say": "Authorization includes WHICH resource, not just WHICH action: the policy binds the resource to the token subject and denies the cross-owner call even with valid scopes and a clean act chain. Ownership decides."
+    },
+    {
+      "id": "S18",
+      "title": "UC11: bad client — a token minted for another API is refused 401",
+      "say": "Token validation comes first: aud/exp/iss/nbf are checked before any routing, so a token minted for audience X is worthless at audience Y. An audience is a destination."
+    },
+    {
+      "id": "S19",
+      "title": "UC13: confused deputy — a forged actor header cannot change who acts",
+      "say": "Actor identity comes from the native act claim minted at the exchange — never from a header. The injected X-Acting-For: demo-agent is ignored; the allow-list sees the real actor and refuses an unregistered one."
+    },
+    {
+      "id": "S20",
+      "title": "UC16b: raw user-token forwarding — the BFF refuses to hand your token to a tool",
+      "say": "Zero Trust at the source: the user’s raw token never crosses to the agent runtime or a tool — only exchanged, agent-scoped tokens with an act claim leave the BFF. The forwarding attempt is blocked before the gateway."
+    },
+    {
+      "id": "S21",
+      "title": "UC29: token-validation outage — the gateway fails closed",
+      "say": "Token validation is on the request path for EVERY call: when the validation backend cannot be reached the gateway refuses with a 503 rather than letting traffic through. An outage degrades to deny, never to allow."
+    },
+    {
+      "id": "S22",
       "title": "UC8: HITL approval — an approval is never an MFA",
       "say": "Human-approval tools always pause the agent, whatever the amount. Only a verified, call-bound HitlApproved receipt moves it."
     },
     {
-      "id": "S17",
+      "id": "S23",
       "title": "UC22: CIBA — out-of-band approval on the user’s device",
       "say": "An agent has no browser in which to prompt: the backend calls bc-authorize and the user approves out-of-band; the receipt (CibaApproved) re-evaluates the call."
     }

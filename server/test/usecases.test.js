@@ -17,9 +17,9 @@ test('every catalog use case has exactly one launcher row', () => {
   for (const u of CATALOG.useCases) assert.ok(byId[u.id], `${u.id}: a row exists`);
 });
 
-test('counts are pinned: 15 run here (the wired scenarios, P6 batch 1 grew 9 -> 15), every redirect in the matcher redirects', () => {
+test('counts are pinned: 21 run here (the wired scenarios, P6 batch 2 grew 15 -> 21), every redirect in the matcher redirects', () => {
   const here = rows.filter((r) => r.runsHere).map((r) => r.id).sort();
-  assert.deepEqual(here, ['UC1', 'UC19', 'UC20', 'UC21', 'UC22', 'UC3', 'UC32', 'UC33', 'UC34', 'UC35', 'UC6', 'UC7', 'UC8', 'UC9', 'UC9A']);
+  assert.deepEqual(here, ['UC1', 'UC10', 'UC11', 'UC13', 'UC16b', 'UC19', 'UC20', 'UC21', 'UC22', 'UC29', 'UC3', 'UC32', 'UC33', 'UC34', 'UC35', 'UC5', 'UC6', 'UC7', 'UC8', 'UC9', 'UC9A']);
   for (const [uc, lab] of Object.entries(REDIRECTS)) {
     assert.equal(byId[uc].route, 'Hand off', `${uc}: the matcher's redirect is a hand off row`);
     assert.equal(byId[uc].apps[0], lab, `${uc}: the app matches the matcher's lab`);

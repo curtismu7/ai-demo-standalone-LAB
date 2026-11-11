@@ -12,7 +12,7 @@ import { loadCast, verticalFrom, VERTICALS } from './cast.js';
 import { modeFrom, realAvailableFrom } from './config.js';
 import { buildStory, CATALOG } from './story.js';
 import { DIAGRAM_NAMES, buildDiagram } from './diagramData.js';
-import { decide, decideWithObligation, actChainDepth, DEFAULT_ACTORS, AUDIENCE, exchange } from './pdp.js';
+import { decide, decideWithObligation, actChainDepth, DEFAULT_ACTORS, AUDIENCE, exchange, TOOL_REQUIRED_SCOPE } from './pdp.js';
 import { DEFAULT_DIRECTORY, LIMITS } from './pdpData.js';
 import { evaluateObligation, createChallenge, answerChallenge, createReceipts, HitlInputError } from './hitl.js';
 import { exchangeOne, exchangeTwo, evaluateA2a, createRegistry, actChainDepth as a2aDepth, A2AInputError, agentCard as a2aAgentCard, LIMITS as A2A_LIMITS } from './a2a.js';
@@ -23,6 +23,7 @@ import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.
 import { matchTurn } from './assistant.js';
 import { createWorkspaces, workspaceFrom } from './workspaces.js';
 import { SCENARIOS } from './policyData.js';
+import { seedFor, tokenFor } from './scenario.js';
 import { toDemoHops, tokenCardsFrom } from './evidenceAdapter.js';
 import { buildDemoHops, buildTokenCards } from './hops.js';
 import { usecaseRows, usecaseEntries, handoffHref } from './usecases.js';
@@ -113,7 +114,12 @@ export function createApp({
     if (typeof body.user === 'string' && !body.user.trim()) return res.status(400).json({ error: 'user_required', detail: 'body.user must be non-empty text' });
     const actor = typeof body.actor === 'string' && body.actor.trim() ? body.actor.trim().slice(0, LIMITS.id) : DEFAULT_ACTORS[0];
     const aud = typeof body.aud === 'string' && body.aud.trim() ? body.aud.trim().slice(0, 100) : AUDIENCE;
-    const token = exchange({ userSub: user, actorClientId: actor, aud });
+    // The exchange narrows scope to the task (UC4): consent with a tool mints the task's
+    // required scope; consent without one mints the consented grant (read + write).
+    const tool = typeof body.tool === 'string' && body.tool.trim() ? body.tool.trim().slice(0, LIMITS.id) : null;
+    const scope = typeof body.scope === 'string' && body.scope.trim() ? body.scope.trim().slice(0, 100)
+      : tool ? TOOL_REQUIRED_SCOPE[tool] ?? 'accounts:read' : 'accounts:read transfers:write';
+    const token = exchange({ userSub: user, actorClientId: actor, aud, scope });
     workspaces.record(ws, { tool: 'consent', decision: 'MINTED', reason: `act={${token.act.sub}} for ${token.sub}`, token: null });
     return res.json({ token, workspace: ws });
   }));
@@ -145,6 +151,7 @@ export function createApp({
     const claimed = typeof body.receipt === 'object' && body.receipt !== null ? body.receipt : null;
     const { verdict, obligation, receiptCheck } = decideWithObligation({
       token: body.token, groups: entry.groups, tier: entry.tier, tool, amount, receipt: claimed, receipts: receiptsOf(v),
+      resourceOwner: typeof body.resourceOwner === 'string' && body.resourceOwner.trim() ? body.resourceOwner.trim().slice(0, LIMITS.id) : null,
       authorizedActors: Array.isArray(body.authorizedActors) ? body.authorizedActors.slice(0, 8).map((x) => String(x).slice(0, LIMITS.id)) : DEFAULT_ACTORS,
       audience: typeof body.aud === 'string' && body.aud.trim() ? body.aud.trim().slice(0, 100) : AUDIENCE,
       now: () => Date.now(),
@@ -197,7 +204,9 @@ export function createApp({
         // body's actor (the one the agent actually uses) or the allow-list's first entry.
         token: {
           sub: user, act: { sub: typeof body.actor === 'string' && body.actor.trim() ? body.actor.trim().slice(0, LIMITS.id) : DEFAULT_ACTORS[0] },
-          scope: '', aud: AUDIENCE, exp: Math.floor(Date.now() / 1000) + 300,
+          // the synthetic token carries the task's required scope (the exchange narrows to
+          // the task, UC4); the challenge must pass the same gateway stages /authorize runs
+          scope: TOOL_REQUIRED_SCOPE[tool] ?? 'accounts:read', aud: AUDIENCE, exp: Math.floor(Date.now() / 1000) + 300,
         },
         groups: entry.groups, tier: entry.tier,
         tool, amount, authorizedActors: DEFAULT_ACTORS, audience: AUDIENCE, now: () => Date.now(),
@@ -403,15 +412,16 @@ export function createApp({
     const amount = turn.amount ?? sc.amount;
     const v = workspaces.state(ws);
     const dir = v.directory || structuredClone(DEFAULT_DIRECTORY);
-    // seed the directory the way the scenario states (same rule the UI's runner follows);
-    // a scenario's explicit flipTo wins, otherwise the assumed baseline for that user
-    const groups = Array.isArray(sc.flipTo) ? sc.flipTo : (sc.user === 'premiumUser' ? ['privileged', 'premiumTier'] : sc.user === 'jane' ? [] : ['privileged']);
-    const entry = { groups, tier: sc.user === 'premiumUser' ? 'Premium' : 'Standard' };
+    // seed the directory the way the scenario states — the SHARED seeding rule (scenario.js),
+    // the same one the doctor and the tests apply, so a scenario cannot be seeded differently
+    // by the endpoint and by a test.
+    const entry = seedFor(sc);
     dir[sc.user] = entry;
     v.directory = dir;
-    const token = exchange({ userSub: sc.user, actorClientId: sc.actor, aud: sc.aud || AUDIENCE });
+    const token = tokenFor(sc);
     const { verdict, obligation } = decideWithObligation({
       token, groups: entry.groups, tier: entry.tier, tool: sc.tool, amount,
+      resourceOwner: sc.resourceOwner ?? null,
       receipts: receiptsOf(v), authorizedActors: DEFAULT_ACTORS, audience: AUDIENCE, now: () => Date.now(),
     });
     const ctx = { user: sc.user, actor: sc.actor, tool: sc.tool, amount, groups: entry.groups, tier: entry.tier, aud: sc.aud };

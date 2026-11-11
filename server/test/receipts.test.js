@@ -280,6 +280,13 @@ test('scenario outcomes are unchanged: the eleven originals give the same decisi
     'uc34-patterns': [200, 'PERMIT', null, 'policy'],
     'uc35-why': [200, 'PERMIT', null, 'policy'],
     'uc7-stepup': [202, 'OBLIGATION', 'STEP_UP', 'policy'],
+    // P6 batch 2 (attacks) ride the turn/seeded path; their outcomes are pinned in p6Attacks.test.js
+    'uc5-scope': [403, 'DENY', 'insufficient_scope', 'gateway'],
+    'uc10-takeover': [403, 'DENY', 'resource_owner_mismatch', 'policy'],
+    'uc11-badclient': [403, 'DENY', 'bad_audience', 'gateway'],
+    'uc13-deputy': [403, 'DENY', 'unauthorized_actor', 'gateway'],
+    'uc16b-forward': [403, 'DENY', 'user_token_forwarding_disabled', 'gateway'],
+    'uc29-outage': [403, 'DENY', 'validation_unavailable', 'gateway'],
     'uc8-hitl': [202, 'OBLIGATION', 'HITL_CONSENT', 'policy'],
     'uc22-ciba': [202, 'OBLIGATION', 'CIBA', 'policy'],
   };
@@ -289,6 +296,10 @@ test('scenario outcomes are unchanged: the eleven originals give the same decisi
     for (const sc of scenarios) {
       const s = session(url, `sc-${sc.id}`);
       if (Array.isArray(sc.flipTo)) await s.send('/api/directory/set', { user: sc.user, groups: sc.flipTo, tier: 'Standard' });
+      // the attack-track scenarios ride the assistant turn (their seeding lives in the
+      // shared scenario.js rule: wrong scope, raw token, outage); here the ORIGINAL
+      // consent -> authorize -> receipt path keeps proving the non-attack scenarios
+      if (sc.track === 'attacks') continue;
       const token = (await s.send('/api/consent', { user: sc.user, actor: sc.actor, ...(sc.aud ? { aud: sc.aud } : {}) })).j.token;
       const r = await s.authorize(token, sc.tool, sc.amount);
       assert.deepEqual([r.status, r.j.decision, r.j.code, r.j.stage], expected[sc.id], sc.id);
@@ -350,7 +361,7 @@ test('a receipt for another obligation is refused even when user, tool and amoun
 });
 
 test('with no store to verify against, a presented receipt is refused (fail closed)', () => {
-  const token = exchange({ userSub: 'demoUser', actorClientId: 'demo-agent' });
+  const token = exchange({ userSub: 'demoUser', actorClientId: 'demo-agent', scope: 'accounts:read' });
   const receipt = forge({ obligation: 'STEP_UP', tool: 'get_transactions', amount: 600, claims: { MfaVerified: true, ConsentGiven: true } });
   const r = decideWithObligation({ token, groups: ['privileged'], tier: 'Standard', tool: 'get_transactions', amount: 600, receipt });
   assert.equal(r.verdict.decision, 'OBLIGATION');

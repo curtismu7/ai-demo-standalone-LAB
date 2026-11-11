@@ -22,6 +22,17 @@ const clean = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u001f\u00
 
 export const DEFAULT_ACTORS = ['demo-agent'];
 export const UPSTREAM_AUDIENCES = ['mcp-weather.internal', 'mcp-portfolio.internal'];
+// The scope a tool needs (the gateway's routing table). The exchange narrows scope to the
+// task (UC4); a token whose scope does not cover the tool's requirement is refused here
+// (UC5). A token without a scope claim is unaffected: the other stages answer it.
+export const TOOL_REQUIRED_SCOPE = {
+  get_balance: 'accounts:read',
+  get_transactions: 'accounts:read',
+  show_mortgage: 'accounts:read',
+  create_wire_transfer: 'transfers:write',
+};
+
+export const REQUIRED_ACT = 'demo-agent';
 export const PREMIUM_ONLY_TOOLS = ['create_wire_transfer', 'approve_large_transfer'];
 export const TIERS = {
   Standard: { ceiling: 2000 },
@@ -36,7 +47,7 @@ export function actChainDepth(act) {
 }
 
 /** Stage 1: the token itself. */
-export function validateToken(token, { audience = AUDIENCE, now = Date.now, upstreamAudiences = UPSTREAM_AUDIENCES } = {}) {
+export function validateToken(token, { audience = AUDIENCE, now = Date.now, upstreamAudiences = UPSTREAM_AUDIENCES, requiredScope = null } = {}) {
   if (token == null || typeof token !== 'object' || Array.isArray(token)) {
     return { valid: false, stage: 'protocol', code: 'invalid_token', reason: 'token missing or malformed' };
   }
@@ -51,7 +62,31 @@ export function validateToken(token, { audience = AUDIENCE, now = Date.now, upst
   if (!aud.map((a) => a.toLowerCase()).includes(audience.toLowerCase())) {
     return { valid: false, stage: 'gateway', code: 'bad_audience', reason: `Token audience is not ${audience}` };
   }
+  // UC29 fail closed: token validation rides the issuer's backend (JWKS / introspection).
+  // When that backend cannot be reached the gateway refuses BEFORE anything else runs —
+  // an outage degrades to deny, never to allow.
+  if (token.validationDown) {
+    return { valid: false, stage: 'gateway', code: 'validation_unavailable', reason: 'the token-validation endpoint did not answer; the gateway fails closed (503), it never fails open' };
+  }
+  // UC5: scope enforcement at the gateway — the token's scope must cover the tool's
+  // requirement before it is routed (a read-scoped token calling a write tool is 403).
+  if (requiredScope && !String(token.scope ?? '').split(/\s+/).includes(requiredScope)) {
+    return { valid: false, stage: 'gateway', code: 'insufficient_scope', reason: `the token carries scope [ ${clean(token.scope ?? '', LIMITS.group) || 'none'} ] — the tool needs "${requiredScope}"` };
+  }
   return { valid: true, stage: null, code: null, reason: 'token valid' };
+}
+
+/**
+ * UC16b: token custody. An agent-mediated call (act present OR the caller announces the
+ * raw user token) must ride an EXCHANGED delegated token: the raw user token is refused
+ * before the gateway, at the BFF source (fail-closed ff_skip_token_exchange shape).
+ */
+export function validateCustody(token) {
+  const raw = token?.rawUserToken === true;
+  if (raw && actChainDepth(token?.act) === 0) {
+    return { valid: false, code: 'user_token_forwarding_disabled', reason: 'the BFF refuses to forward the user\u2019s raw token to a tool call: only exchanged, agent-scoped tokens with an act claim leave the BFF (fail closed)' };
+  }
+  return { valid: true, code: null, reason: 'the call rides an exchanged delegated token' };
 }
 
 /** Stage 2: the gateway checks the delegation chain. */
@@ -70,9 +105,17 @@ export function validateChain(token, { authorizedActors = DEFAULT_ACTORS, now = 
 }
 
 /** Stage 3: the policy decides from the live directory + tool + amount. */
-export function evaluatePolicy({ groups = [], tier = 'Standard', tool = '', amount = null, requiredGroup = 'privileged', premiumOnlyTools = PREMIUM_ONLY_TOOLS, tiers = TIERS } = {}) {
+export function evaluatePolicy({ groups = [], tier = 'Standard', tool = '', amount = null, requiredGroup = 'privileged', premiumOnlyTools = PREMIUM_ONLY_TOOLS, tiers = TIERS, resourceOwner = null, token = null } = {}) {
   const g = (groups || []).map((x) => clean(x, LIMITS.group));
   const t = clean(tool, LIMITS.id);
+  // UC10: the resource is bound to the token subject — a call naming another owner's
+  // account is denied even with valid scopes and a clean chain. Ownership decides.
+  if (resourceOwner) {
+    const who = String(token?.sub ?? '');
+    if (who !== resourceOwner) {
+      return { decision: 'DENY', code: 'resource_owner_mismatch', reason: `the resource belongs to "${clean(resourceOwner, LIMITS.id)}", not to the token subject "${clean(who, LIMITS.id)}" — the owner match denies the call` };
+    }
+  }
   const band = tiers[tier] || tiers.Standard;
   // The group gate is read on EVERY decision: outside the required group is denied
   // regardless of the token's scopes (UC9). Tool calls are the gated surface.
@@ -95,29 +138,40 @@ export function evaluatePolicy({ groups = [], tier = 'Standard', tool = '', amou
  * (the workspace store owns mutations), so the SAME token + call can flip with the directory.
  * @returns {{ decision, stage, code, reason, hops: string[] }}
  */
-export function decide({ token, groups, tier = 'Standard', tool = '', amount = null, authorizedActors = DEFAULT_ACTORS, audience = AUDIENCE, now = Date.now } = {}) {
+export function decide({ token, groups, tier = 'Standard', tool = '', amount = null, authorizedActors = DEFAULT_ACTORS, audience = AUDIENCE, now = Date.now, resourceOwner = null } = {}) {
   const stages = [];
-  const tok = validateToken(token, { audience, now });
+  // UC16b: custody first — a raw forwarded user token never leaves the BFF, so the
+  // gateway and the policy never see the call at all.
+  const custody = validateCustody(token);
+  stages.push(`custody: ${custody.valid ? 'ok' : custody.code}`);
+  if (!custody.valid) return { decision: 'DENY', stage: 'gateway', code: custody.code, reason: custody.reason, stages };
+  const requiredScope = tool ? TOOL_REQUIRED_SCOPE[tool] ?? null : null;
+  const tok = validateToken(token, { audience, now, requiredScope });
   stages.push(`token: ${tok.valid ? 'ok' : `${tok.code}`}`);
   if (!tok.valid) return { decision: 'DENY', stage: tok.stage, code: tok.code, reason: tok.reason, stages };
   const chain = validateChain(token, { authorizedActors, now });
   stages.push(`chain: ${chain.valid ? 'ok' : `${chain.code}`}`);
   if (!chain.valid) return { decision: 'DENY', stage: chain.stage, code: chain.code, reason: chain.reason, stages };
-  const pol = evaluatePolicy({ groups, tier, tool, amount });
+  const pol = evaluatePolicy({ groups, tier, tool, amount, resourceOwner, token });
   stages.push(`policy: ${pol.decision.toLowerCase()}`);
   if (pol.decision === 'DENY') return { decision: 'DENY', stage: 'policy', code: pol.code, reason: pol.reason, stages };
   const who = token.act?.sub ? `${token.act.sub} acting for ${token.sub}` : String(token.sub);
   return { decision: 'PERMIT', stage: 'policy', code: null, reason: `${who}${tool ? ` -> ${clean(tool, LIMITS.id)}` : ''}: ${pol.reason}`, stages };
 }
 
-/** Mock consent: mint a delegated token (sub = user, act = { actor }, 1 hour). */
-export function exchange({ userSub, actorClientId, aud = AUDIENCE, now = Date.now, ttlSeconds = 3600 } = {}) {
+/** Mock consent: mint a delegated token (sub = user, act = { actor }, 1 hour). The caller
+ *  names the scope the task needs (the exchange narrows to the task, UC4); a caller can
+ *  mint a WRONG scope (UC5); the engine's scope stage answers the shortfall. */
+export function exchange({ userSub, actorClientId, aud = AUDIENCE, now = Date.now, ttlSeconds = 3600, scope = null } = {}) {
   const sub = clean(userSub, LIMITS.id);
   const actor = clean(actorClientId, LIMITS.id);
   if (!sub) throw new PdpInputError('user_required', 'userSub is required: a delegated token always acts for a real human');
   if (!actor) throw new PdpInputError('actor_required', 'actorClientId is required');
   const iat = Math.floor(now() / 1000);
-  return { sub, act: { sub: actor }, aud: clean(aud, 100), iat, exp: iat + Math.max(1, Math.min(ttlSeconds, 86400)), iss: 'ai-demo-standalone (mock consent)' };
+  const out = { sub, act: { sub: actor }, aud: clean(aud, 100), iat, exp: iat + Math.max(1, Math.min(ttlSeconds, 86400)), iss: 'ai-demo-standalone (mock consent)' };
+  // The exchange narrows scope to the task (UC4); a scenario can mint a WRONG scope (UC5).
+  if (scope) out.scope = clean(scope, 100);
+  return out;
 }
 
 /** The full authorize semantics: decide(), then the stage-2 obligation layer (bands + HITL

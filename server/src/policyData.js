@@ -126,6 +126,42 @@ export const SCENARIOS = [
     lesson: 'From $500 up: consent + MFA (the tier ceiling, $2000 Standard and $50000 Premium, still denies first). The agent PAUSES — it cannot self-approve. The receipt (MfaVerified) re-evaluates the SAME call.',
   },
   {
+    id: 'uc5-scope', ucId: 'UC5', track: 'attacks', title: 'UC5: wrong scope — a read-scoped token calling a write tool is refused',
+    user: 'demoUser', actor: 'demo-agent', tool: 'create_wire_transfer', amount: 100, scope: 'accounts:read',
+    expected: 'DENY',
+    lesson: 'Scope enforcement is cold: the token says read, the tool needs write — 403 insufficient_scope at the gateway before any tool runs. Read cannot become write no matter how the call is framed.',
+  },
+  {
+    id: 'uc10-takeover', ucId: 'UC10', track: 'attacks', title: 'UC10: account takeover — reading another user\u2019s account is denied',
+    user: 'demoUser', actor: 'demo-agent', tool: 'get_balance', amount: null, resourceOwner: 'otherUser',
+    expected: 'DENY',
+    lesson: 'Authorization includes WHICH resource, not just WHICH action: the policy binds the resource to the token subject and denies the cross-owner call even with valid scopes and a clean act chain. Ownership decides.',
+  },
+  {
+    id: 'uc11-badclient', ucId: 'UC11', track: 'attacks', title: 'UC11: bad client — a token minted for another API is refused 401',
+    user: 'demoUser', actor: 'demo-agent', tool: 'get_balance', amount: null, aud: 'weather-api.example',
+    expected: 'DENY',
+    lesson: 'Token validation comes first: aud/exp/iss/nbf are checked before any routing, so a token minted for audience X is worthless at audience Y. An audience is a destination.',
+  },
+  {
+    id: 'uc13-deputy', ucId: 'UC13', track: 'attacks', title: 'UC13: confused deputy — a forged actor header cannot change who acts',
+    user: 'demoUser', actor: 'rogue-agent', tool: 'get_balance', amount: null,
+    expected: 'DENY',
+    lesson: 'Actor identity comes from the native act claim minted at the exchange — never from a header. The injected X-Acting-For: demo-agent is ignored; the allow-list sees the real actor and refuses an unregistered one.',
+  },
+  {
+    id: 'uc16b-forward', ucId: 'UC16b', track: 'attacks', title: 'UC16b: raw user-token forwarding — the BFF refuses to hand your token to a tool',
+    user: 'demoUser', actor: 'demo-agent', tool: 'get_balance', amount: null, rawUserToken: true,
+    expected: 'DENY',
+    lesson: 'Zero Trust at the source: the user\u2019s raw token never crosses to the agent runtime or a tool — only exchanged, agent-scoped tokens with an act claim leave the BFF. The forwarding attempt is blocked before the gateway.',
+  },
+  {
+    id: 'uc29-outage', ucId: 'UC29', track: 'attacks', title: 'UC29: token-validation outage — the gateway fails closed',
+    user: 'demoUser', actor: 'demo-agent', tool: 'get_balance', amount: null, validationDown: true,
+    expected: 'DENY',
+    lesson: 'Token validation is on the request path for EVERY call: when the validation backend cannot be reached the gateway refuses with a 503 rather than letting traffic through. An outage degrades to deny, never to allow.',
+  },
+  {
     id: 'uc8-hitl', ucId: 'UC8', track: 'hitl', title: 'UC8: HITL approval — an approval is never an MFA',
     user: 'demoUser', actor: 'demo-agent', tool: 'create_transfer', amount: 100,
     expected: 'OBLIGATION', obligation: 'HITL_CONSENT',
@@ -146,5 +182,6 @@ export const TALK_TRACK = [
   { id: 'tiers', title: 'Tiers are bands', say: 'Standard caps at $2000, Premium at $50000, and premium-only tools are listed in policy — never implied by scopes.' },
   { id: 'who-acting', title: 'WHO is acting', say: 'act={agent} names the actor; the allow-list refuses unknown agents at the gateway, before any policy.' },
   { id: 'unverified', title: 'What we do not claim', say: 'The mock decisions follow the enforced contract, but the values (users, groups, ceilings) are demo values. No real tenant.' },
+  { id: 'attacks', title: 'The attack gallery', say: 'The attacks track runs in-app too: wrong scope, account takeover, bad client, confused deputy, raw token forwarding, and the fail-closed outage — each refused by the same chain: token, gateway, policy.' },
   { id: 'close', title: 'Close', say: 'Reset clears your workspace: directory flips and runs. Nothing was sent anywhere.' },
 ];

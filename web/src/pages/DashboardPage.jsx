@@ -35,6 +35,13 @@ const CHIPS = [
   { prompt: "Show my mortgage", label: "My mortgage", ucId: "UC33" },
   { prompt: "Spot unusual patterns in my recent activity", label: "Unusual patterns", ucId: "UC34" },
   { prompt: "Why was that blocked? Walk me through the token chain", label: "Why blocked", ucId: "UC35" },
+  // P6 batch 2 (attacks): the gallery's six run through the same engine
+  { prompt: "A read-scoped token tried the write tool", label: "Wrong scope", ucId: "UC5" },
+  { prompt: "The agent tried to read another user's account", label: "Account takeover", ucId: "UC10" },
+  { prompt: "A token minted for another API hit the gateway", label: "Bad client", ucId: "UC11" },
+  { prompt: "The agent forged an acting-for header to pose as the authorized actor", label: "Confused deputy", ucId: "UC13" },
+  { prompt: "The agent forwarded my raw user token to a tool", label: "Raw token forwarding", ucId: "UC16b" },
+  { prompt: "Token validation is down — what happens to my call?", label: "Fail closed", ucId: "UC29" },
 ];
 
 // The scenario runner's baseline rule, mirrored server-side: what the directory says

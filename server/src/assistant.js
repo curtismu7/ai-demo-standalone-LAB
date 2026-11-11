@@ -63,6 +63,13 @@ const RULES = [
   [/my mortgage|mortgage (lookup|read|status|balance|details)|show.{0,10}mortgage/i, 'in-app', 'uc33-mortgage'],
   [/unusual pattern|odd (activity|behavior|behaviour)|anomal(y|ies)|spot.{0,20}unusual|anything unusual/i, 'in-app', 'uc34-patterns'],
   [/why.{0,20}(was|is).{0,20}(that|it|this).{0,20}blocked|explain.{0,20}(the )?(block|denial|deny|refus)|why.{0,20}denied|walk me through.{0,20}token chain/i, 'in-app', 'uc35-why'],
+  // P6 batch 2 (attacks): wrong scope, takeover, bad client, confused deputy, forwarding, outage
+  [/wrong scope|insufficient scope|read[- ]scoped|scope enforcement|wrong[- ]ly scoped/i, 'in-app', 'uc5-scope'],
+  [/account takeover|another user'?s account|someone else'?s account|cross[- ]owner|resource[- ]ownership|read.{0,20}other.{0,10}account/i, 'in-app', 'uc10-takeover'],
+  [/bad client|wrong audience|token minted for (another|a different)|token for another api/i, 'in-app', 'uc11-badclient'],
+  [/confused deputy|forged.{0,20}(actor|header)|actor injection|header.{0,20}(actor|acting)|forged.{0,20}acting|acting[- ]for header/i, 'in-app', 'uc13-deputy'],
+  [/raw (user )?token|forward(ed|ing).{0,20}token|token forwarding|zero trust/i, 'in-app', 'uc16b-forward'],
+  [/validation (outage|down|unavailable)|fail[- ]closed|fails closed|outage|down.{0,30}(what happens|happens to)/i, 'in-app', 'uc29-outage'],
   // Redirects: the standalone labs that own these stories
   [/token (theft|replay)|stolen (token|session)|replay (attack|defense)/i, 'redirect', 'UC12'],
   [/\bjit\b|just[- ]in[- ]time (access|provision)/i, 'redirect', 'UC17'],

@@ -12,7 +12,7 @@ const { version } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 
 export function buildPack() {
   const story = buildStory(DEFAULT_CAST);
   const sid = (n) => `S${String(n).padStart(2, '0')}`;
-  const terms = { uc1: ['delegation'], uc9: ['entitlement'], uc9a: ['entitlement'], 'uc21-tool': ['entitlement'], 'uc21-promote': ['entitlement', 'hitl'], 'uc21-ceiling': ['entitlement'], 'uc3-actgate': ['delegation'], 'uc6-rogue': ['delegation'], 'uc32-upstream': ['delegation'], 'uc19-lifecycle': ['delegation'], 'uc20-trace': ['delegation'], 'uc33-mortgage': ['delegation'], 'uc34-patterns': ['delegation'], 'uc35-why': ['delegation'], 'uc7-stepup': ['hitl'], 'uc8-hitl': ['hitl'], 'uc22-ciba': ['hitl'] };
+  const terms = { uc1: ['delegation'], uc9: ['entitlement'], uc9a: ['entitlement'], 'uc21-tool': ['entitlement'], 'uc21-promote': ['entitlement', 'hitl'], 'uc21-ceiling': ['entitlement'], 'uc3-actgate': ['delegation'], 'uc6-rogue': ['delegation'], 'uc32-upstream': ['delegation'], 'uc19-lifecycle': ['delegation'], 'uc20-trace': ['delegation'], 'uc33-mortgage': ['delegation'], 'uc34-patterns': ['delegation'], 'uc35-why': ['delegation'], 'uc7-stepup': ['hitl'], 'uc8-hitl': ['hitl'], 'uc22-ciba': ['hitl'], 'uc5-scope': ['entitlement'], 'uc10-takeover': ['delegation', 'entitlement'], 'uc11-badclient': ['delegation'], 'uc13-deputy': ['delegation'], 'uc16b-forward': ['delegation'], 'uc29-outage': ['delegation'] };
   return {
     schema: 'demo-content-pack/1',
     id: 'ai-demo-standalone',
