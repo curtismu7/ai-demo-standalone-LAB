@@ -150,7 +150,7 @@ function trackedFiles() {
   const out = [];
   const walk = (dir) => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (['.git', 'node_modules', 'dist', 'coverage', '.data'].includes(e.name)) continue;
+      if (['.git', 'node_modules', 'dist', 'coverage', '.data'].includes(e.name) || e.name.startsWith('.wt')) continue; // .wt-* worktrees (other sessions)
       const p = path.join(dir, e.name);
       if (e.isDirectory()) walk(p); else if (e.isFile()) out.push(path.relative(root, p).split(path.sep).join('/'));
     }

@@ -11,6 +11,7 @@ import { createHealth } from './health.js';
 import { loadCast, verticalFrom, VERTICALS } from './cast.js';
 import { modeFrom, realAvailableFrom } from './config.js';
 import { buildStory, CATALOG } from './story.js';
+import { SCENARIOS } from './policyData.js';
 import { DIAGRAM_NAMES, buildDiagram } from './diagramData.js';
 import { decide, decideWithObligation, actChainDepth, DEFAULT_ACTORS, AUDIENCE, exchange } from './pdp.js';
 import { DEFAULT_DIRECTORY, LIMITS } from './pdpData.js';
@@ -20,6 +21,7 @@ import { runAttack, createRateLimiter, ATTACK_CATALOG, AttackInputError } from '
 import { createRoster, keyAllows, KNOWN_SCOPES, NhiInputError } from './nhi.js';
 import { mountShelfRoute, shelfInfo } from './shelfLink.js';
 import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.js';
+import { matchTurn } from './assistant.js';
 import { createWorkspaces, workspaceFrom } from './workspaces.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -373,6 +375,78 @@ export function createApp({
   }));
 
   api.get('/runs', withWorkspace((ws, _req, res) => res.json(workspaces.runs(ws))));
+  // ── P2: the assistant turn (the Scripted brain) ─────────────────────────────
+  // One POST per chat turn. The matcher (assistant.js, regex-first like the dashboard's
+  // default mode) picks a handling; an in-app match RUNS THE REAL ENGINE here (consent ->
+  // authorize, exactly the scenario table's user/actor/tool/amount, with the same directory
+  // seeding the UI does before every scenario run) and the reply is built from that run,
+  // never written by a model. A redirect match returns the lab card; the UI opens it.
+  // Unknown is honest. The P2b model brain (opt-in) replaces only the matcher.
+  api.post('/assistant/turn', withWorkspace((ws, req, res) => {
+    const body = req.body;
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'bad_request' });
+    const said = typeof body.message === 'string' ? body.message.slice(0, 300) : '';
+    const match = matchTurn(said);
+
+    if (match.handling === 'redirect') {
+      const uc = CATALOG.useCases.find((u) => u.id === match.ucId);
+      return res.json({
+        handling: 'redirect', ucId: match.ucId, lab: match.lab,
+        title: uc?.explicitTitle || uc?.title || match.ucId,
+        say: `"${said.trim().slice(0, 80)}" is handled by a dedicated lab.`,
+        workspace: ws,
+      });
+    }
+
+    if (match.handling === 'unknown') {
+      return res.json({
+        handling: 'unknown',
+        say: 'I could not match that to a use case. Try a fare change, a refund, "MFA step-up", or "who can approve a transfer" — or open the Use Cases tab for all 87.',
+        workspace: ws,
+      });
+    }
+
+    // in-app: the real engine, the same path /api/authorize uses — INCLUDING the directory
+    // seeding the UI does before every scenario run: the scenario's flipTo, else the user's
+    // baseline (premiumUser privileged+premiumTier/Premium, jane no groups/Standard,
+    // demoUser privileged/Standard). Without it an earlier scenario's flip poisons this run.
+    const scenario = SCENARIOS.find((s) => s.id === match.scenarioId);
+    if (!scenario) return res.status(500).json({ error: 'scenario_missing' });
+    if (scenario.flipTo || ['demoUser', 'jane', 'premiumUser'].includes(scenario.user)) {
+      const groups = scenario.flipTo || (scenario.user === 'premiumUser' ? ['privileged', 'premiumTier'] : scenario.user === 'jane' ? [] : ['privileged']);
+      const tier = scenario.user === 'premiumUser' ? 'Premium' : 'Standard';
+      const st = workspaces.state(ws);
+      st.directory = { ...(st.directory || structuredClone(DEFAULT_DIRECTORY)), [scenario.user]: { groups, tier } };
+    }
+    const v = workspaces.state(ws);
+    const dir = v.directory || structuredClone(DEFAULT_DIRECTORY);
+    const entry = dir[scenario.user] || { groups: [], tier: 'Standard' };
+    const token = exchange({ userSub: scenario.user, actorClientId: scenario.actor, aud: scenario.aud || AUDIENCE });
+    const amount = match.amount ?? scenario.amount;
+    const { verdict, obligation, receiptCheck } = decideWithObligation({
+      token, groups: entry.groups, tier: entry.tier, tool: scenario.tool, amount,
+      receipts: receiptsOf(v), authorizedActors: DEFAULT_ACTORS, audience: scenario.aud || AUDIENCE, now: () => Date.now(),
+    });
+    workspaces.record(ws, { tool: scenario.tool, decision: verdict.decision, reason: verdict.reason, token, blocked: verdict.code, ucId: scenario.ucId });
+    const ctx = { user: scenario.user, actor: scenario.actor, tool: scenario.tool, amount, groups: entry.groups, tier: entry.tier, aud: scenario.aud || AUDIENCE };
+    const trace = newTrace(req.headers.traceparent);
+    const status = verdict.decision === 'PERMIT' ? 200 : verdict.decision === 'OBLIGATION' ? 202 : 403;
+    const say = verdict.decision === 'PERMIT'
+      ? `Done: ${verdict.reason.split(':')[0].toLowerCase()} permitted. ${verdict.reason}`
+      : verdict.decision === 'OBLIGATION'
+        ? 'I have to pause here: this action needs you. The details are in the panel below.'
+        : `Authorize refused this request: ${verdict.reason} Nothing was sent to the tool.`;
+    return res.status(status).json({
+      handling: 'in-app', scenarioId: scenario.id, ucId: scenario.ucId, title: scenario.title,
+      decision: verdict.decision, stage: verdict.stage, code: verdict.code, reason: verdict.reason,
+      tool: scenario.tool, amount: amount ?? null, obligation, receiptCheck,
+      narrative: explain(verdict, ctx), lesson: lessonFor(verdict, ctx), products: productCast(verdict),
+      hops: buildHops({ verdict, ...ctx, token, trace, consent: true }), traceId: trace.traceId,
+      run: { ...verdict, tool: scenario.tool, amount: amount ?? null, ucId: scenario.ucId, traceId: trace.traceId, obligation },
+      say, workspace: ws,
+    });
+  }));
+
   api.post('/reset', withWorkspace((ws, _req, res) => {
     workspaces.resetWorkspace(ws);
     res.json({ reset: 'ok', workspace: ws });
