@@ -16,6 +16,7 @@ import { decide, decideWithObligation, actChainDepth, DEFAULT_ACTORS, AUDIENCE, 
 import { DEFAULT_DIRECTORY, LIMITS } from './pdpData.js';
 import { evaluateObligation, createChallenge, verifyAnswer, mintReceipt, receiptValid, createReceipts, HitlInputError } from './hitl.js';
 import { exchangeOne, exchangeTwo, evaluateA2a, createRegistry, actChainDepth as a2aDepth, A2AInputError, agentCard as a2aAgentCard, LIMITS as A2A_LIMITS } from './a2a.js';
+import { runAttack, createRateLimiter, ATTACK_CATALOG, AttackInputError } from './attacks.js';
 import { mountShelfRoute } from './shelfLink.js';
 import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.js';
 import { createWorkspaces, workspaceFrom } from './workspaces.js';
@@ -26,7 +27,7 @@ const CONFIG = process.env.CUSTOMER_CONFIG || path.resolve(HERE, '../../customer
 
 export function createApp({
   health = createHealth(), configFile = CONFIG, hosted = false,
-  workspaces = createWorkspaces({ makeDirectory: () => structuredClone(DEFAULT_DIRECTORY), makeExtra: () => ({ receipts: createReceipts(), registry: createRegistry({}), generalistToken: null }) }),
+  workspaces = createWorkspaces({ makeDirectory: () => structuredClone(DEFAULT_DIRECTORY), makeExtra: () => ({ receipts: createReceipts(), registry: createRegistry({}), generalistToken: null, rateLimiter: createRateLimiter({ max: 8 }) }) }),
 } = {}) {
   const app = express();
   app.disable('x-powered-by');
@@ -248,6 +249,27 @@ export function createApp({
     v.extra = extra;
     workspaces.record(ws, { tool: 'a2a-registry-set', decision: 'FLIPPED', reason: `${body.specialist.trim()} -> ${body.registered ? 'registered' : 'revoked'}`, token: null });
     return res.json({ specialist: body.specialist.trim(), registered: body.registered, specialists: all, workspace: ws });
+  }));
+
+
+  // ── Stage 3: the attack gallery (UC4/5/10-18) ───────────────────────────────
+  api.get('/attacks', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json({ attacks: ATTACK_CATALOG, workspace: null }); });
+  api.post('/attacks/run', withWorkspace((ws, req, res) => {
+    const body = req.body;
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'bad_request' });
+    if (typeof body.attackId !== 'string' || !body.attackId.trim()) return res.status(400).json({ error: 'attack_required', detail: 'body.attackId must be non-empty text' });
+    const v = workspaces.state(ws);
+    const extra = v.extra || { rateLimiter: createRateLimiter({ max: 8 }) };
+    const entry = (v.directory || structuredClone(DEFAULT_DIRECTORY))['demoUser'] || { groups: [], tier: 'Standard' };
+    try {
+      const result = runAttack(body.attackId.trim().slice(0, 40), { user: 'demoUser', groups: entry.groups, tier: entry.tier, rateLimiter: extra.rateLimiter });
+      v.extra = extra;
+      workspaces.record(ws, { tool: `attack:${result.attackId}`, decision: result.got.status === 200 ? 'NARROWED' : 'BLOCKED', reason: result.lesson, token: null, blocked: result.got.code });
+      return res.json({ ...result, workspace: ws });
+    } catch (e) {
+      if (e instanceof AttackInputError) return res.status(400).json({ error: e.code, detail: e.message });
+      throw e;
+    }
   }));
 
   api.get('/runs', withWorkspace((ws, _req, res) => res.json(workspaces.runs(ws))));

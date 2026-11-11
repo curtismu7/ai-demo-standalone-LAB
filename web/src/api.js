@@ -67,3 +67,12 @@ export async function a2aTool(payload) {
 }
 export const a2aRegistry = () => getJson("/api/a2a/registry");
 export const a2aRegistrySet = (payload) => workspaceFetch("/api/a2a/registry/set", { method: "POST", body: JSON.stringify(payload) }).then((r) => r.json());
+
+// ── Stage 3: the attack gallery ─────────────────────────────────────────────
+export const getAttacks = () => getJson("/api/attacks");
+export async function runAttack(payload) {
+  const r = await workspaceFetch("/api/attacks/run", { method: "POST", body: JSON.stringify(payload) });
+  let body = {};
+  try { body = await r.json(); } catch { /* not JSON */ }
+  return { ok: r.ok, status: r.status, body };
+}

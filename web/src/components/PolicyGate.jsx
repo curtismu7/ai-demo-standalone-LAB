@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Json from "./Json";
-import { authorize, consent, getCatalog, getDirectory, setDirectory, challenge, answerChallenge, a2aExchangeOne, a2aExchangeTwo, a2aTool, a2aRegistry, a2aRegistrySet } from "../api";
+import { authorize, consent, getCatalog, getDirectory, setDirectory, challenge, answerChallenge, a2aExchangeOne, a2aExchangeTwo, a2aTool, a2aRegistry, a2aRegistrySet, getAttacks, runAttack } from "../api";
 import { visible } from "../safeText";
 
 const STATUS_CLASS = { measured: "tag tag--ok", inferred: "tag", UNVERIFIED: "tag tag--warn" };
@@ -243,6 +243,43 @@ export function A2aPanel() {
   );
 }
 
+
+/** Stage 3: the attack gallery — each attack is a scripted flow whose refusal is the point. */
+export function AttackGallery() {
+  const [attacks, setAttacks] = useState(null);
+  const [result, setResult] = useState(null);
+  const [busy, setBusy] = useState(null);
+  const [fail, setFail] = useState(null);
+  useEffect(() => { getAttacks().then((j) => setAttacks(j.attacks), () => setAttacks(null)); }, []);
+  const run = async (id) => {
+    setFail(null); setBusy(id);
+    const r = await runAttack({ attackId: id }).catch(() => ({ ok: false, body: {} }));
+    setBusy(null);
+    if (r.body.tried) setResult(r.body); else setFail(r.body.detail || "Could not run the attack.");
+  };
+  return (
+    <section className="panel" aria-labelledby="atk-h" data-testid="attack-gallery">
+      <h2 id="atk-h">Attack gallery <span className="muted">the refusal is the point</span></h2>
+      <p className="muted">Eleven scripted attacks — stolen tokens, confused deputies, floods. Each shows what the attacker tried, what they got, and WHICH product stopped them at WHICH layer.</p>
+      <div className="seg" role="group" aria-label="Attacks">
+        {(attacks || []).map((a) => (
+          <button key={a.id} type="button" aria-pressed={result?.attackId === a.id} disabled={busy != null} onClick={() => run(a.id)}>{a.title}</button>
+        ))}
+      </div>
+      {result && (
+        <div className="narrative-step" data-testid="attack-result">
+          <h3>{result.got.status === 200 ? "Narrowed" : `Refused (${result.got.status})`}</h3>
+          <p data-testid="attack-tried"><strong>Tried.</strong> {visible(result.tried)}</p>
+          <p data-testid="attack-got"><strong>Got.</strong> {result.got.status} {result.got.code ? <code>{visible(result.got.code)}</code> : ""} — {visible(result.detail)}</p>
+          {result.stoppedBy && <p data-testid="attack-stopped"><strong>Stopped by {visible(result.stoppedBy.product)}</strong> ({visible(result.stoppedBy.layer)}). {visible(result.stoppedBy.why)}</p>}
+          <p className="lesson" data-testid="attack-lesson"><strong>The lesson.</strong> {visible(result.lesson)}</p>
+        </div>
+      )}
+      {fail && <p className="field-error" role="alert">{fail}</p>}
+    </section>
+  );
+}
+
 /** The live directory board: groups are read on EVERY decision. */
 function DirectoryBoard({ onChanged }) {
   const [directory, setDirectoryState] = useState(null);
@@ -338,6 +375,7 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
       <ObligationPanel run={run} onResolved={(r) => setRun(r)} />
       <DirectoryBoard onChanged={() => setBoardTick((n) => n + 1)} />
       <A2aPanel />
+      <AttackGallery />
       {selected && <UseCaseDetail uc={selected} onClose={() => setSelectedUc(null)} />}
       {catalog && <CatalogList catalog={catalog} onSelect={(u) => setSelectedUc(u.id)} selectedUc={selectedUc?.id ?? selectedUc} />}
       <section className="panel" aria-labelledby="scen-h">

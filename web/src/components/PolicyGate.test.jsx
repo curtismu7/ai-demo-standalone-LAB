@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import PolicyGate, { A2aPanel, CatalogList, Hops, ObligationPanel, UseCaseDetail, Verdict, useCaseFacts } from "./PolicyGate";
+import PolicyGate, { A2aPanel, AttackGallery, CatalogList, Hops, ObligationPanel, UseCaseDetail, Verdict, useCaseFacts } from "./PolicyGate";
 
 vi.mock("../api", () => ({
   authorize: vi.fn(),
@@ -13,6 +13,8 @@ vi.mock("../api", () => ({
   a2aTool: vi.fn(),
   a2aRegistry: vi.fn(async () => ({ specialists: ["portfolio-specialist", "wire-specialist"] })),
   a2aRegistrySet: vi.fn(),
+  getAttacks: vi.fn(async () => ({ attacks: [{ id: "uc12-replay", ucId: "UC12", title: "UC12: token theft + DPoP", expected: "DENY", lesson: "proofs cannot be replayed" }] })),
+  runAttack: vi.fn(),
   getCatalog: vi.fn(async () => ({
     count: 87, tracks: ["foundations", "controls", "attacks"],
     useCases: [
@@ -111,6 +113,21 @@ describe("A2aPanel", () => {
     await waitFor(() => expect(screen.getByTestId("a2a-result").textContent).toContain("PERMIT"));
     await user.click(screen.getByTestId("a2a-reg-add"));
     await waitFor(() => expect(a2aRegistrySet).toHaveBeenCalledWith({ specialist: "rogue-specialist", registered: true }));
+  });
+});
+
+describe("AttackGallery", () => {
+  it("lists the attacks; running one shows tried/got/stopped-by/lesson", async () => {
+    const user = userEvent.setup();
+    const { runAttack } = await import("../api");
+    runAttack.mockResolvedValue({ ok: true, body: { attackId: "uc12-replay", tried: "replayed both verbatim", got: { status: 401, code: "invalid_dpop_proof" }, detail: "jti replayed", stoppedBy: { product: "PingGateway (gateway/PEP)", layer: "token", why: "proofs are single-use" }, lesson: "Stealing the token is not enough." } });
+    render(<AttackGallery />);
+    await screen.findByTestId("attack-gallery");
+    await user.click(screen.getByRole("button", { name: /UC12/ }));
+    await waitFor(() => expect(screen.getByTestId("attack-result").textContent).toContain("Refused (401)"));
+    expect(screen.getByTestId("attack-tried").textContent).toContain("replayed both verbatim");
+    expect(screen.getByTestId("attack-stopped").textContent).toContain("PingGateway");
+    expect(screen.getByTestId("attack-lesson").textContent).toContain("not enough");
   });
 });
 
