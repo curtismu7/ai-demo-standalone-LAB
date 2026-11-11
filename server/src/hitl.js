@@ -134,11 +134,11 @@ export function receiptValid({ receipt, user, tool, obligation, amount = null, n
  * Bounded: at most `max` records per kind (oldest dropped first); records are dropped one TTL
  * after they expire, so a stale id still gets a clear "expired" answer for a while.
  */
-export function createReceipts({ now = Date.now, max = STORE_MAX, signingKey = `whsk_${randomUUID()}` } = {}) {
+export function createReceipts({ now = Date.now, max = STORE_MAX, signingKey = `whsk_${randomUUID()}`, initial = null } = {}) {
   // Each workspace store gets its own HMAC key: a receipt is only genuine if THIS key signed it.
-  const pending = new Map(); // challengeId -> challenge awaiting an answer
-  const answered = new Set(); // challengeIds already answered
-  const issued = new Map(); // receiptId -> { receipt, used }
+  const pending = new Map(initial?.pending ?? []); // challengeId -> challenge awaiting an answer
+  const answered = new Set(initial?.answered ?? []); // challengeIds already answered
+  const issued = new Map(initial?.issued ?? []); // receiptId -> { receipt, used }
   const cap = (c) => { while (c.size > max) c.delete(c.keys().next().value); };
   const prune = () => {
     const t = now();
@@ -160,6 +160,12 @@ export function createReceipts({ now = Date.now, max = STORE_MAX, signingKey = `
     spent(challengeId) { return answered.has(challengeId); },
     /** Remember a receipt this server just minted; sign it so it can be verified as genuine. */
     issue(receipt) { prune(); if (!receipt.sig) receipt.sig = signReceipt(receipt, signingKey); issued.set(receipt.receiptId, { receipt, used: false }); cap(issued); },
+    /** Plain-data snapshot for the durable store; hydrate reverses it. */
+    export() {
+      return {
+        pending: [...pending.entries()], answered: [...answered], issued: [...issued.entries()], signingKey,
+      };
+    },
     /** Check a presented receipt against the store and the call; consume it when it is valid. */
     redeem({ receipt, user, tool, obligation, amount = null }) {
       if (receipt == null || typeof receipt !== 'object' || Array.isArray(receipt)) return { valid: false, code: 'no_receipt', reason: 'no receipt presented' };

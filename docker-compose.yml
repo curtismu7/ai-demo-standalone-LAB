@@ -14,7 +14,12 @@ services:
       AIDEMOLAB_BIND: 0.0.0.0
       SHELF_URL: ${SHELF_URL:-http://127.0.0.1:4400}
       LAB_ALLOWED_HOSTS: ${LAB_ALLOWED_HOSTS:-ai-demo-standalone.local.ping-devops.com}
+      # Durable workspace stores + a stable workspace-signing key (set in .env to survive restarts).
+      AIDEMOLAB_STATE_DIR: /state
+      AIDEMOLAB_SERVER_KEY: ${AIDEMOLAB_SERVER_KEY:-}
     read_only: true
+    volumes:
+      - ws-state:/state
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     healthcheck:
@@ -24,3 +29,5 @@ services:
       start_interval: 2s
       timeout: 5s
       retries: 3
+volumes:
+  ws-state:

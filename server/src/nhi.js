@@ -45,8 +45,8 @@ export function keyAllows(key, scope) {
 }
 
 /** The JML feed: joiner/mover/leaver events in an IGA-queryable shape (UC-NHI2). */
-export function createJml() {
-  const events = [];
+export function createJml({ initial = null } = {}) {
+  const events = Array.isArray(initial) ? [...initial] : [];
   return {
     emit(type, agentId, detail, now = Date.now()) {
       if (!['joiner', 'mover', 'leaver'].includes(type)) throw new NhiInputError('bad_event', 'type must be joiner, mover or leaver');
@@ -60,9 +60,9 @@ export function createJml() {
 }
 
 /** The per-workspace roster: registered agents, their keys, live status (UC-NHI1). */
-export function createRoster() {
-  const jml = createJml();
-  const agents = new Map();
+export function createRoster({ initial = null } = {}) {
+  const jml = createJml({ initial: initial?.jml ?? null });
+  const agents = new Map(initial?.agents ?? []);
   return {
     jml,
     register(agentId, scopes, now = Date.now) {
@@ -92,5 +92,7 @@ export function createRoster() {
     },
     get(agentId) { const a = agents.get(clean(agentId, LIMITS_ID)); return a ? { ...a } : null; },
     all() { return [...agents.values()].map((a) => ({ ...a, keyObj: undefined })); },
+    /** Plain-data snapshot for the durable store. */
+    export() { return { agents: [...agents.entries()], jml: jml.export?.() ?? null }; },
   };
 }

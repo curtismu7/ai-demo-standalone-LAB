@@ -134,8 +134,8 @@ export function evaluateA2a({ token, registeredSpecialists, requiredScope = 'a2a
 }
 
 /** The registry store (UC2.6 live flip): register/revoke a specialist; the next decision moves. */
-export function createRegistry({ seeded = ['portfolio-specialist', 'wire-specialist'] } = {}) {
-  let set = new Set(seeded.map((s) => clean(s, LIMITS.clientId)));
+export function createRegistry({ seeded = ['portfolio-specialist', 'wire-specialist'], initial = null } = {}) {
+  let set = new Set(initial?.set ?? seeded.map((s) => clean(s, LIMITS.clientId)));
   return {
     all() { return [...set]; },
     isRegistered(name) { return set.has(clean(name, LIMITS.clientId)); },
@@ -145,5 +145,7 @@ export function createRegistry({ seeded = ['portfolio-specialist', 'wire-special
       if (registered) set.add(n); else set.delete(n);
       return this.all();
     },
+    /** Plain-data snapshot for the durable store. */
+    export() { return { set: [...set] }; },
   };
 }

@@ -21,7 +21,7 @@ import { createRoster, keyAllows, KNOWN_SCOPES, NhiInputError } from './nhi.js';
 import { mountShelfRoute, shelfInfo } from './shelfLink.js';
 import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.js';
 import { matchTurn } from './assistant.js';
-import { createWorkspaces, workspaceFrom } from './workspaces.js';
+import { createWorkspaces, workspaceFrom, serverKey, mintWorkspaceToken, verifyWorkspaceToken } from './workspaces.js';
 import { SCENARIOS } from './policyData.js';
 import { seedFor, tokenFor } from './scenario.js';
 import { toDemoHops, tokenCardsFrom } from './evidenceAdapter.js';
@@ -37,8 +37,23 @@ const newExtra = () => ({ receipts: createReceipts(), registry: createRegistry({
 
 export function createApp({
   health = createHealth(), configFile = CONFIG,
-  workspaces = createWorkspaces({ makeDirectory: () => structuredClone(DEFAULT_DIRECTORY), makeExtra: () => ({ ...newExtra(), rateLimiter: createRateLimiter({ max: 8 }), roster: createRoster() }) }),
+  workspaces,
+  // Workspace auth: ON by default. Tests pass workspaceAuth: false to address workspaces directly.
+  workspaceAuth = true,
+  wsKey = serverKey(process.env),
+  // Durable stores: set stateDir (AIDEMOLAB_STATE_DIR) to persist each workspace to disk.
+  stateDir = process.env.AIDEMOLAB_STATE_DIR || null,
 } = {}) {
+  const hydrateExtra = (extra, snap) => {
+    extra.receipts = createReceipts({ initial: snap.receipts, signingKey: snap.receipts?.signingKey ?? undefined });
+    extra.registry = createRegistry({ initial: snap.registry });
+    extra.roster = createRoster({ initial: snap.roster });
+    return extra;
+  };
+  workspaces = workspaces ?? createWorkspaces({
+    makeDirectory: () => structuredClone(DEFAULT_DIRECTORY), stateDir, hydrateExtra,
+    makeExtra: () => ({ ...newExtra(), rateLimiter: createRateLimiter({ max: 8 }), roster: createRoster() }),
+  });
   const app = express();
   app.disable('x-powered-by');
   app.use(hostCheck);
@@ -82,9 +97,22 @@ export function createApp({
   const withWorkspace = (handler) => (req, res) => {
     const ws = workspaceFrom(req);
     if (!ws) return res.status(400).json({ error: 'bad_workspace' });
+    // A workspace id is not a credential: the request must carry the HMAC token this
+    // server minted for THAT id (GET /api/workspace). A forged or mismatched pair is 401.
+    if (workspaceAuth && !verifyWorkspaceToken(ws, req.headers['x-workspace-token'], wsKey)) {
+      return res.status(401).json({ error: 'workspace_token_required', detail: 'mint a workspace token first: GET /api/workspace' });
+    }
     res.set('Cache-Control', 'no-store');
     return handler(ws, req, res);
   };
+
+  // Mint a workspace token. The id may be client-chosen (rule 13) but the token is ours.
+  api.get('/workspace', (req, res) => {
+    const ws = workspaceFrom(req);
+    if (!ws) return res.status(400).json({ error: 'bad_workspace' });
+    res.set('Cache-Control', 'no-store');
+    res.json({ workspace: ws, token: mintWorkspaceToken(ws, wsKey) });
+  });
 
   // The live directory board: read on EVERY decision; per-workspace flips.
   api.get('/directory', withWorkspace((ws, _req, res) => {
@@ -481,7 +509,7 @@ export function createApp({
 
   if (fs.existsSync(path.join(WEB_DIST, 'index.html'))) {
     app.use(express.static(WEB_DIST));
-    app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(path.join(WEB_DIST, 'index.html')));
+    app.get(/^\/(?!api\/|\/api\/).*/, (_req, res) => res.sendFile(path.join(WEB_DIST, 'index.html')));
   }
   return app;
 }
