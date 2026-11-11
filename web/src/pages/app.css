@@ -1,0 +1,9 @@
+
+/* P4: the Demo controls button row and the white evidence variant */
+.dash-qc-row { display: flex; justify-content: flex-end; margin: -6px 0 8px; }
+.dash-qc-btn {
+  border: 1px solid var(--line, #d8d4cc); background: var(--panel, #fff); border-radius: 999px;
+  padding: 4px 14px; font-size: 0.82rem; cursor: pointer;
+}
+.dash-qc-btn:hover { border-color: var(--accent, #b91c1c); }
+.dashboard-page--white { background: #fff; color: #17150f; }

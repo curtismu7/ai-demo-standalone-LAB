@@ -7,3 +7,13 @@
 }
 .chainv__bar .seg button.on { background: var(--accent, #b91c1c); color: #fff; border-color: var(--accent, #b91c1c); }
 .chainv__skip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--muted, #6a675f); }
+.chainv__steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.chainv__steps button {
+  display: flex; gap: 8px; align-items: baseline; width: 100%; text-align: left; cursor: pointer;
+  background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 5px 8px; font-size: 0.85rem;
+}
+.chainv__steps button:hover { border-color: var(--line, #d8d4cc); }
+.chainv__steps button[aria-expanded="true"] { border-color: var(--accent, #b91c1c); }
+.chainv__steps b { font-variant-numeric: tabular-nums; }
+.chainv__fact { margin-left: auto; color: var(--muted, #6a675f); font-size: 0.78rem; }
+.chainv__stack { display: grid; gap: 12px; }

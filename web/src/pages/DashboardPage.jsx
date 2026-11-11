@@ -9,6 +9,7 @@ import { assistantTurn } from "../api";
 import { visible } from "../safeText";
 import ChainView from "../components/ChainView.jsx";
 import TokenCardsPanel from "../components/TokenCardsPanel.jsx";
+import QuickConfigDialog, { readConfig } from "../components/QuickConfigDialog.jsx";
 
 const GREETING = "Sign in with your customer account to access travel features: bookings, loyalty, flight changes, and more. Or ask me about OAuth, PKCE, MCP, or how AI agents work.";
 
@@ -121,9 +122,9 @@ export function PlanSection({ run }) {
 }
 
 /** Section 3: three columns — Authorize decision / the hops / the movie-reel placeholder (P3). */
-export function EvidenceSection({ run }) {
+export function EvidenceSection({ run, cfg }) {
   return (
-    <section className="tri" id="dash-evidence" aria-label="Evidence" data-testid="evidence-section">
+    <section className={`tri${cfg?.theme === "white" ? " tri--white" : ""}`} id="dash-evidence" aria-label="Evidence" data-testid="evidence-section">
       <div className="panel lane lane-authorize">
         <h2 id="dash-ev-h">Authorize decision</h2>
         {run ? (
@@ -135,7 +136,7 @@ export function EvidenceSection({ run }) {
       </div>
       <div className="panel lane lane-gateway">
         <h2>Chain</h2>
-        <ChainView hops={run?.hops || []} />
+        <ChainView hops={run?.hops || []} cfg={cfg} />
       </div>
       <div className="panel lane lane-mcp">
         <h2>Tokens</h2>
@@ -195,6 +196,9 @@ export default function DashboardPage({ story }) {
   const [busy, setBusy] = useState(false);
   const [fail, setFail] = useState(null);
   const [active, setActive] = useState("signin");
+  const [qcOpen, setQcOpen] = useState(false);
+  const [cfg, setCfg] = useState(() => readConfig());
+  const onCfg = useCallback((key, value) => setCfg((c) => ({ ...c, [key]: value })), []);
 
   const send = useCallback(async (message) => {
     setBusy(true); setFail(null);
@@ -230,16 +234,20 @@ export default function DashboardPage({ story }) {
   void seeds; void SEEDS; // (the server seeds the directory; kept in sync by /assistant/turn)
 
   return (
-    <div className="dashboard-page" data-testid="dashboard-page">
+    <div className={`dashboard-page${cfg.theme === "white" ? " dashboard-page--white" : ""}`} data-theme={cfg.theme === "white" ? "light" : "dark"} data-testid="dashboard-page" style={{ fontSize: `${1 + Number(cfg.size) * 0.06}rem` }}>
       <h1>Customer dashboard</h1>
       <p className="muted">Ask the airline agent, watch each authorization step, and see the evidence behind every answer — one step at a time.</p>
       <StepTiles active={active} idPrefix="dash" />
+      <div className="dash-qc-row">
+        <button type="button" className="dash-qc-btn" onClick={() => setQcOpen(true)} data-testid="qc-open">Demo controls</button>
+      </div>
       <AssistantSection transcript={transcript} run={run} onSend={send} onChip={onChip} busy={busy} fail={fail} />
       <PlanSection run={run} />
-      <EvidenceSection run={run} />
+      <EvidenceSection run={run} cfg={cfg} />
       <ProductsSection run={run} />
       <TalkTrackSection run={run} />
       <p className="muted">Run a real use case from <a href="#/use-cases">Use Cases</a> to fill these sections — including resolving an obligation (consent, MFA, CIBA) with its receipt.</p>
+      <QuickConfigDialog isOpen={qcOpen} onClose={() => setQcOpen(false)} config={cfg} onChange={onCfg} />
     </div>
   );
 }
