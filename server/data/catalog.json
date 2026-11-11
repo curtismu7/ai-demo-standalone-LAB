@@ -440,7 +440,7 @@
    },
    "vertical": null,
    "whatLong": "An agent attempts a transaction that exceeds a hard policy ceiling — for example, a $2,500 transfer. The Authorize engine evaluates the request before the tool runs and returns DENY. The gateway stops the call; no money moves.",
-   "businessValue": "Policy enforcement is externalized and instant. Changing the deny ceiling is a rule edit — not a code change — and takes effect immediately across every agent and every channel.",
+   "businessValue": "Policy enforcement is externalized and instant. Changing a tier ceiling is a rule edit — not a code change — and takes effect immediately across every agent and every channel.",
    "productRoles": {
     "idp": "Issues the delegated token the agent presents at the gateway.",
     "gw": "Forwards the request to Authorize; stops the tool call on DENY.",
@@ -473,7 +473,7 @@
     ]
    },
    "vertical": null,
-   "whatLong": "An agent attempts a mid-range transfer ($600). The amount clears the step-up threshold but not the hard deny ceiling. Authorize returns a step-up obligation — the agent must pause, the user must satisfy MFA, and only then does the policy re-evaluate to PERMIT.",
+   "whatLong": "An agent attempts a mid-range transfer ($600). The amount clears the step-up threshold; the tier ceiling above it is never reached. Authorize returns a step-up obligation — the agent must pause, the user must satisfy MFA, and only then does the policy re-evaluate to PERMIT.",
    "businessValue": "High-value actions get a proportional gate. Step-up is policy-driven, not hard-coded: the threshold is a rule you change in the Authorize console without redeploying anything.",
    "productRoles": {
     "idp": "Authenticates the user and mints the delegated agent token.",
