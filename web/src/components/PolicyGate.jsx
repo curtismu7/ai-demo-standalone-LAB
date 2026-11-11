@@ -389,6 +389,7 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
   const selected = catalog ? (catalog.useCases.find((u) => u.id === (selectedUc?.id ?? selectedUc)) ?? null) : null;
   const [boardTick, setBoardTick] = useState(0);
   const scenario = story.scenarios.find((s) => s.id === id) || story.scenarios[0];
+  const idx = story.scenarios.findIndex((s) => s.id === scenario.id);
   useEffect(() => { getCatalog().then(setCatalog, () => setCatalog(null)); }, []);
 
   const runToken = useRef(0);
@@ -430,11 +431,14 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
         {TABS.map((t) => <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} data-testid={`tab-${t.id}`} onClick={() => setTab(t.id)}>{t.label}</button>)}
       </nav>
       {tab === "demo" && (<>
+      <nav className="rail" aria-label="Use cases" data-testid="sc-rail">
+        {story.scenarios.map((s, i) => (
+          <button key={s.id} type="button" className={i < idx ? "done" : i === idx ? "on" : ""} aria-current={i === idx ? "step" : undefined} onClick={() => { setId(s.id); if (onSelect) onSelect(s.id); }} data-testid={`rail-${i + 1}`}><i /><span>{i + 1} · {s.ucId}</span></button>
+        ))}
+      </nav>
       <section className="panel" aria-labelledby="sc-h">
-        <h2 id="sc-h">Live scenarios (stage 1)</h2>
-        <div className="seg" role="group" aria-label="Scenario">
-          {story.scenarios.map((s) => <button key={s.id} type="button" aria-pressed={s.id === id} onClick={() => { setId(s.id); if (onSelect) onSelect(s.id); }}>{s.title}</button>)}
-        </div>
+        <p className="walk-eyebrow">USE CASE {idx + 1} OF {story.scenarios.length} · {String(scenario.track || "").toUpperCase()}</p>
+        <h2 id="sc-h">{scenario.title}</h2>
         <p className="lesson" data-testid="lesson">{scenario.lesson}</p>
       </section>
       <section className="panel" aria-labelledby="res-h">
@@ -444,7 +448,11 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
         {run && <Hops hops={run.hops} traceId={run.traceId} />}
       </section>
       {/* key: a scenario switch must reset the panel's challenge/receipt state (reviewer item 1) */}
-      <ObligationPanel key={run?.traceId ?? "none"} run={run} onResolved={(r) => setRun(r)} />
+      <div className="walkbar"><div className="in">
+        <button type="button" className="btn" disabled={idx <= 0} onClick={() => { const p = story.scenarios[idx - 1]; setId(p.id); if (onSelect) onSelect(p.id); }} data-testid="wiz-prev">&larr; Back</button>
+        <div className="where" aria-live="polite" data-testid="wiz-where">Use case {idx + 1} of {story.scenarios.length}: {scenario.ucId}</div>
+        <button type="button" className="btn go primary" onClick={() => { const n = story.scenarios[idx + 1]; setId(n.id); if (onSelect) onSelect(n.id); }} data-testid="wiz-next">{idx >= story.scenarios.length - 1 ? "Start over" : "Next &rarr;"}</button>
+      </div></div>
       </>)}
 
       {tab === "agents" && (<>

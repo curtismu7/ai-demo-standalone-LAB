@@ -111,3 +111,23 @@ details { margin: 6px 0; } summary { cursor: pointer; font-size: var(--font-size
 button { font-weight: 600; letter-spacing: 0.01em; }
 .seg button[aria-pressed="true"], .views button[aria-pressed="true"], .gate-tabs button[aria-selected="true"], .tabs [role="tab"][aria-selected="true"] { background: var(--th-accent); border-color: var(--th-accent); color: #fff; box-shadow: none; }
 .seg button[aria-pressed="true"]:hover, .gate-tabs button[aria-selected="true"]:hover { background: #aa0005; border-color: #aa0005; }
+
+/* Guided-walk pattern (from p1-third-party-exchange): numbered rail, step eyebrow, fixed walkbar */
+.rail { display: flex; gap: 0.5rem; padding: 0.25rem 0 1rem; grid-column: 1 / -1; }
+.rail button { flex: 1; min-width: 0; border: 0; background: none; cursor: pointer; font: inherit; text-align: left; color: var(--th-text-muted); padding: 0; border-radius: 0; }
+.rail button:hover { background: none; }
+.rail i { display: block; height: 0.35rem; border-radius: 9px; background: var(--th-border); margin-bottom: 0.4rem; transition: background 0.3s; }
+.rail span { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em; display: block; overflow-wrap: anywhere; }
+.rail .done i { background: #aa0005; }
+.rail .on i { background: var(--th-accent); }
+.rail .on { color: var(--th-text); }
+.walk-eyebrow { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--th-accent); margin: 0 0 0.35rem; }
+.walkbar { position: fixed; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, var(--th-bg-page) 70%, transparent); padding: 1rem 1rem 1.1rem; z-index: 20; pointer-events: none; }
+.walkbar .in { max-width: 62rem; margin: 0 auto; display: flex; gap: 0.75rem; align-items: center; pointer-events: auto; }
+.walkbar .btn { font-weight: 700; border-radius: 999px; border-width: 1.5px; padding: 0.8rem 1.5rem; font-size: 1rem; }
+.walkbar .btn.go.primary { background: var(--th-accent); border-color: var(--th-accent); color: #fff; }
+.walkbar .btn.go.primary:hover { background: #aa0005; border-color: #aa0005; }
+.walkbar .where { flex: 1; color: var(--th-text-muted); font-size: 0.85rem; text-align: center; min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .walkbar .where { display: none; } .walkbar .in { justify-content: space-between; } .walkbar .btn { padding: 0.7rem 1.1rem; } .rail span { font-size: 0.7rem; } }
+/* leave room for the fixed walkbar at the bottom */
+.gate { padding-bottom: 5.5rem; }
