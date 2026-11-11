@@ -1,0 +1,19 @@
+.qc { display: grid; gap: 14px; }
+.qc__group h4 { margin: 0 0 6px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted, #6a675f); }
+.qc__seg { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.qc__seg button {
+  border: 1px solid var(--line, #d8d4cc); background: var(--panel, #fff); border-radius: 999px;
+  padding: 4px 12px; font-size: 0.82rem; cursor: pointer;
+}
+.qc__seg button.on { background: var(--accent, #b91c1c); color: #fff; border-color: var(--accent, #b91c1c); }
+.qc__cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qc__card {
+  display: grid; gap: 2px; text-align: left; cursor: pointer;
+  border: 1px solid var(--line, #d8d4cc); border-radius: 10px; padding: 8px 10px;
+  background: var(--panel, #fff);
+}
+.qc__card.on { border-color: var(--accent, #b91c1c); box-shadow: 0 0 0 1px var(--accent, #b91c1c); }
+.qc__card b { font-size: 0.85rem; }
+.qc__card span { font-size: 0.74rem; color: var(--muted, #6a675f); }
+.qc__toggles { display: grid; gap: 6px; }
+.qc__check { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
