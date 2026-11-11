@@ -449,9 +449,9 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
       {/* key: a scenario switch must reset the panel's challenge/receipt state (reviewer item 1) */}
       <ObligationPanel key={run?.traceId ?? "none"} run={run} onResolved={(r) => setRun(r)} />
       <div className="walkbar"><div className="in">
-        <button type="button" className="btn" disabled={idx <= 0} onClick={() => { const p = story.scenarios[idx - 1]; setId(p.id); if (onSelect) onSelect(p.id); }} data-testid="wiz-prev">&larr; Back</button>
+        <button type="button" className="btn" disabled={idx <= 0} onClick={() => { const p = story.scenarios[idx - 1]; setId(p.id); if (onSelect) onSelect(p.id); }} data-testid="wiz-prev">← Back</button>
         <div className="where" aria-live="polite" data-testid="wiz-where">Use case {idx + 1} of {story.scenarios.length}: {scenario.ucId}</div>
-        <button type="button" className="btn go primary" onClick={() => { const n = story.scenarios[idx + 1]; setId(n.id); if (onSelect) onSelect(n.id); }} data-testid="wiz-next">{idx >= story.scenarios.length - 1 ? "Start over" : "Next &rarr;"}</button>
+        <button type="button" className="btn go primary" onClick={() => { const n = story.scenarios[idx + 1]; setId(n.id); if (onSelect) onSelect(n.id); }} data-testid="wiz-next">{idx >= story.scenarios.length - 1 ? "Start over" : "Next →"}</button>
       </div></div>
       </>)}
 
