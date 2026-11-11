@@ -98,3 +98,7 @@ details { margin: 6px 0; } summary { cursor: pointer; font-size: var(--font-size
   background: var(--surface-2, #f6f6f8);
   border-radius: 6px;
 }
+
+/* Section tabs */
+.gate-tabs { margin-bottom: 14px; border-bottom: 1px solid var(--th-border, #ddd); padding-bottom: 8px; }
+.gate-tabs button[aria-selected="true"] { border-color: var(--th-accent); font-weight: 700; box-shadow: inset 0 -3px 0 var(--th-accent); }

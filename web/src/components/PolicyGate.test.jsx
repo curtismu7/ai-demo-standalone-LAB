@@ -34,6 +34,8 @@ vi.mock("../api", () => ({
 
 import { authorize, consent } from "../api";
 
+const switchTab = async (user, id) => user.click(screen.getByTestId(`tab-${id}`));
+
 const STORY = {
   tokenLabel: "TOKEN-LABEL",
   facts: [{ id: "f1", status: "measured", text: "a fact", source: "src" }],
@@ -193,6 +195,8 @@ describe("PolicyGate", () => {
     await waitFor(() => expect(screen.getByTestId("verdict").textContent).toContain("PERMITTED"));
     expect(consent).toHaveBeenCalledWith({ user: "demoUser", actor: "demo-agent", aud: undefined });
     expect(authorize).toHaveBeenCalled();
+    const user2 = userEvent.setup();
+    await switchTab(user2, "catalog");
     await screen.findByTestId("catalog");
   });
 
@@ -208,6 +212,7 @@ describe("PolicyGate", () => {
     const user = userEvent.setup();
     const { setDirectory } = await import("../api");
     render(<PolicyGate story={STORY} resetSignal={0} requestedId={null} onSelect={() => {}} />);
+    await switchTab(user, "agents");
     await screen.findByTestId("directory-board");
     await user.click(screen.getByTestId("flip-out"));
     await waitFor(() => expect(setDirectory).toHaveBeenCalledWith(expect.objectContaining({ user: "demoUser", groups: [] })));
@@ -228,6 +233,7 @@ describe("PolicyGate", () => {
   it("the facts panel switches to the selected use case's evidence", async () => {
     const user = userEvent.setup();
     render(<PolicyGate story={STORY} resetSignal={0} requestedId={null} onSelect={() => {}} />);
+    await switchTab(user, "catalog");
     await screen.findByTestId("catalog");
     const before = screen.getByTestId("facts").textContent;
     await user.click(screen.getByTestId("uc-UC4"));
@@ -238,14 +244,17 @@ describe("PolicyGate", () => {
   it("clicking a catalog row opens the detail panel", async () => {
     const user = userEvent.setup();
     render(<PolicyGate story={STORY} resetSignal={0} requestedId={null} onSelect={() => {}} />);
+    await switchTab(user, "catalog");
     await screen.findByTestId("catalog");
     await user.click(screen.getByTestId("uc-UC4"));
     await waitFor(() => expect(screen.getByTestId("uc-detail").textContent).toContain("DPoP makes a stolen bearer token worthless"));
   });
 
   it("renders the facts with status labels and the scenario lesson", async () => {
+    const user = userEvent.setup();
     render(<PolicyGate story={STORY} resetSignal={0} requestedId={null} onSelect={() => {}} />);
-    await waitFor(() => expect(screen.getByTestId("facts").textContent).toContain("measured"));
     expect(screen.getByTestId("lesson").textContent).toContain("the lesson");
+    await switchTab(user, "catalog");
+    await waitFor(() => expect(screen.getByTestId("facts").textContent).toContain("measured"));
   });
 });

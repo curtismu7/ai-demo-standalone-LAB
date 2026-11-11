@@ -416,8 +416,20 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
   useEffect(() => { setRun(null); }, [resetSignal]);
   useEffect(() => { runScenario(id); }, [id, resetSignal, runScenario]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [tab, setTab] = useState("demo");
+  const TABS = [
+    { id: "demo", label: "Live demo" },
+    { id: "agents", label: "Agents & identity" },
+    { id: "attacks", label: "Attack gallery" },
+    { id: "catalog", label: "Use-case catalog" },
+  ];
+
   return (
     <div className="gate">
+      <nav className="seg gate-tabs" role="tablist" aria-label="Sections" data-testid="gate-tabs">
+        {TABS.map((t) => <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} data-testid={`tab-${t.id}`} onClick={() => setTab(t.id)}>{t.label}</button>)}
+      </nav>
+      {tab === "demo" && (<>
       <section className="panel" aria-labelledby="sc-h">
         <h2 id="sc-h">Live scenarios (stage 1)</h2>
         <div className="seg" role="group" aria-label="Scenario">
@@ -431,11 +443,19 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
         <Verdict run={run} />
         {run && <Hops hops={run.hops} traceId={run.traceId} />}
       </section>
-      <ObligationPanel run={run} onResolved={(r) => setRun(r)} />
+      {/* key: a scenario switch must reset the panel's challenge/receipt state (reviewer item 1) */}
+      <ObligationPanel key={run?.traceId ?? "none"} run={run} onResolved={(r) => setRun(r)} />
+      </>)}
+
+      {tab === "agents" && (<>
       <DirectoryBoard onChanged={() => setBoardTick((n) => n + 1)} />
       <A2aPanel />
-      <AttackGallery />
       <NhiPanel />
+      </>)}
+
+      {tab === "attacks" && <AttackGallery />}
+
+      {tab === "catalog" && (<>
       {selected && <UseCaseDetail uc={selected} onClose={() => setSelectedUc(null)} />}
       {catalog && <CatalogList catalog={catalog} onSelect={(u) => setSelectedUc(u.id)} selectedUc={selectedUc?.id ?? selectedUc} />}
       <section className="panel" aria-labelledby="scen-h">
@@ -445,6 +465,7 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
           {(selected ? useCaseFacts(selected) : story.facts).map((f) => <li key={f.id}><span className={STATUS_CLASS[f.status] || "tag"}>{f.status}</span> {visible(f.text)} <span className="muted">({visible(f.source)})</span></li>)}
         </ul>
       </section>
+      </>)}
     </div>
   );
 }
