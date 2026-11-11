@@ -7,6 +7,7 @@ import ShellBar from "./shell/ShellBar.jsx";
 import SimBanner from "./shell/SimBanner.jsx";
 import WelcomePage from "./pages/WelcomePage.jsx";
 import UseCasesPage from "./pages/UseCasesPage.jsx";
+import DashboardOnePage from "./pages/DashboardPage.jsx";
 import { readReturnContext } from "./return-link/returnTargets.js";
 import { scenarioFor } from "./handoffMap";
 import { getJson, resetWorkspace } from "./api";
@@ -79,9 +80,8 @@ export default function App() {
                 {story.talkTrack.filter((t) => (route === "dashboard" || route === "use-cases" ? ["say-first", "one-engine", "groups", "tiers", "who-acting", "unverified"] : ["say-first"]).includes(t.id)).map((t) => <p key={t.id}><strong>{t.title}.</strong> {t.say}</p>)}
               </aside>
             )}
-            {route === "dashboard" && <DashboardPage story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} />}
-            {route === "use-cases" && <UseCasesPage story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} />}
-            {route === "guide" && <GuidePage story={story} resetSignal={resetSignal} />}
+            {route === "dashboard" && <DashboardPage story={story} />}
+            {route === "use-cases" && <UseCasesPage story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} />}            {route === "guide" && <GuidePage story={story} resetSignal={resetSignal} />}
             {route === "welcome" && <WelcomePage />}
             {route === DIAGRAM_ROUTE && <DiagramRoute resetSignal={resetSignal} />}
           </>
@@ -91,10 +91,10 @@ export default function App() {
   );
 }
 
-// The dashboard route keeps the existing PolicyGate panel content until the P2 rebuild replaces it.
-function DashboardPage({ story, resetSignal, requestedId, onSelect }) {
-  if (!story.scenarios.length) return <p className="muted">No scenarios are wired yet.</p>;
-  return <PolicyGate story={story} resetSignal={resetSignal} requestedId={requestedId} onSelect={onSelect} />;
+// The dashboard route is the P2 one-page layout; the guided-walk runner stays reachable on
+// the Use Cases tab (the full scenario list, tabs and obligation resolution live there).
+function DashboardPage({ story }) {
+  return <DashboardOnePage story={story} />;
 }
 
 // The Guide page: the diagram view plus the talk track, under one h1.

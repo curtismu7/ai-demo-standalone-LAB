@@ -21,6 +21,8 @@ import { createRoster, keyAllows, KNOWN_SCOPES, NhiInputError } from './nhi.js';
 import { mountShelfRoute, shelfInfo } from './shelfLink.js';
 import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.js';
 import { createWorkspaces, workspaceFrom } from './workspaces.js';
+import { SCENARIOS } from './policyData.js';
+import { matchTurn } from './assistant.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = process.env.WEB_DIST || path.resolve(HERE, '../../web/dist');
@@ -370,6 +372,57 @@ export function createApp({
     const v = workspaces.state(ws);
     const roster = v.extra?.roster || createRoster();
     res.json({ events: roster.jml.all(), workspace: ws });
+  }));
+
+  // ── P2: the one-page dashboard's assistant turn. The Scripted brain matches ONE prompt to
+  // ONE handling: an in-app scenario (run through the SAME engine as /api/authorize, seeded
+  // exactly the way the scenario states, recorded in the workspace), a redirect to a
+  // standalone lab (a shelf folder name — the UI resolves the card), or an honest unknown.
+  // The reply is always written from the run, never by the matcher.
+  api.post('/assistant/turn', withWorkspace((ws, req, res) => {
+    const body = req.body;
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'bad_request' });
+    if (typeof body.message !== 'string' || !body.message.trim()) return res.status(400).json({ error: 'message_required', detail: 'body.message must be non-empty text (<= 500 chars)' });
+    const turn = matchTurn(body.message.slice(0, 500));
+    if (turn.handling === 'unknown') {
+      return res.json({ handling: 'unknown', reply: { text: 'I could not match that to a scripted demo. Try one of the suggestion chips, or open Use Cases.', by: 'agent', outcome: 'UNKNOWN' } });
+    }
+    if (turn.handling === 'redirect') {
+      return res.json({
+        handling: 'redirect', ucId: turn.ucId, lab: turn.lab,
+        reply: { text: `That story lives in its own lab: ${turn.lab}. Open it from the shelf.`, by: 'agent', outcome: 'HANDOFF', ucId: turn.ucId, tool: null },
+      });
+    }
+    // in-app: the SCENARIOS re-check (a drifted or invented id can never reach the engine)
+    const sc = SCENARIOS.find((s) => s.id === turn.scenarioId);
+    if (!sc) return res.json({ handling: 'unknown', reply: { text: 'I could not match that to a scripted demo. Try one of the suggestion chips, or open Use Cases.', by: 'agent', outcome: 'UNKNOWN' } });
+    const amount = turn.amount ?? sc.amount;
+    const v = workspaces.state(ws);
+    const dir = v.directory || structuredClone(DEFAULT_DIRECTORY);
+    // seed the directory the way the scenario states (same rule the UI's runner follows);
+    // a scenario's explicit flipTo wins, otherwise the assumed baseline for that user
+    const groups = Array.isArray(sc.flipTo) ? sc.flipTo : (sc.user === 'premiumUser' ? ['privileged', 'premiumTier'] : sc.user === 'jane' ? [] : ['privileged']);
+    const entry = { groups, tier: sc.user === 'premiumUser' ? 'Premium' : 'Standard' };
+    dir[sc.user] = entry;
+    v.directory = dir;
+    const token = exchange({ userSub: sc.user, actorClientId: sc.actor, aud: sc.aud || AUDIENCE });
+    const { verdict, obligation } = decideWithObligation({
+      token, groups: entry.groups, tier: entry.tier, tool: sc.tool, amount,
+      receipts: receiptsOf(v), authorizedActors: DEFAULT_ACTORS, audience: AUDIENCE, now: () => Date.now(),
+    });
+    const ctx = { user: sc.user, actor: sc.actor, tool: sc.tool, amount, groups: entry.groups, tier: entry.tier, aud: sc.aud };
+    const trace = newTrace(req.headers.traceparent);
+    const run = {
+      ...verdict, tool: sc.tool, user: sc.user, act: token.act ?? null,
+      chainDepth: actChainDepth(token.act), groups: entry.groups, tier: entry.tier,
+      ucId: sc.ucId, scenarioId: sc.id, workspace: ws, obligation, amount: amount ?? null,
+      narrative: explain(verdict, ctx), lesson: lessonFor(verdict, ctx),
+      products: productCast(verdict), hops: buildHops({ verdict, ...ctx, token, trace, consent: true }),
+      traceId: trace.traceId,
+    };
+    workspaces.record(ws, { tool: sc.tool, decision: verdict.decision, reason: verdict.reason, token, blocked: verdict.code, ucId: sc.ucId });
+    const by = verdict.decision === 'OBLIGATION' ? 'gateway' : 'authorize';
+    return res.json({ handling: 'in-app', ucId: sc.ucId, scenarioId: sc.id, decision: verdict.decision, say: verdict.reason, obligation: obligation ?? undefined, run, hops: run.hops, reply: { text: verdict.reason, by, outcome: verdict.decision, ucId: sc.ucId, tool: sc.tool } });
   }));
 
   api.get('/runs', withWorkspace((ws, _req, res) => res.json(workspaces.runs(ws))));

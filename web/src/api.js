@@ -44,6 +44,15 @@ export async function setDirectory(payload) {
 
 export const resetWorkspace = () => workspaceFetch("/api/reset", { method: "POST", body: "{}" }).then((r) => r.ok);
 
+// POST /api/assistant/turn: the one-page dashboard's assistant. Returns
+// { handling, reply: { text, by, outcome, ucId?, tool? }, run?, hops?, ucId?, lab? }.
+export async function assistantTurn(message) {
+  const r = await workspaceFetch("/api/assistant/turn", { method: "POST", body: JSON.stringify({ message }) });
+  let body = {};
+  try { body = await r.json(); } catch { /* not JSON */ }
+  return { ok: r.ok, status: r.status, body };
+}
+
 // ── Stage 2: HITL + A2A ──────────────────────────────────────────────────────
 export async function challenge(payload) {
   const r = await workspaceFetch("/api/challenge", { method: "POST", body: JSON.stringify(payload) });
