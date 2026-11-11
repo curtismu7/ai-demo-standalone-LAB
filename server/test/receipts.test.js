@@ -75,7 +75,8 @@ test('a tampered copy of a real receipt cannot widen it: the server compares aga
     const t = await s.token();
     const real = await s.receipt({ tool: 'get_transactions', amount: 300, answer: CONSENT });
     const widened = { ...real, amount: 600, obligation: 'STEP_UP', claims: { MfaVerified: true, ConsentGiven: true } };
-    paused(await s.authorize(t, 'get_transactions', 600, widened), 'receipt_amount_mismatch');
+    // editing any field breaks the workspace HMAC, so the signature check refuses before the binding check
+    paused(await s.authorize(t, 'get_transactions', 600, widened), 'receipt_forged');
     // the real receipt was not burned by the attempt
     assert.equal((await s.authorize(t, 'get_transactions', 300, real)).status, 200);
   });

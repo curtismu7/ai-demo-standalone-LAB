@@ -116,3 +116,37 @@ test('UC2/2.6/2.7: A2A handoff in-process — nested chain permits, unregistered
     assert.match(r.headers.get('www-authenticate') || '', /Bearer realm="ai-demo-standalone"/);
   });
 });
+
+// ── receipt signatures ──────────────────────────────────────────────────────
+test('receipts carry a workspace HMAC; a forged or edited receipt is refused', async () => {
+  const { createReceipts, mintReceipt, receiptSignatureValid, signReceipt, receiptSigningPayload } = await import('../src/hitl.js');
+  const r = createReceipts();
+  const ch = { challengeId: 'ch_sig1', obligation: 'STEP_UP', user: 'demoUser', tool: 'get_transactions', amount: 600, expiresAt: Math.floor(Date.now() / 1000) + 60 };
+  // a receipt minted without going through the store has no sig; issue() adds one
+  const raw = mintReceipt({ challenge: ch, mfaVerified: true });
+  assert.equal(raw.sig, undefined, 'mintReceipt alone does not sign');
+  r.issue(raw);
+  const stored = r.challenge ? null : null; // challenge is spent separately; get the signed copy back by presenting the id
+  // signature verifies on the stored copy and matches a fresh sign over the same payload
+  const presented = { ...raw };
+  assert.equal(receiptSignatureValid(presented, undefined), true, 'no key = checks off');
+  // the store's key is internal; forge an edited receipt against a known key
+  const k = 'test-key';
+  const mine = mintReceipt({ challenge: ch, mfaVerified: true, signingKey: k });
+  assert.equal(receiptSignatureValid(mine, k), true, 'a signed receipt verifies');
+  const edited = { ...mine, amount: 999999 };
+  assert.equal(receiptSignatureValid(edited, k), false, 'an edited amount breaks the signature');
+  assert.equal(receiptSignatureValid({ ...mine, sig: 'garbage' }, k), false, 'a garbage signature fails');
+  assert.equal(receiptSignatureValid({ ...mine, sig: undefined }, k), false, 'a missing signature fails');
+  // canonical payload is stable
+  assert.equal(receiptSigningPayload(mine), receiptSigningPayload({ ...mine }));
+  // redeem refuses a receipt whose stored signature was tampered with
+  const r2 = createReceipts();
+  const ch2 = { challengeId: 'ch_sig2', obligation: 'STEP_UP', user: 'demoUser', tool: 'get_transactions', amount: 600, expiresAt: Math.floor(Date.now() / 1000) + 60 };
+  const rec2 = mintReceipt({ challenge: ch2, mfaVerified: true });
+  rec2.sig = 'forged-by-attacker';
+  r2.issue(rec2);
+  const out = r2.redeem({ receipt: rec2, user: 'demoUser', tool: 'get_transactions', obligation: 'STEP_UP', amount: 600 });
+  assert.equal(out.valid, false, 'a stored receipt with a bad signature does not redeem');
+  assert.equal(out.code, 'receipt_forged');
+});

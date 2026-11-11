@@ -10,7 +10,7 @@
 // bounded, 5 minute TTL). A receipt is looked up there, checked against user + tool + obligation
 // + amount as the server stored them, and CONSUMED on the call it permits — a hand-written,
 // replayed, expired or mismatched receipt leaves the call paused.
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto';
 import { LIMITS } from './pdpData.js';
 import { clean } from './clean.js';
 
@@ -71,9 +71,28 @@ export function verifyAnswer({ challenge, answer, now = Date.now } = {}) {
 /** The receipt minted from a satisfied challenge, bound to user+tool+obligation+amount.
  *  MfaVerified is true only when the caller reports a verified MFA answer (verifyAnswer's
  *  mfaVerified): a CONFIRM-band consent receipt carries MfaVerified=false. */
-export function mintReceipt({ challenge, mfaVerified = false, now = Date.now, rand = () => randomUUID().replaceAll('-', '').slice(0, 12) } = {}) {
+/** Canonical signing payload for a receipt: the fields a verifier cares about, in a fixed order. */
+export function receiptSigningPayload(receipt) {
+  return JSON.stringify([receipt.receiptId, receipt.challengeId, receipt.obligation, receipt.user, receipt.tool, receipt.amount ?? null, receipt.issuedAt]);
+}
+
+/** HMAC-SHA256 over the canonical payload. A receipt whose sig does not verify was not issued
+ *  by this workspace's server (edited, fabricated, or from another workspace). */
+export function signReceipt(receipt, signingKey) {
+  return createHmac('sha256', signingKey).update(receiptSigningPayload(receipt)).digest('base64url');
+}
+
+export function receiptSignatureValid(receipt, signingKey) {
+  if (!signingKey) return true; // no key configured: signature checks are off (mock default)
+  if (typeof receipt.sig !== 'string' || !receipt.sig) return false;
+  const expected = Buffer.from(signReceipt(receipt, signingKey));
+  const given = Buffer.from(receipt.sig);
+  return expected.length === given.length && timingSafeEqual(expected, given);
+}
+
+export function mintReceipt({ challenge, mfaVerified = false, now = Date.now, rand = () => randomUUID().replaceAll('-', '').slice(0, 12), signingKey = null } = {}) {
   if (challenge == null || typeof challenge !== 'object') throw new HitlInputError('bad_challenge', 'challenge is required');
-  return {
+  const receipt = {
     receiptId: `rcp_${rand()}${rand()}`.slice(0, 44),
     challengeId: challenge.challengeId,
     obligation: challenge.obligation,
@@ -85,6 +104,8 @@ export function mintReceipt({ challenge, mfaVerified = false, now = Date.now, ra
       : challenge.obligation === 'CIBA' ? { CibaApproved: true }
       : { MfaVerified: mfaVerified === true, ConsentGiven: true },
   };
+  if (signingKey) receipt.sig = signReceipt(receipt, signingKey);
+  return receipt;
 }
 
 const money = (n) => (n == null ? 'no amount' : `$${n}`);
@@ -113,7 +134,8 @@ export function receiptValid({ receipt, user, tool, obligation, amount = null, n
  * Bounded: at most `max` records per kind (oldest dropped first); records are dropped one TTL
  * after they expire, so a stale id still gets a clear "expired" answer for a while.
  */
-export function createReceipts({ now = Date.now, max = STORE_MAX } = {}) {
+export function createReceipts({ now = Date.now, max = STORE_MAX, signingKey = `whsk_${randomUUID()}` } = {}) {
+  // Each workspace store gets its own HMAC key: a receipt is only genuine if THIS key signed it.
   const pending = new Map(); // challengeId -> challenge awaiting an answer
   const answered = new Set(); // challengeIds already answered
   const issued = new Map(); // receiptId -> { receipt, used }
@@ -136,13 +158,14 @@ export function createReceipts({ now = Date.now, max = STORE_MAX } = {}) {
       return true;
     },
     spent(challengeId) { return answered.has(challengeId); },
-    /** Remember a receipt this server just minted. */
-    issue(receipt) { prune(); issued.set(receipt.receiptId, { receipt, used: false }); cap(issued); },
+    /** Remember a receipt this server just minted; sign it so it can be verified as genuine. */
+    issue(receipt) { prune(); if (!receipt.sig) receipt.sig = signReceipt(receipt, signingKey); issued.set(receipt.receiptId, { receipt, used: false }); cap(issued); },
     /** Check a presented receipt against the store and the call; consume it when it is valid. */
     redeem({ receipt, user, tool, obligation, amount = null }) {
       if (receipt == null || typeof receipt !== 'object' || Array.isArray(receipt)) return { valid: false, code: 'no_receipt', reason: 'no receipt presented' };
       const entry = typeof receipt.receiptId === 'string' ? issued.get(receipt.receiptId) : undefined;
       if (!entry) return { valid: false, code: 'receipt_not_found', reason: 'no such receipt in this workspace store (never issued, expired, or already spent): a hand-written receipt is not accepted' };
+      if (!receiptSignatureValid(receipt, signingKey) || !receiptSignatureValid(entry.receipt, signingKey)) return { valid: false, code: 'receipt_forged', reason: 'the receipt signature does not verify: it was not issued by this workspace' };
       if (entry.used) return { valid: false, code: 'receipt_spent', reason: 'this receipt was already used; a receipt permits one call' };
       const check = receiptValid({ receipt: entry.receipt, user, tool, obligation, amount, now });
       if (!check.valid) return check;
