@@ -1,16 +1,16 @@
 import { fillDeep } from './cast.js';
-import { BANNER, CATALOG, FACTS, HOSTED_BANNER, INTRO, RULE, SCENARIOS, TALK_TRACK, TITLE, TOOLS } from './policyData.js';
+import { BANNER, CATALOG, FACTS, INTRO, RULE, SCENARIOS, TALK_TRACK, TITLE, TOOLS } from './policyData.js';
 export { CATALOG };
 
-export const rawStory = () => ({ title: TITLE, intro: INTRO, banner: BANNER, hostedBanner: HOSTED_BANNER, rule: RULE, scenarios: SCENARIOS, facts: FACTS, tools: TOOLS, talkTrack: TALK_TRACK });
+export const rawStory = () => ({ title: TITLE, intro: INTRO, banner: BANNER, rule: RULE, scenarios: SCENARIOS, facts: FACTS, tools: TOOLS, talkTrack: TALK_TRACK });
 
 // The story with the cast filled in.
-export function buildStory(cast, { hosted = false } = {}) {
+export function buildStory(cast) {
   const s = fillDeep(rawStory(), cast);
   return {
     title: s.title,
     intro: s.intro,
-    banner: hosted ? s.hostedBanner : s.banner,
+    banner: s.banner,
     tokenLabel: 'MOCK token chains, MOCK directories and MOCK tiers: for education, never a real credential',
     rule: s.rule,
     scenarios: s.scenarios,

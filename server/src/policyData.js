@@ -8,7 +8,6 @@ import catalog from '../data/catalog.json' with { type: 'json' };
 export const CATALOG = catalog;
 
 export const BANNER = 'SIMULATED: the whole AI-DEMO2 dashboard as one mock app. A mock PDP, a mock delegated-token chain, a mock directory. Nothing calls a real identity provider, gateway or tenant.';
-export const HOSTED_BANNER = 'HOSTED SIMULATION: the whole AI-DEMO2 dashboard as one mock app. A mock PDP, a mock delegated-token chain, a mock directory. Nothing calls a real identity provider, gateway or tenant.';
 
 export const TITLE = "AI Demo Standalone — the {{castBrand}} dashboard, all use cases, one app";
 export const INTRO = 'Every use case from the AI-DEMO2 dashboard in a single mock app. Pick a use case from the catalog, run it against the mock PDP: token validation, gateway chain checks, then the policy — directory groups read on EVERY decision, tier bands, premium-only tools. Stage 1 wires the foundations and controls tracks; HITL, attacks and learning tracks land in the next stages.';

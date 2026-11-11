@@ -6,6 +6,7 @@ name: ai-demo-standalone
 services:
   ai-demo-standalone:
     build: .
+    restart: unless-stopped
     ports:
       - "127.0.0.1:${HOST_PORT:-7810}:7810"
     environment:

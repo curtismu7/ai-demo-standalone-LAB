@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { hostedFrom, modeFrom, realAvailableFrom } from '../src/config.js';
+import { modeFrom, realAvailableFrom } from '../src/config.js';
 
 test('MODE defaults to Real when configured, else Mock; only mock/real accepted', () => {
   assert.equal(modeFrom({}), 'mock');
@@ -20,8 +20,3 @@ test('realAvailableFrom only checks PRESENCE (never the values) of the three AID
   assert.equal(realAvailableFrom({ AIDEMOLAB_REAL_URL: 'e', AIDEMOLAB_REAL_CLIENT_ID: 'i', AIDEMOLAB_REAL_CLIENT_SECRET: 's' }), true);
 });
 
-test('hosted is only the exact string 1', () => {
-  assert.equal(hostedFrom({}), false);
-  assert.equal(hostedFrom({ AIDEMOLAB_HOSTED: '1' }), true);
-  for (const v of ['true', '0', 'yes', '']) assert.equal(hostedFrom({ AIDEMOLAB_HOSTED: v }), false, v);
-});
