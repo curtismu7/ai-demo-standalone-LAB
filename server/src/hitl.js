@@ -10,6 +10,7 @@
 // bounded, 5 minute TTL). A receipt is looked up there, checked against user + tool + obligation
 // + amount as the server stored them, and CONSUMED on the call it permits — a hand-written,
 // replayed, expired or mismatched receipt leaves the call paused.
+import { randomUUID } from 'node:crypto';
 import { LIMITS } from './pdpData.js';
 import { clean } from './clean.js';
 
@@ -35,7 +36,7 @@ export function evaluateObligation({ tool, amount = null, hitlTools = ['create_t
 }
 
 /** A challenge: what the human must satisfy, bound to the exact call that raised it. */
-export function createChallenge({ obligation, user, tool, amount = null, now = Date.now, ttlSeconds = TTL_SECONDS, rand = () => Math.random().toString(36).slice(2, 12) } = {}) {
+export function createChallenge({ obligation, user, tool, amount = null, now = Date.now, ttlSeconds = TTL_SECONDS, rand = () => randomUUID().replaceAll('-', '').slice(0, 12) } = {}) {
   if (!['CONFIRM', 'STEP_UP', 'HITL_CONSENT', 'CIBA'].includes(obligation)) throw new HitlInputError('bad_obligation', 'obligation must be CONFIRM, STEP_UP, HITL_CONSENT or CIBA');
   const id = `chg_${rand()}${rand()}`.slice(0, 40);
   const iat = Math.floor(now() / 1000);
@@ -58,7 +59,8 @@ export function verifyAnswer({ challenge, answer, now = Date.now } = {}) {
     if (n === 'consent' && answer.consent !== true) return { ok: false, code: 'consent_required', reason: 'the user must explicitly approve (consent: true)' };
     if (n === 'mfa') {
       if (answer.otp == null) return { ok: false, code: 'otp_required', reason: 'the MFA challenge requires the OTP' };
-      if (String(answer.otp).trim() !== '123123') return { ok: false, code: 'otp_invalid', reason: 'wrong OTP (mock accepts 123123)' };
+      if (typeof answer.otp !== 'string') return { ok: false, code: 'otp_invalid', reason: 'the OTP must be a string' };
+      if (answer.otp.trim() !== '123123') return { ok: false, code: 'otp_invalid', reason: 'wrong OTP (mock accepts 123123)' };
     }
     if (n === 'ciba_approval' && answer.cibaApproved !== true) return { ok: false, code: 'ciba_pending', reason: 'the user has not approved on their device yet (mock: approve once)' };
   }
@@ -69,7 +71,7 @@ export function verifyAnswer({ challenge, answer, now = Date.now } = {}) {
 /** The receipt minted from a satisfied challenge, bound to user+tool+obligation+amount.
  *  MfaVerified is true only when the caller reports a verified MFA answer (verifyAnswer's
  *  mfaVerified): a CONFIRM-band consent receipt carries MfaVerified=false. */
-export function mintReceipt({ challenge, mfaVerified = false, now = Date.now, rand = () => Math.random().toString(36).slice(2, 12) } = {}) {
+export function mintReceipt({ challenge, mfaVerified = false, now = Date.now, rand = () => randomUUID().replaceAll('-', '').slice(0, 12) } = {}) {
   if (challenge == null || typeof challenge !== 'object') throw new HitlInputError('bad_challenge', 'challenge is required');
   return {
     receiptId: `rcp_${rand()}${rand()}`.slice(0, 44),
@@ -125,7 +127,7 @@ export function createReceipts({ now = Date.now, max = STORE_MAX } = {}) {
     now,
     /** Remember a challenge this server just issued. */
     track(challenge) { prune(); pending.set(challenge.challengeId, challenge); cap(pending); },
-    /** The challenge as the server issued it, or null (never issued here, or already answered). */
+    /** The challenge as the server issued it, or null (never issued here, expired, or already answered). */
     challenge(id) { return typeof id === 'string' ? pending.get(id) ?? null : null; },
     /** Mark a challenge answered (single use). False when it already was. */
     spend(challengeId) {
@@ -140,7 +142,7 @@ export function createReceipts({ now = Date.now, max = STORE_MAX } = {}) {
     redeem({ receipt, user, tool, obligation, amount = null }) {
       if (receipt == null || typeof receipt !== 'object' || Array.isArray(receipt)) return { valid: false, code: 'no_receipt', reason: 'no receipt presented' };
       const entry = typeof receipt.receiptId === 'string' ? issued.get(receipt.receiptId) : undefined;
-      if (!entry) return { valid: false, code: 'receipt_not_found', reason: 'this server never issued that receipt in this workspace: a hand-written receipt is not accepted' };
+      if (!entry) return { valid: false, code: 'receipt_not_found', reason: 'no such receipt in this workspace store (never issued, expired, or already spent): a hand-written receipt is not accepted' };
       if (entry.used) return { valid: false, code: 'receipt_spent', reason: 'this receipt was already used; a receipt permits one call' };
       const check = receiptValid({ receipt: entry.receipt, user, tool, obligation, amount, now });
       if (!check.valid) return check;
@@ -160,7 +162,7 @@ export function answerChallenge({ receipts, challenge, answer } = {}) {
   const id = challenge.challengeId;
   if (receipts.spent(id)) return { ok: false, code: 'challenge_spent', reason: 'this challenge was already answered; run the call again' };
   const stored = receipts.challenge(id);
-  if (!stored) return { ok: false, code: 'challenge_unknown', reason: 'this server never issued that challenge in this workspace; raise one with POST /api/challenge' };
+  if (!stored) return { ok: false, code: 'challenge_unknown', reason: 'no such challenge in this workspace store (never issued, expired, or already answered); raise one with POST /api/challenge' };
   const check = verifyAnswer({ challenge: stored, answer, now: receipts.now });
   if (!check.ok) return check;
   receipts.spend(id);

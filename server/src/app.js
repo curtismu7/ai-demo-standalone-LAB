@@ -132,6 +132,11 @@ export function createApp({
     // Stage 2: bands and HITL tools produce OBLIGATIONS, not denials — the agent pauses,
     // the human answers, and the receipt re-evaluates the same call. The receipt is checked
     // against this workspace's store (issued here, unspent, binds the call) and consumed.
+    // Reviewer item 10: a `receipt` that is present but not an object is a bad request,
+    // not a silent "no receipt" (that would let a malformed receipt slip through as none).
+    if ('receipt' in body && body.receipt !== null && (typeof body.receipt !== 'object' || Array.isArray(body.receipt))) {
+      return res.status(400).json({ error: 'bad_receipt', detail: 'body.receipt, when present, must be the receipt object the challenge/answer call returned' });
+    }
     const claimed = typeof body.receipt === 'object' && body.receipt !== null ? body.receipt : null;
     const { verdict, obligation, receiptCheck } = decideWithObligation({
       token: body.token, groups: entry.groups, tier: entry.tier, tool, amount, receipt: claimed, receipts: receiptsOf(v),
@@ -164,10 +169,36 @@ export function createApp({
     const body = req.body;
     if (body === null || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'bad_request' });
     const tool = typeof body.tool === 'string' && body.tool ? body.tool.slice(0, LIMITS.id) : 'get_balance';
+    // Reviewer item 6: the amount is validated before it reaches the engine (a negative,
+    // NaN or non-numeric amount is a bad request, never a 200 with a challenge).
     const amount = body.amount == null ? null : Number(body.amount);
+    if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
+      return res.status(400).json({ error: 'bad_amount', detail: 'body.amount must be a non-negative number' });
+    }
     const user = typeof body.user === 'string' && body.user.trim() ? body.user.trim().slice(0, LIMITS.id) : null;
     if (!user) return res.status(400).json({ error: 'user_required', detail: 'body.user must be non-empty text' });
     try {
+      // Reviewer item 2: run the POLICY before raising the challenge, so a call the policy
+      // denies (group gate, tier ceiling, premium-only tool) never gets an MFA/consent
+      // prompt for a call that will refuse the receipt anyway. The challenge needs the same
+      // token context /authorize uses; a synthetic one is built from the workspace directory.
+      const v = workspaces.state(ws);
+      const dir = v.directory || structuredClone(DEFAULT_DIRECTORY);
+      const entry = dir[user] || { groups: [], tier: 'Standard' };
+      const verdict = decide({
+        // A synthetic token in the exact shape /consent mints (the policy reads the directory
+        // by `sub`; the chain check needs a valid act + aud + future exp). The actor is the
+        // body's actor (the one the agent actually uses) or the allow-list's first entry.
+        token: {
+          sub: user, act: { sub: typeof body.actor === 'string' && body.actor.trim() ? body.actor.trim().slice(0, LIMITS.id) : DEFAULT_ACTORS[0] },
+          scope: '', aud: AUDIENCE, exp: Math.floor(Date.now() / 1000) + 300,
+        },
+        groups: entry.groups, tier: entry.tier,
+        tool, amount, authorizedActors: DEFAULT_ACTORS, audience: AUDIENCE, now: () => Date.now(),
+      });
+      if (verdict.decision !== 'PERMIT') {
+        return res.status(403).json({ decision: 'DENY', stage: verdict.stage, code: verdict.code, reason: verdict.reason, detail: 'the policy denies this call; a challenge would not change the outcome' });
+      }
       const ob = evaluateObligation({ tool, amount });
       if (!ob.obligation) return res.status(400).json({ error: 'no_challenge', detail: ob.reason });
       const receipts = receiptsOf(workspaces.state(ws));

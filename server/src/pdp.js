@@ -7,7 +7,8 @@
 //                 amount band by tier (Standard $2000 / Premium $50000), premium-only tools
 //   4. PERMIT   — with an obligation when step-up or consent is required (HITL is stage 2;
 //                 the engine already returns the shape so the UI can grow into it)
-// Pure functions + injected clock; all values mock. No I/O inside decisions.
+// Pure functions + injected clock; all values mock. No I/O inside the decision functions
+// except decideWithObligation's receipt store argument (an in-memory store passed in by the caller).
 import { LIMITS } from './pdpData.js';
 import { evaluateObligation } from './hitl.js';
 
@@ -129,7 +130,14 @@ export function decideWithObligation({ receipt = null, receipts = null, ...args 
   const verdict = decide(args);
   if (verdict.decision !== 'PERMIT') return { verdict, obligation: null, receiptCheck: null };
   let ob;
-  try { ob = evaluateObligation({ tool: args.tool, amount: args.amount }); } catch { return { verdict, obligation: null, receiptCheck: null }; } // non-numeric amount: leave the policy verdict
+  // Reviewer item 7: fail CLOSED. An obligation-layer error must not silently hand out the
+  // bare policy verdict; it surfaces as a DENY explaining the engine failure.
+  try { ob = evaluateObligation({ tool: args.tool, amount: args.amount }); } catch (e) {
+    return {
+      verdict: { decision: 'DENY', stage: 'obligation', code: 'obligation_error', reason: `the obligation layer failed on this call (${e instanceof Error ? e.message : String(e)}); refusing rather than permitting without the check` },
+      obligation: null, receiptCheck: null,
+    };
+  }
   let obligation = null;
   let receiptCheck = null;
   if (ob.obligation) {
