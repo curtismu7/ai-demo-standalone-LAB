@@ -15,7 +15,7 @@ export function useCaseFacts(uc) {
   if (uc.owasp?.threats?.length) facts.push({ id: "owasp-threats", status: "measured", text: `OWASP AI threats covered: ${uc.owasp.threats.join(", ")}${uc.owasp.sections?.length ? ` (sections ${uc.owasp.sections.join(", ")})` : ""}.`, source: "AI-DEMO2 config/useCases.js" });
   if (uc.pingOneSolution) facts.push({ id: "solution", status: "measured", text: uc.pingOneSolution, source: "AI-DEMO2 config/useCases.js" });
   if (uc.primaryTool) facts.push({ id: "tool", status: "measured", text: `Primary gated tool: ${uc.primaryTool}.`, source: "AI-DEMO2 config/useCases.js" });
-  facts.push({ id: "runs-in", status: "inferred", text: `Runs live in stage ${["foundations", "controls"].includes(uc.track) ? "1" : "2\u20134"} — the same mock PDP decides it.`, source: "this lab's stage plan" });
+  facts.push({ id: "runs-in", status: "inferred", text: `Runs live on the ${["foundations", "controls", "hitl"].includes(uc.track) ? "wired engine" : "catalog listing"} — the same mock PDP decides it when wired.`, source: "this lab's build plan" });
   return facts;
 }
 
@@ -29,7 +29,7 @@ export function CatalogList({ catalog, onSelect, selectedUc }) {
   return (
     <section className="panel" aria-labelledby="cat-h" data-testid="catalog">
       <h2 id="cat-h">Use-case catalog <span className="muted">{catalog.count} use cases, {byTrack.size} tracks</span></h2>
-      <p className="muted">Stage 1 runs the foundations and controls scenarios live (chips below the run panel). Every other row is catalog data with its expected outcome — wired to the engine in stages 2–4.</p>
+      <p className="muted">The foundations, controls and HITL scenarios run live against the mock PDP (chips on the Dashboard). Every other row is catalog data with its expected outcome.</p>
       {[...byTrack.entries()].map(([track, ucs]) => (
         <div key={track} className="catalog-track">
           <h3>{track} <span className="muted">({ucs.length})</span></h3>
@@ -68,7 +68,7 @@ export function UseCaseDetail({ uc, onClose }) {
         </ul>
       )}
       {uc.pingOneSolution && <p data-testid="ucd-solution"><strong>Which product.</strong> {visible(uc.pingOneSolution)}</p>}
-      {(uc.whatLong || uc.businessValue) && <p className="muted">Runs live in stage {["foundations", "controls"].includes(uc.track) ? "1" : "2–4"} — the same engine decides it.</p>}
+      {(uc.whatLong || uc.businessValue) && <p className="muted">{["foundations", "controls", "hitl"].includes(uc.track) ? "Runs live on this lab's mock engine." : "A catalog entry: its expected outcome is listed, the engine will decide it when wired."}</p>}
       <button type="button" onClick={onClose} data-testid="ucd-close">Close</button>
     </section>
   );

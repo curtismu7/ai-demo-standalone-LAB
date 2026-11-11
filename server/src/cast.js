@@ -1,4 +1,4 @@
-// {{token}} templating for the story data. customer.config.json (optional, git-ignored) overrides the default cast.
+// {{token}} templating for the story data. customer.config.json (optional, git-ignored) overrides the cast.
 // Tokens are {{castBrand}}, {{castAgentId}}, {{castClientId}}, {{castHost}}. A test fails on any token the cast does not define.
 import fs from 'node:fs';
 import { scanHosts } from './safety.js';
@@ -7,12 +7,11 @@ const TOKEN = /\{\{(\w+)\}\}/g;
 const MAX_CAST = 40;
 const ID = /^[a-z0-9-]{1,40}$/;
 
+// One airline cast (owner decision 2026-11-11: the vertical selector is gone; this lab is the airline demo).
 export const VERTICALS = {
-  retail: { castBrand: 'Northwind Retail', castAgentId: 'orders-agent', castClientId: 'orders-agent', castHost: 'northwind' },
-  health: { castBrand: 'Contoso Health', castAgentId: 'claims-agent', castClientId: 'claims-agent', castHost: 'contoso' },
-  finance: { castBrand: 'Fabrikam Bank', castAgentId: 'payments-agent', castClientId: 'payments-agent', castHost: 'fabrikam' },
+  airline: { castBrand: 'Meridian Air', castAgentId: 'bookings-agent', castClientId: 'bookings-agent', castHost: 'meridianair' },
 };
-export const DEFAULT_VERTICAL = 'retail';
+export const DEFAULT_VERTICAL = 'airline';
 export const DEFAULT_CAST = VERTICALS[DEFAULT_VERTICAL];
 
 export const unfilled = (text, cast) => [...String(text).matchAll(TOKEN)].map((m) => m[1]).filter((k) => !Object.hasOwn(cast, k));
@@ -28,8 +27,7 @@ export const verticalFrom = (id) => (Object.hasOwn(VERTICALS, id) ? id : DEFAULT
 
 // Only brand, agentId, clientId and host, as short plain strings; anything else in the file is ignored.
 export function loadCast(file, vertical = DEFAULT_VERTICAL) {
-  const cast = { ...VERTICALS[verticalFrom(vertical)] };
-  if (!file) return cast;
+  const cast = { ...VERTICALS[verticalFrom(vertical)] };  if (!file) return cast;
   try {
     const cfg = JSON.parse(fs.readFileSync(file, 'utf8'));
     for (const [short, key] of [['brand', 'castBrand'], ['agentId', 'castAgentId'], ['clientId', 'castClientId'], ['host', 'castHost']]) {

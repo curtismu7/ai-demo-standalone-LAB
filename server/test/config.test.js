@@ -20,3 +20,4 @@ test('realAvailableFrom only checks PRESENCE (never the values) of the three AID
   assert.equal(realAvailableFrom({ AIDEMOLAB_REAL_URL: 'e', AIDEMOLAB_REAL_CLIENT_ID: 'i', AIDEMOLAB_REAL_CLIENT_SECRET: 's' }), true);
 });
 
+

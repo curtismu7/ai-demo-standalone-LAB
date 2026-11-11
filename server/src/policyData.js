@@ -7,10 +7,10 @@ import catalog from '../data/catalog.json' with { type: 'json' };
 
 export const CATALOG = catalog;
 
-export const BANNER = 'SIMULATED: the whole AI-DEMO2 dashboard as one mock app. A mock PDP, a mock delegated-token chain, a mock directory. Nothing calls a real identity provider, gateway or tenant.';
+export const BANNER = 'SIMULATED: the whole AI-DEMO2 dashboard as one mock app. A mock PDP, a mock delegated-token chain, a mock directory. Nothing calls a real airline, identity provider, gateway or tenant.';
 
 export const TITLE = "AI Demo Standalone — the {{castBrand}} dashboard, all use cases, one app";
-export const INTRO = 'Every use case from the AI-DEMO2 dashboard in a single mock app. Pick a use case from the catalog, run it against the mock PDP: token validation, gateway chain checks, then the policy — directory groups read on EVERY decision, tier bands, premium-only tools. Stage 1 wires the foundations and controls tracks; HITL, attacks and learning tracks land in the next stages.';
+export const INTRO = 'Every use case from the AI-DEMO2 dashboard in a single mock app. Pick a use case from the catalog, run it against the mock PDP: token validation, gateway chain checks, then the policy — directory groups read on EVERY decision, tier bands, premium-only tools — and the obligation layer: HITL (consent, MFA step-up, CIBA) and the A2A hand-off are wired now. The attacks, learn, tools and nhi tracks are catalog entries with their expected outcome.';
 
 export const RULE = {
   name: 'Dashboard policy (mock)',
@@ -30,7 +30,7 @@ export const FACTS = [
   { id: 'groups-every-call', status: 'measured', text: 'Directory groups are read on EVERY decision: outside the required group is denied regardless of scopes; the premium group EXPANDS capability (restricted tools + a $50000 ceiling).', source: 'AI-DEMO2 UC9/UC21, enforced live 2026-11-06' },
   { id: 'who-acting', status: 'measured', text: 'Delegated tokens carry act={agent}: the gateway validates the actor allow-list before any policy runs, and a token aimed at an upstream MCP audience is never accepted downstream.', source: 'AI-DEMO2 agentMcpTokenService, enforced live 2026-11-06' },
   { id: 'catalog-source', status: 'measured', text: 'The 87-use-case catalog is extracted from the dashboard\u2019s useCases.js — tracks, titles, expected outcomes, buyer stories — so the standalone matches what the real dashboard teaches.', source: 'AI-DEMO2 config/useCases.js, extracted 2026-11-08' },
-  { id: 'stages', status: 'inferred', text: 'Stage 1 covers the foundations and controls tracks end-to-end. HITL/CIBA (consent + MFA modals), the attack gallery, and the learning hub land in stages 2\u20134 with the same engine underneath.', source: 'this lab\u2019s stage plan' },
+  { id: 'stages', status: 'inferred', text: 'Foundations, controls and HITL run end-to-end now (the 11 scenarios below, plus the A2A panel). The attacks, learn, tools and nhi tracks are catalog entries with their expected outcome — the same engine will decide them.', source: 'this lab\u2019s build plan' },
 ];
 
 export const SCENARIOS = [

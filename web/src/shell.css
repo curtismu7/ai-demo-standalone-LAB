@@ -1,0 +1,34 @@
+/* Shell and page-frame styles for the P1 UI foundation. Colours come from the theme tokens in tokens.css
+   and from the vendored shared stylesheet (standalone-ui.css); nothing here hardcodes a colour. */
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--th-bg-page); color: var(--th-text); font-family: var(--font-sans); font-size: var(--font-size-base); }
+code { font-family: var(--font-mono); font-size: var(--font-size-2xs); }
+.app { max-width: 1280px; margin: 0 auto; padding: 0 16px 32px; }
+.app-error { padding: 16px; color: var(--th-accent); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.muted { color: var(--th-text-muted); font-size: var(--font-size-sm); }
+
+main h1 { margin: 12px 0 4px; font-size: var(--font-size-xl); }
+
+/* ===== 1. App shell (pattern P1) ===== */
+.shell-bar { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; padding: 0.65rem 1.25rem; background: var(--box-dark, var(--th-bg-page-dk)); color: var(--on-box, #fff); border-bottom: 3px solid transparent; border-image: var(--accent-gradient) 1; margin: 0 -16px; }
+.shell-brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; letter-spacing: 0.02em; }
+.shell-logo { width: 1.9rem; height: 1.9rem; border-radius: 4px; }
+.shell-nav { display: flex; gap: 0.25rem; flex: 1; flex-wrap: wrap; }
+.shell-nav a { padding: 0.3rem 0.75rem; border-radius: 999px; color: var(--on-box, #fff); border: 1px solid transparent; text-decoration: none; font-size: 0.85rem; font-weight: 500; }
+.shell-nav a:hover { border-color: var(--on-box, #fff); }
+.shell-nav a:focus-visible { outline: 2px solid var(--on-box, #fff); outline-offset: 2px; }
+.shell-nav a[aria-current="page"] { background: var(--accent-gradient); color: var(--on-accent, #fff); font-weight: 600; }
+.shell-right { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 0.85rem; }
+.shell-right button { color: var(--on-box, #fff); background: var(--box-dark, var(--th-bg-page-dk)); border: 1px solid var(--on-box, #fff); }
+.shell-right button:hover:not(:disabled) { background: var(--box-dark, var(--th-bg-page-dk)); filter: brightness(1.3); }
+.shell-right button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent, #fff); border-color: var(--on-accent-border, #fff); }
+.shell-right button:disabled { opacity: 0.7; }
+.shell-badge { padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--accent-gradient); color: var(--on-accent, #fff); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.shell-bar .seg { margin: 0; flex-wrap: nowrap; }
+@media (max-width: 600px) { .shell-bar { gap: 0.75rem; padding: 0.6rem 1rem; } .shell-nav { order: 3; flex-basis: 100%; } }
+
+/* Panels (the shared card pattern, on this lab's tokens) */
+.panel { border: 1px solid var(--border); border-top: 3px solid var(--accent); background: var(--surface); border-radius: var(--radius-lg); padding: 12px 14px; min-width: 0; }
+.panel h2 { margin: 0 0 8px; font-size: var(--font-size-lg); }
+.panel h3 { margin: 12px 0 4px; font-size: var(--font-size-base); }
