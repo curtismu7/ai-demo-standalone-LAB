@@ -1,0 +1,26 @@
+{
+  "demos": [
+    {
+      "id": "ai-demo-standalone",
+      "name": "AI Demo Standalone",
+      "kind": "Demo",
+      "description": "Generalist hands off to a specialist: two RFC 8693 exchanges build the nested act chain, scope narrowed per hop. Only a REGISTERED specialist is routed (UC2.6); the Agent Card is served and no bearer is a real 401 (UC2.7). Mock of UC2/2.5/2.6/2.7.",
+      "url": "http://localhost:7710",
+      "healthPath": "/api/health",
+      "composeFile": "ai-demo-standalone/docker-compose.yml",
+      "composeOverlays": [],
+      "pingProducts": [],
+      "notes": "Host-run: ./scripts/run.sh (port 7710). Mock needs no tenant and no credentials. Docker: HOST_PORT=7710 docker compose up --build -d (published on 127.0.0.1 only). The decision contract mirrors the AI-DEMO2 a2aDelegationService chained RFC 8693 exchange (scope narrowed per hop) + GatewayTokenPolicy nested-act exemption + the Agent Card registry (UC2.6 WHO-is-acting), enforced live 2026-11-06. Repo: curtismu7/ai-demo-standalone-LAB. Catalog id D122 (assigned 2026-11-07).",
+      "repo": "https://github.com/curtismu7/ai-demo-standalone-LAB",
+      "catalogId": "D122",
+      "alsoCatalogIds": [],
+      "tags": [
+        "agent-gateway",
+        "ai-agent-security",
+        "agent-controls",
+        "simulated"
+      ],
+      "where": "installed"
+    }
+  ]
+}

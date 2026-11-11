@@ -1,0 +1,229 @@
+{
+  "schema": "demo-content-pack/1",
+  "id": "ai-demo-standalone",
+  "title": "AI Demo Standalone",
+  "version": "0.1.0",
+  "demo": {
+    "id": "ai-demo-standalone",
+    "name": "AI Demo Standalone",
+    "catalog": "D122",
+    "baseUrl": "http://localhost:7710",
+    "doctor": "/api/health",
+    "tags": [
+      "delegation",
+      "a2a",
+      "agent",
+      "authorize",
+      "oauth",
+      "policy",
+      "mock-only"
+    ]
+  },
+  "glossary": [
+    {
+      "id": "delegation",
+      "term": "Delegated token (act claim)",
+      "definition": "After user consent, token exchange mints a delegated token: sub is the USER, act={sub: agent} names the actor. Every action traces back to a real human.",
+      "aliases": [
+        "token exchange",
+        "act claim"
+      ]
+    },
+    {
+      "id": "entitlement",
+      "term": "Group entitlement & tiers",
+      "definition": "The policy reads directory groups on EVERY decision: outside the required group is denied regardless of scopes, and the premium group EXPANDS capability (restricted tools + a $50000 ceiling).",
+      "aliases": [
+        "group gate",
+        "tier"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "rfc8693",
+      "title": "RFC 8693: OAuth 2.0 Token Exchange",
+      "url": "https://www.rfc-editor.org/rfc/rfc8693",
+      "kind": "standard",
+      "use": "The act claim and the delegated-token shape behind the whole catalog.",
+      "status": "not-read",
+      "checked": "2026-11-08"
+    }
+  ],
+  "cards": [
+    {
+      "id": "try-uc1",
+      "label": "Scenario 1: UC1: consent mints act={agent} — the balance read permits",
+      "description": "One consent, one delegated token: sub is the user, act={demo-agent} names the actor. Every action traces to a real human.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc1"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S01"
+    },
+    {
+      "id": "try-uc9",
+      "label": "Scenario 2: UC9: not in the required group — denied regardless of scopes",
+      "description": "The policy reads directory groups on EVERY decision. No group, no access — the token’s scopes cannot override it.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc9"
+      },
+      "terms": [
+        "entitlement"
+      ],
+      "story": "S02"
+    },
+    {
+      "id": "try-uc9a",
+      "label": "Scenario 3: UC9A: flip the directory entry — the very next call moves",
+      "description": "Revoke the privileged group and the SAME call denies — no code change, no cache, no re-login.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc9a"
+      },
+      "terms": [
+        "entitlement"
+      ],
+      "story": "S03"
+    },
+    {
+      "id": "try-uc21-tool",
+      "label": "Scenario 4: UC21: Standard tier cannot invoke the premium wire",
+      "description": "Positive least privilege: premium-only tools are listed in policy, never implied by scopes.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc21-tool"
+      },
+      "terms": [
+        "entitlement"
+      ],
+      "story": "S04"
+    },
+    {
+      "id": "try-uc21-promote",
+      "label": "Scenario 5: UC21: promote to Premium — the same call now permits",
+      "description": "The premiumTier group expands the tool set and raises the ceiling to $50000. Policy-driven, not hard-coded.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc21-promote"
+      },
+      "terms": [
+        "entitlement"
+      ],
+      "story": "S05"
+    },
+    {
+      "id": "try-uc21-ceiling",
+      "label": "Scenario 6: UC21: $60000 exceeds even the Premium ceiling",
+      "description": "Tiers cap amounts: Premium ceiling $50000, Standard $2000. Amounts are policy bands, not tool arguments.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc21-ceiling"
+      },
+      "terms": [
+        "entitlement"
+      ],
+      "story": "S06"
+    },
+    {
+      "id": "try-uc6-rogue",
+      "label": "Scenario 7: UC6: an unknown agent is refused at the gateway",
+      "description": "Authorization keys on WHO is acting: the actor allow-list refuses an unregistered agent before any policy runs.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc6-rogue"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S07"
+    },
+    {
+      "id": "try-uc32-upstream",
+      "label": "Scenario 8: UC32: a token aimed at an upstream MCP is refused",
+      "description": "An audience is a destination: a token minted for an upstream MCP server is never accepted downstream.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc32-upstream"
+      },
+      "terms": [
+        "delegation"
+      ],
+      "story": "S08"
+    },
+    {
+      "id": "concept-directory",
+      "label": "Flip the directory live",
+      "description": "Revoke the privileged group live; the SAME call flips on the next run — groups are read on EVERY decision.",
+      "group": "concept",
+      "action": {
+        "type": "route",
+        "href": "/#scenario-uc9a"
+      }
+    },
+    {
+      "id": "ref-doctor",
+      "label": "Doctor and health",
+      "description": "Preflight checks and the demo-health/1 endpoint.",
+      "group": "setup",
+      "action": {
+        "type": "route",
+        "href": "/api/health"
+      }
+    }
+  ],
+  "stories": [
+    {
+      "id": "S01",
+      "title": "UC1: consent mints act={agent} — the balance read permits",
+      "say": "One consent, one delegated token: sub is the user, act={demo-agent} names the actor. Every action traces to a real human."
+    },
+    {
+      "id": "S02",
+      "title": "UC9: not in the required group — denied regardless of scopes",
+      "say": "The policy reads directory groups on EVERY decision. No group, no access — the token’s scopes cannot override it."
+    },
+    {
+      "id": "S03",
+      "title": "UC9A: flip the directory entry — the very next call moves",
+      "say": "Revoke the privileged group and the SAME call denies — no code change, no cache, no re-login."
+    },
+    {
+      "id": "S04",
+      "title": "UC21: Standard tier cannot invoke the premium wire",
+      "say": "Positive least privilege: premium-only tools are listed in policy, never implied by scopes."
+    },
+    {
+      "id": "S05",
+      "title": "UC21: promote to Premium — the same call now permits",
+      "say": "The premiumTier group expands the tool set and raises the ceiling to $50000. Policy-driven, not hard-coded."
+    },
+    {
+      "id": "S06",
+      "title": "UC21: $60000 exceeds even the Premium ceiling",
+      "say": "Tiers cap amounts: Premium ceiling $50000, Standard $2000. Amounts are policy bands, not tool arguments."
+    },
+    {
+      "id": "S07",
+      "title": "UC6: an unknown agent is refused at the gateway",
+      "say": "Authorization keys on WHO is acting: the actor allow-list refuses an unregistered agent before any policy runs."
+    },
+    {
+      "id": "S08",
+      "title": "UC32: a token aimed at an upstream MCP is refused",
+      "say": "An audience is a destination: a token minted for an upstream MCP server is never accepted downstream."
+    }
+  ]
+}

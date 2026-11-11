@@ -1,0 +1,141 @@
+{
+  "schema": "diagram-studio/1",
+  "id": "decision-chain",
+  "title": "One engine, every use case: token to gateway to policy",
+  "lede": "Every catalog use case runs the same decision chain in mock. The tracks are framing over one contract \u2014 and the directory is read on EVERY decision. Mock only.",
+  "groups": {
+    "human": {
+      "label": "The human",
+      "color": "blue"
+    },
+    "chain": {
+      "label": "The chain (mock)",
+      "color": "red"
+    },
+    "policy": {
+      "label": "Policy (mock)",
+      "color": "dark"
+    },
+    "resource": {
+      "label": "Resources",
+      "color": "grey"
+    }
+  },
+  "nodes": [
+    {
+      "id": "user",
+      "label": "User (consents once)",
+      "group": "human",
+      "x": 0,
+      "y": 80
+    },
+    {
+      "id": "mint",
+      "label": "Consent mints act={agent}",
+      "group": "chain",
+      "x": 300,
+      "y": 80
+    },
+    {
+      "id": "agent",
+      "label": "Agent calls a tool",
+      "group": "chain",
+      "x": 600,
+      "y": 80
+    },
+    {
+      "id": "gateway",
+      "label": "Gateway: chain + audiences",
+      "group": "policy",
+      "x": 900,
+      "y": 80
+    },
+    {
+      "id": "policy",
+      "label": "Policy: groups, tiers, tools",
+      "group": "policy",
+      "x": 1200,
+      "y": 80
+    },
+    {
+      "id": "tool",
+      "label": "Tool dispatches, attributable",
+      "group": "resource",
+      "x": 1500,
+      "y": 80
+    }
+  ],
+  "edges": [
+    {
+      "source": "user",
+      "target": "mint",
+      "label": "consent"
+    },
+    {
+      "source": "mint",
+      "target": "agent",
+      "label": "delegated token"
+    },
+    {
+      "source": "agent",
+      "target": "gateway",
+      "label": "gated call"
+    },
+    {
+      "source": "gateway",
+      "target": "policy",
+      "label": "chain valid"
+    },
+    {
+      "source": "policy",
+      "target": "tool",
+      "label": "PERMIT"
+    },
+    {
+      "source": "gateway",
+      "target": "agent",
+      "label": "unknown actor / upstream aud",
+      "dashed": true
+    },
+    {
+      "source": "policy",
+      "target": "agent",
+      "label": "no group / tier cap",
+      "dashed": true
+    }
+  ],
+  "steps": [
+    {
+      "title": "Consent mints the delegation",
+      "what": "sub is the user, act={agent} names the actor: a chain of custody, not guesswork.",
+      "edges": [
+        0,
+        1
+      ]
+    },
+    {
+      "title": "The gateway validates the chain",
+      "what": "The actor allow-list runs before any policy; upstream audiences are never accepted.",
+      "edges": [
+        2,
+        3,
+        5
+      ]
+    },
+    {
+      "title": "The policy reads the directory",
+      "what": "Groups on EVERY decision: outside the group is denied regardless of scopes; tiers cap tools and amounts.",
+      "edges": [
+        4,
+        6
+      ]
+    },
+    {
+      "title": "Permit with attribution",
+      "what": "PERMIT dispatches with the full chain in the token.",
+      "edges": [
+        4
+      ]
+    }
+  ]
+}

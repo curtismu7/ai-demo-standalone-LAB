@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-demo-standalone
+  labels: { app: ai-demo-standalone }
+spec:
+  selector: { app: ai-demo-standalone }
+  ports:
+    - { name: http, port: 80, targetPort: http }

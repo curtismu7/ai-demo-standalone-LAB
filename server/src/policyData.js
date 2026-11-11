@@ -1,0 +1,96 @@
+// The story as data: the WHOLE AI-DEMO2 dashboard as one mock standalone.
+// The catalog of 87 use cases lives in server/data/catalog.json (extracted from
+// AI-DEMO2's useCases.js); this file holds the lab's own framing, the stage-1
+// scenarios (foundations + controls tracks), and the talk track.
+// Text is {{token}} templated (see cast.js). Every host ends in .example. No real credential.
+import catalog from '../data/catalog.json' with { type: 'json' };
+
+export const CATALOG = catalog;
+
+export const BANNER = 'SIMULATED: the whole AI-DEMO2 dashboard as one mock app. A mock PDP, a mock delegated-token chain, a mock directory. Nothing calls a real identity provider, gateway or tenant.';
+export const HOSTED_BANNER = 'HOSTED SIMULATION: the whole AI-DEMO2 dashboard as one mock app. A mock PDP, a mock delegated-token chain, a mock directory. Nothing calls a real identity provider, gateway or tenant.';
+
+export const TITLE = "AI Demo Standalone — the {{castBrand}} dashboard, all use cases, one app";
+export const INTRO = 'Every use case from the AI-DEMO2 dashboard in a single mock app. Pick a use case from the catalog, run it against the mock PDP: token validation, gateway chain checks, then the policy — directory groups read on EVERY decision, tier bands, premium-only tools. Stage 1 wires the foundations and controls tracks; HITL, attacks and learning tracks land in the next stages.';
+
+export const RULE = {
+  name: 'Dashboard policy (mock)',
+  appliesTo: 'The dashboard API at https://api.{{castHost}}.example',
+  note: 'Mock shape of the AI-DEMO2 decision chain: token -> gateway -> policy -> permit. Not exported from, or checked against, a real policy engine.',
+  defaults: { audience: 'ai-demo-standalone', tierCeilings: { Standard: 2000, Premium: 50000 }, actors: ['demo-agent'] },
+};
+
+export const TOOLS = [
+  { name: 'get_balance', kind: 'read', lesson: 'Account balance read — the standard gated call.' },
+  { name: 'get_transactions', kind: 'read', lesson: 'Transaction history read.' },
+  { name: 'create_wire_transfer', kind: 'write', lesson: 'Premium-only: Standard tier is denied before the amount is even read.' },
+];
+
+export const FACTS = [
+  { id: 'one-engine', status: 'measured', text: 'One decision engine answers every catalog use case: token validation, then the gateway chain check, then the policy. The tracks are framing over the same contract.', source: 'AI-DEMO2 simulatedAuthorizeService + GatewayTokenPolicy, read 2026-11-08' },
+  { id: 'groups-every-call', status: 'measured', text: 'Directory groups are read on EVERY decision: outside the required group is denied regardless of scopes; the premium group EXPANDS capability (restricted tools + a $50000 ceiling).', source: 'AI-DEMO2 UC9/UC21, enforced live 2026-11-06' },
+  { id: 'who-acting', status: 'measured', text: 'Delegated tokens carry act={agent}: the gateway validates the actor allow-list before any policy runs, and a token aimed at an upstream MCP audience is never accepted downstream.', source: 'AI-DEMO2 agentMcpTokenService, enforced live 2026-11-06' },
+  { id: 'catalog-source', status: 'measured', text: 'The 87-use-case catalog is extracted from the dashboard\u2019s useCases.js — tracks, titles, expected outcomes, buyer stories — so the standalone matches what the real dashboard teaches.', source: 'AI-DEMO2 config/useCases.js, extracted 2026-11-08' },
+  { id: 'stages', status: 'inferred', text: 'Stage 1 covers the foundations and controls tracks end-to-end. HITL/CIBA (consent + MFA modals), the attack gallery, and the learning hub land in stages 2\u20134 with the same engine underneath.', source: 'this lab\u2019s stage plan' },
+];
+
+export const SCENARIOS = [
+  {
+    id: 'uc1', ucId: 'UC1', track: 'foundations', title: 'UC1: consent mints act={agent} — the balance read permits',
+    user: 'demoUser', actor: 'demo-agent', tool: 'get_balance', amount: null,
+    expected: 'PERMIT',
+    lesson: 'One consent, one delegated token: sub is the user, act={demo-agent} names the actor. Every action traces to a real human.',
+  },
+  {
+    id: 'uc9', ucId: 'UC9', track: 'controls', title: 'UC9: not in the required group — denied regardless of scopes',
+    user: 'jane', actor: 'demo-agent', tool: 'get_balance', amount: null,
+    expected: 'DENY',
+    lesson: 'The policy reads directory groups on EVERY decision. No group, no access — the token\u2019s scopes cannot override it.',
+  },
+  {
+    id: 'uc9a', ucId: 'UC9A', track: 'controls', title: 'UC9A: flip the directory entry — the very next call moves',
+    user: 'demoUser', actor: 'demo-agent', tool: 'get_balance', amount: null, flipTo: [],
+    expected: 'DENY',
+    lesson: 'Revoke the privileged group and the SAME call denies — no code change, no cache, no re-login.',
+  },
+  {
+    id: 'uc21-tool', ucId: 'UC21', track: 'controls', title: 'UC21: Standard tier cannot invoke the premium wire',
+    user: 'demoUser', actor: 'demo-agent', tool: 'create_wire_transfer', amount: 500,
+    expected: 'DENY',
+    lesson: 'Positive least privilege: premium-only tools are listed in policy, never implied by scopes.',
+  },
+  {
+    id: 'uc21-promote', ucId: 'UC21', track: 'controls', title: 'UC21: promote to Premium — the same call now permits',
+    user: 'premiumUser', actor: 'demo-agent', tool: 'create_wire_transfer', amount: 500,
+    expected: 'PERMIT',
+    lesson: 'The premiumTier group expands the tool set and raises the ceiling to $50000. Policy-driven, not hard-coded.',
+  },
+  {
+    id: 'uc21-ceiling', ucId: 'UC21', track: 'controls', title: 'UC21: $60000 exceeds even the Premium ceiling',
+    user: 'premiumUser', actor: 'demo-agent', tool: 'create_wire_transfer', amount: 60000,
+    expected: 'DENY',
+    lesson: 'Tiers cap amounts: Premium ceiling $50000, Standard $2000. Amounts are policy bands, not tool arguments.',
+  },
+  {
+    id: 'uc6-rogue', ucId: 'UC6', track: 'foundations', title: 'UC6: an unknown agent is refused at the gateway',
+    user: 'demoUser', actor: 'rogue-agent', tool: 'get_balance', amount: null,
+    expected: 'DENY',
+    lesson: 'Authorization keys on WHO is acting: the actor allow-list refuses an unregistered agent before any policy runs.',
+  },
+  {
+    id: 'uc32-upstream', ucId: 'UC32', track: 'controls', title: 'UC32: a token aimed at an upstream MCP is refused',
+    user: 'demoUser', actor: 'demo-agent', tool: 'get_balance', amount: null, aud: 'mcp-weather.internal',
+    expected: 'DENY',
+    lesson: 'An audience is a destination: a token minted for an upstream MCP server is never accepted downstream.',
+  },
+];
+
+export const TALK_TRACK = [
+  { id: 'say-first', title: 'Say first', say: 'Everything here is simulated: the PDP, the directory and the tokens are mock, mirroring what the AI-DEMO2 dashboard enforces.' },
+  { id: 'one-engine', title: 'One engine, every track', say: 'Foundations, controls, HITL, attacks, learning — the tracks frame the same decision chain: token, gateway, policy.' },
+  { id: 'groups', title: 'Groups on every call', say: 'Directory membership is read on EVERY decision. Flip it and the very next call moves — UC9A is the lesson.' },
+  { id: 'tiers', title: 'Tiers are bands', say: 'Standard caps at $2000, Premium at $50000, and premium-only tools are listed in policy — never implied by scopes.' },
+  { id: 'who-acting', title: 'WHO is acting', say: 'act={agent} names the actor; the allow-list refuses unknown agents at the gateway, before any policy.' },
+  { id: 'unverified', title: 'What we do not claim', say: 'The mock decisions follow the enforced contract, but the values (users, groups, ceilings) are demo values. No real tenant.' },
+  { id: 'close', title: 'Close', say: 'Reset clears your workspace: directory flips and runs. Nothing was sent anywhere.' },
+];
