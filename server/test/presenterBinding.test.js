@@ -7,11 +7,11 @@ import { mintWorkspaceToken, serverKey, workspaceTokenFingerprint } from '../src
 
 const MFA = { consent: true, otp: '123123' };
 
-// Session helper over the auth-off test server; a "session" = a distinct presenter secret.
-// The test passes the presenter identity through the x-workspace-token header (the same
-// header a real client carries), so the binding path is exercised end to end.
-function session(url, ws, tokenHeader) {
-  const h = { 'content-type': 'application/json', origin: url, 'x-workspace': ws, 'x-workspace-token': tokenHeader };
+// Session helper over the auth-off test server; a "session" = a distinct presenter nonce
+// (the same header a real client generates per tab), so the binding path is exercised end
+// to end.
+function session(url, ws, nonce) {
+  const h = { 'content-type': 'application/json', origin: url, 'x-workspace': ws, 'x-session-nonce': nonce };
   return {
     async token() { return (await (await fetch(`${url}/api/consent`, { method: 'POST', headers: h, body: JSON.stringify({ user: 'demoUser', actor: 'demo-agent' }) })).json()).token; },
     async authorize(body) { const r = await fetch(`${url}/api/authorize`, { method: 'POST', headers: h, body: JSON.stringify(body) }); return { status: r.status, ...(await r.json()) } },
@@ -28,8 +28,8 @@ function session(url, ws, tokenHeader) {
 
 test('a genuine receipt captured by a different session is refused: presenter binding', async () => {
   await withServer(async (url) => {
-    const victim = session(url, 'w-bind', 'victim-session-token');
-    const attacker = session(url, 'w-bind', 'attacker-session-token');
+    const victim = session(url, 'w-bind', 'victim-tab-nonce');
+    const attacker = session(url, 'w-bind', 'attacker-tab-nonce');
     const token = await victim.token();
     const a = await victim.authorize({ token, tool: 'get_transactions', ucId: 'UC7', amount: 600 });
     assert.equal(a.decision, 'OBLIGATION');

@@ -5,6 +5,7 @@
 // calls whose id+token pair does not verify.
 const KEY = "gcl.workspace";
 const TKEY = "gcl.workspace.token";
+const NKEY = "gcl.session.nonce";
 let memo = null;
 let memoToken = null;
 let mintPromise = null;
@@ -48,9 +49,18 @@ export function invalidateWorkspaceToken() {
   mintPromise = null;
 }
 
+// The presenter nonce: random per tab, identifies THIS session to the receipt store. A
+// receipt raised by another tab cannot be redeemed here (presenter mismatch).
+function sessionNonce() {
+  try { const saved = window.sessionStorage.getItem(NKEY); if (saved) return saved; } catch { /* blocked */ }
+  const n = randomId() + randomId();
+  try { window.sessionStorage.setItem(NKEY, n); } catch { /* blocked: fresh nonce per call */ }
+  return n;
+}
+
 export const workspaceFetch = async (url, opts = {}, retry = true) => {
   const token = await workspaceToken();
-  const r = await fetch(url, { ...opts, headers: { "content-type": "application/json", ...(opts.headers || {}), "x-workspace": workspaceId(), "x-workspace-token": token } });
+  const r = await fetch(url, { ...opts, headers: { "content-type": "application/json", ...(opts.headers || {}), "x-workspace": workspaceId(), "x-workspace-token": token, "x-session-nonce": sessionNonce() } });
   if (r.status === 401 && retry) {
     invalidateWorkspaceToken();
     return workspaceFetch(url, opts, false);

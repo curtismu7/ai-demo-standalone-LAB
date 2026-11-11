@@ -104,7 +104,11 @@ export function createApp({
     return v.extra.receipts;
   };
 
-  const presenterOf = (req) => workspaceTokenFingerprint(workspaceFrom(req), req.headers['x-workspace-token'], wsKey);
+  // Presenter identity: the caller's own session nonce (random per browser tab, NOT a
+  // server-issued credential), fingerprinted with the server key so the stored value can't
+  // be forged or replayed. A receipt is redeemable only by the session that raised its
+  // challenge — a receipt captured by another tab/session fails the match.
+  const presenterOf = (req) => workspaceTokenFingerprint(workspaceFrom(req), req.headers['x-session-nonce'], wsKey);
 
   const withWorkspace = (handler) => (req, res) => {
     const ws = workspaceFrom(req);
