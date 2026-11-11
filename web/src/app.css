@@ -166,3 +166,8 @@ button { font-weight: 600; letter-spacing: 0.01em; }
 .prod .card p { margin: 0; font-size: 12.5px; }
 .tt { border-left: 4px solid var(--th-accent); }
 .why-callout b { color: var(--th-text); }
+
+/* Dashboard: section separators between the five stacked panels */
+.dashboard-page > section { border-top: 3px solid var(--th-border); }
+.dashboard-page > section::before { content: ""; display: block; height: 1px; background: var(--th-border-strong); margin: -1px 0 10px; }
+.dashboard-page > section h2 { padding-top: 2px; }
