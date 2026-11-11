@@ -45,6 +45,12 @@ test('matcher: each chip matches its scenario and the engine gives the scenario 
     ['I need to mfa step up this transfer', 'uc7-stepup', 'UC7'],
     ['who can approve a transfer of 100?', 'uc8-hitl', 'UC8'],
     ['ciba approval on my phone', 'uc22-ciba', 'UC22'],
+    ['does the act gate check the actor on every call?', 'uc3-actgate', 'UC3'],
+    ['the agent identity lifecycle: retire the agent app', 'uc19-lifecycle', 'UC19'],
+    ['show me the agent audit trail for this run', 'uc20-trace', 'UC20'],
+    ['show my mortgage', 'uc33-mortgage', 'UC33'],
+    ['spot unusual patterns in my recent activity', 'uc34-patterns', 'UC34'],
+    ['why was that blocked? walk me through the token chain', 'uc35-why', 'UC35'],
   ];
   await withServer(async (url) => {
     for (const [said, scenarioId, ucId] of chips) {

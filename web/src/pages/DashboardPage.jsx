@@ -29,6 +29,12 @@ const CHIPS = [
   { prompt: "An unknown agent tried to act for me", label: "Rogue agent", ucId: "UC6" },
   { prompt: "A token minted for the upstream MCP arrived here", label: "Upstream audience", ucId: "UC32" },
   { prompt: "Approve on my phone — out of band (CIBA)", label: "CIBA", ucId: "UC22" },
+  { prompt: "Does the act gate check the actor on every call?", label: "Act gate", ucId: "UC3" },
+  { prompt: "The agent identity lifecycle — retire the agent app", label: "Agent identity", ucId: "UC19" },
+  { prompt: "Show me the agent audit trail for this run", label: "Observability", ucId: "UC20" },
+  { prompt: "Show my mortgage", label: "My mortgage", ucId: "UC33" },
+  { prompt: "Spot unusual patterns in my recent activity", label: "Unusual patterns", ucId: "UC34" },
+  { prompt: "Why was that blocked? Walk me through the token chain", label: "Why blocked", ucId: "UC35" },
 ];
 
 // The scenario runner's baseline rule, mirrored server-side: what the directory says
@@ -239,6 +245,7 @@ export default function DashboardPage({ story, requestedUc }) {
   const onChip = useCallback((prompt) => send(prompt), [send]);
 
   // P5 launcher "Runs here": the use case arrives preselected; run its chip prompt once.
+  const ucOfScenario = (scId) => (story?.scenarios ?? []).find((s) => s.id === scId)?.ucId ?? null;
   const didRun = useRef(false);
   useEffect(() => {
     if (didRun.current || !requestedUc) return;

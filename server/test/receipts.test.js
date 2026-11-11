@@ -263,7 +263,7 @@ test('defect 3: there is no separate hard-deny band; the tier ceilings are the h
   });
 });
 
-test('scenario outcomes are unchanged: the eleven scenarios give the same decisions, and every pause resolves with a receipt', async () => {
+test('scenario outcomes are unchanged: the eleven originals give the same decisions, every pause resolves with a receipt, and the P6 additions permit', async () => {
   const expected = {
     uc1: [200, 'PERMIT', null, 'policy'],
     uc9: [403, 'DENY', 'group_entitlement', 'policy'],
@@ -271,8 +271,14 @@ test('scenario outcomes are unchanged: the eleven scenarios give the same decisi
     'uc21-tool': [403, 'DENY', 'tier_tool_not_allowed', 'policy'],
     'uc21-promote': [202, 'OBLIGATION', 'HITL_CONSENT', 'policy'],
     'uc21-ceiling': [403, 'DENY', 'tier_amount_exceeded', 'policy'],
+    'uc3-actgate': [200, 'PERMIT', null, 'policy'],
     'uc6-rogue': [403, 'DENY', 'unauthorized_actor', 'gateway'],
     'uc32-upstream': [403, 'DENY', 'upstream_audience', 'gateway'],
+    'uc19-lifecycle': [200, 'PERMIT', null, 'policy'],
+    'uc20-trace': [200, 'PERMIT', null, 'policy'],
+    'uc33-mortgage': [200, 'PERMIT', null, 'policy'],
+    'uc34-patterns': [200, 'PERMIT', null, 'policy'],
+    'uc35-why': [200, 'PERMIT', null, 'policy'],
     'uc7-stepup': [202, 'OBLIGATION', 'STEP_UP', 'policy'],
     'uc8-hitl': [202, 'OBLIGATION', 'HITL_CONSENT', 'policy'],
     'uc22-ciba': [202, 'OBLIGATION', 'CIBA', 'policy'],
