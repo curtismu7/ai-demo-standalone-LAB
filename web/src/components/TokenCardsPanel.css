@@ -1,0 +1,23 @@
+.tcp { display: grid; gap: var(--gap, 12px); }
+.tcp__card {
+  border: 1px solid var(--line, #d8d4cc);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--panel, #fff);
+  border-left-width: 4px;
+}
+.tcp__card--exchange { border-left-color: var(--lane-gateway, #4a7dbd); }
+.tcp__card--agent { border-left-color: var(--lane-agent, #b04a4a); }
+.tcp__card--user { border-left-color: var(--lane-browser, #4a9d6e); }
+.tcp h4 { margin: 0 0 2px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+.tcp__mock {
+  font-size: 0.62rem; letter-spacing: 0.08em; padding: 1px 6px; border-radius: 999px;
+  background: var(--warn-bg, #f6e8c6); color: var(--warn-fg, #6b5410); font-weight: 700;
+}
+.tcp__claims { margin: 8px 0 0; display: grid; gap: 2px; }
+.tcp__claims > div { display: grid; grid-template-columns: 90px 1fr; gap: 8px; }
+.tcp__claims dt { font-family: ui-monospace, monospace; font-size: 0.78rem; color: var(--muted, #6a675f); cursor: help; }
+.tcp__claims dd { margin: 0; font-family: ui-monospace, monospace; font-size: 0.78rem; word-break: break-all; }
+.tcp__diff { margin: 8px 0 0; font-size: 0.82rem; }
+.tcp__raw summary { cursor: pointer; font-size: 0.8rem; color: var(--muted, #6a675f); margin-top: 8px; }
+.tcp__raw pre { max-height: 220px; overflow: auto; font-size: 0.72rem; border-radius: 8px; padding: 8px; }

@@ -7,6 +7,8 @@ import { useCallback, useEffect, useState } from "react";
 import Json from "../components/Json";
 import { assistantTurn } from "../api";
 import { visible } from "../safeText";
+import ChainView from "../components/ChainView.jsx";
+import TokenCardsPanel from "../components/TokenCardsPanel.jsx";
 
 const GREETING = "Sign in with your customer account to access travel features: bookings, loyalty, flight changes, and more. Or ask me about OAuth, PKCE, MCP, or how AI agents work.";
 
@@ -132,16 +134,12 @@ export function EvidenceSection({ run }) {
         ) : <p className="muted">Decision and reason show here after a run.</p>}
       </div>
       <div className="panel lane lane-gateway">
-        <h2>Hops</h2>
-        {run?.hops?.length ? (
-          <ul className="facts" data-testid="evidence-hops">
-            {run.hops.map((h) => <li key={h.n}><b>{h.n} · {visible(h.label)}</b></li>)}
-          </ul>
-        ) : <p className="muted" data-testid="evidence-hops-empty">The API exchanges of the run list here.</p>}
+        <h2>Chain</h2>
+        <ChainView hops={run?.hops || []} />
       </div>
       <div className="panel lane lane-mcp">
-        <h2>Movie reel</h2>
-        <p className="muted" data-testid="reel-placeholder">The live trace lands here (P3).</p>
+        <h2>Tokens</h2>
+        <TokenCardsPanel tokens={run?.tokens || []} />
       </div>
     </section>
   );

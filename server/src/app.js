@@ -23,6 +23,7 @@ import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.
 import { matchTurn } from './assistant.js';
 import { createWorkspaces, workspaceFrom } from './workspaces.js';
 import { SCENARIOS } from './policyData.js';
+import { toDemoHops, tokenCardsFrom } from './evidenceAdapter.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = process.env.WEB_DIST || path.resolve(HERE, '../../web/dist');
@@ -158,7 +159,8 @@ export function createApp({
       narrative: explain(verdict, ctx),
       lesson: lessonFor(verdict, ctx),
       products: productCast(verdict),
-      hops: buildHops({ verdict, ...ctx, token: body.token, trace, consent: true }),
+      hops: toDemoHops(buildHops({ verdict, ...ctx, token: body.token, trace, consent: true }), { decision: verdict.decision }),
+      tokens: tokenCardsFrom({ exchangeToken: body.token }),
       traceId: trace.traceId,
     });
   }));
@@ -417,7 +419,7 @@ export function createApp({
       chainDepth: actChainDepth(token.act), groups: entry.groups, tier: entry.tier,
       ucId: sc.ucId, scenarioId: sc.id, workspace: ws, obligation, amount: amount ?? null,
       narrative: explain(verdict, ctx), lesson: lessonFor(verdict, ctx),
-      products: productCast(verdict), hops: buildHops({ verdict, ...ctx, token, trace, consent: true }),
+      products: productCast(verdict), hops: toDemoHops(buildHops({ verdict, ...ctx, token, trace, consent: true }), { decision: verdict.decision }), tokens: tokenCardsFrom({ exchangeToken: token }),
       traceId: trace.traceId,
     };
     workspaces.record(ws, { tool: sc.tool, decision: verdict.decision, reason: verdict.reason, token, blocked: verdict.code, ucId: sc.ucId });
