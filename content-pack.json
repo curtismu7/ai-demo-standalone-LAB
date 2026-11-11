@@ -52,7 +52,7 @@
     {
       "id": "hitl",
       "term": "Human-in-the-loop (HITL)",
-      "definition": "Bands and approval tools return OBLIGATIONS, not denials: the agent pauses, the human resolves a consent/MFA/CIBA challenge, and a call-bound receipt re-evaluates the SAME call. An approval is never an MFA.",
+      "definition": "Bands and approval tools return OBLIGATIONS, not denials: the agent pauses, the human resolves a consent/MFA/CIBA challenge, and a call-bound receipt, issued by the server and good for one call, re-evaluates the SAME call. An approval is never an MFA.",
       "aliases": [
         "step-up",
         "CIBA",
@@ -198,7 +198,7 @@
     {
       "id": "try-uc7-stepup",
       "label": "Scenario 9: UC7: MFA step-up — the agent pauses, the human completes MFA",
-      "description": "Mid-band ($500-$100000): consent + MFA. The agent PAUSES — it cannot self-approve. The receipt (MfaVerified) re-evaluates the SAME call.",
+      "description": "From $500 up: consent + MFA (the tier ceiling, $2000 Standard and $50000 Premium, still denies first). The agent PAUSES — it cannot self-approve. The receipt (MfaVerified) re-evaluates the SAME call.",
       "group": "try-it",
       "action": {
         "type": "route",
@@ -329,7 +329,7 @@
     {
       "id": "S09",
       "title": "UC7: MFA step-up — the agent pauses, the human completes MFA",
-      "say": "Mid-band ($500-$100000): consent + MFA. The agent PAUSES — it cannot self-approve. The receipt (MfaVerified) re-evaluates the SAME call."
+      "say": "From $500 up: consent + MFA (the tier ceiling, $2000 Standard and $50000 Premium, still denies first). The agent PAUSES — it cannot self-approve. The receipt (MfaVerified) re-evaluates the SAME call."
     },
     {
       "id": "S10",

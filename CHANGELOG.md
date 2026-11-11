@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Receipts are issued by the server and checked against it (four verified defects in the stage-2 HITL engine, one PR):
+  - A hand-written receipt that was never issued is refused (`receipt_not_found`). Before, `/api/authorize` checked only the fields of the object it was handed and permitted a forged one (HTTP 200).
+  - A receipt is consumed by the call it permits (`receipt_spent` on a replay). Before, the same receipt permitted again for 5 minutes. A refused attempt does not burn it.
+  - `MfaVerified` is true only on a STEP_UP receipt after a verified OTP. A CONFIRM-band receipt (consent only) now carries `MfaVerified: false`; before, both carried `true`, and the permit reason said "MfaVerified" for a CONFIRM.
+  - The $100000 hard-deny band is removed from the engine, the UC7 lesson, the explanations, the README and the talk track. It never fired: the tier ceilings ($2000 Standard, $50000 Premium) deny first, and they are the effective hard limits. One edge moves: `POST /api/challenge` for an amount above $100000 used to answer 400 `no_challenge`; it now raises STEP_UP like any amount from $500 (the policy still denies the call itself).
+- Two holes of the same kind had to close with them, or the fixes would be empty: a challenge is now kept by the server and answered against its stored copy (before, `POST /api/challenge/answer` trusted the challenge object in the request, so a hand-made challenge with `needs: []` minted a genuine receipt with `MfaVerified: true` and no OTP; now `challenge_unknown`), and a receipt's amount must match exactly (before, a receipt approved for $100 permitted a call with no amount, and a receipt approved with no amount permitted any amount; now `receipt_amount_mismatch`).
+- `POST /api/authorize` answers a refused receipt with the same `202` OBLIGATION as before plus `receiptCheck` ({ valid, code, reason }); no route changed shape. The refused receipt's reason is appended to `reason`.
+- The permit reason for a receipt now lists the stored claims (for example `MfaVerified=false, ConsentGiven=true`).
+- `docs/talk-track.md` regenerated (it was missing the three HITL scenarios and carried the old UC21 promote wording); `content-pack.json` regenerated for the UC7 lesson and the HITL glossary term (receipts are single use).
+- 65 server tests (17 new in `server/test/receipts.test.js`), each fix proven by a mutation run (see the pull request).
+
 - Catalog id is D128 (it was D123 in the shelf registry, which observability-lab already holds, and D122 in this repo's own shelf entry, which is a2a-lab's). Shelf entry, content pack, README and the shelf registry now agree.
 - The port moved from 7710 to 7810, taken from the packed range 7800-7999. 7710 is diagram-prove-lab's port. The server now accepts exactly one port, 7810; compose, Dockerfile, k8s manifests, doctor, CI and tests follow.
 - README, CLAUDE.md, CHANGELOG, `docs/safety.md` and the shelf entry were rewritten for what the app is (stage 2). They described the HITL/MFA/CIBA lab, the A2A hand-off lab and an AgentCore governance lab that this repo was scaffolded from.

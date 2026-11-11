@@ -9,7 +9,7 @@
 //                 the engine already returns the shape so the UI can grow into it)
 // Pure functions + injected clock; all values mock. No I/O inside decisions.
 import { LIMITS } from './pdpData.js';
-import { evaluateObligation, receiptValid } from './hitl.js';
+import { evaluateObligation } from './hitl.js';
 
 export const AUDIENCE = 'ai-demo-standalone';
 
@@ -120,27 +120,35 @@ export function exchange({ userSub, actorClientId, aud = AUDIENCE, now = Date.no
 }
 
 /** The full authorize semantics: decide(), then the stage-2 obligation layer (bands + HITL
- *  tools). Returns { verdict, obligation } — obligation is null when nothing paused the call.
- *  A bound receipt (verified by the caller, who owns the receipt store) completes the pause. */
-export function decideWithObligation({ receipt = null, ...args } = {}) {
+ *  tools). Returns { verdict, obligation, receiptCheck } — obligation is null when nothing
+ *  paused the call; receiptCheck is null unless a receipt was presented, else { valid, code,
+ *  reason }. A presented receipt completes the pause only if `receipts` (the server's store,
+ *  createReceipts() in hitl.js) issued it, it is unspent and it binds this call; it is then
+ *  CONSUMED. With no store a receipt cannot be verified, so it is refused. */
+export function decideWithObligation({ receipt = null, receipts = null, ...args } = {}) {
   const verdict = decide(args);
-  if (verdict.decision !== 'PERMIT') return { verdict, obligation: null };
+  if (verdict.decision !== 'PERMIT') return { verdict, obligation: null, receiptCheck: null };
+  let ob;
+  try { ob = evaluateObligation({ tool: args.tool, amount: args.amount }); } catch { return { verdict, obligation: null, receiptCheck: null }; } // non-numeric amount: leave the policy verdict
   let obligation = null;
-  try {
-    const ob = evaluateObligation({ tool: args.tool, amount: args.amount });
-    if (ob.obligation === 'DENY') {
-      verdict.decision = 'DENY'; verdict.code = 'tier_amount_exceeded'; verdict.reason = ob.reason;
-    } else if (ob.obligation) {
-      const bind = receipt ? receiptValid({ receipt, user: args.token.sub, tool: args.tool, obligation: ob.obligation, amount: args.amount, now: args.now }) : { valid: false, code: 'no_receipt' };
-      if (bind.valid) {
-        verdict.reason = `${verdict.reason} — ${ob.obligation} satisfied by a bound receipt (${receipt.receiptId.slice(0, 12)}…): ${receipt.obligation === 'HITL_CONSENT' ? 'HitlApproved=true' : receipt.obligation === 'CIBA' ? 'CibaApproved=true' : 'MfaVerified'} presented.`;
-      } else {
-        obligation = ob.obligation;
-        verdict.decision = 'OBLIGATION';
-        verdict.code = ob.obligation;
-        verdict.reason = ob.reason;
-      }
+  let receiptCheck = null;
+  if (ob.obligation) {
+    if (receipt != null) {
+      receiptCheck = receipts
+        ? receipts.redeem({ receipt, user: args.token.sub, tool: args.tool, obligation: ob.obligation, amount: args.amount })
+        : { valid: false, code: 'receipt_unverifiable', reason: 'there is no receipt store to verify the receipt against' };
     }
-  } catch { /* non-numeric amount: leave the policy verdict */ }
-  return { verdict, obligation };
+    if (receiptCheck?.valid) {
+      const claims = Object.entries(receiptCheck.receipt.claims).map(([k, v]) => `${k}=${v}`).join(', ');
+      verdict.reason = `${verdict.reason} — ${ob.obligation} satisfied by a bound receipt (${receiptCheck.receipt.receiptId.slice(0, 12)}…): ${claims} presented, receipt consumed.`;
+      receiptCheck = { valid: true, code: null, reason: receiptCheck.reason };
+    } else {
+      obligation = ob.obligation;
+      verdict.decision = 'OBLIGATION';
+      verdict.code = ob.obligation;
+      verdict.reason = receiptCheck ? `${ob.reason} The presented receipt was refused (${receiptCheck.code}): ${receiptCheck.reason}.` : ob.reason;
+      if (receiptCheck) receiptCheck = { valid: false, code: receiptCheck.code, reason: receiptCheck.reason };
+    }
+  }
+  return { verdict, obligation, receiptCheck };
 }
