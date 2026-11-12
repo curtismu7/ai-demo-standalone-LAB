@@ -2,10 +2,10 @@ import http from 'node:http';
 import { createApp, startHttpServer } from '../src/app.js';
 import { createHealth } from '../src/health.js';
 
-export async function withServer(fn, { configFile = '/nonexistent/customer.config.json', workspaces, ...appOpts } = {}) {
+export async function withServer(fn, { configFile = '/nonexistent/customer.config.json', workspaces, env = process.env, ...appOpts } = {}) {
   const health = createHealth({ intervalMs: 3_600_000 });
   await health.ready;
-  const { server, url } = await startHttpServer({ port: 0, host: '127.0.0.1', app: createApp({ health, configFile, workspaces, workspaceAuth: false, ...appOpts }) });
+  const { server, url } = await startHttpServer({ port: 0, host: '127.0.0.1', app: createApp({ health, configFile, workspaces, workspaceAuth: false, env, ...appOpts }) });
   try { await fn(url.replace(/\/$/, '')); } finally { health.stop(); await new Promise((r) => server.close(r)); }
 }
 

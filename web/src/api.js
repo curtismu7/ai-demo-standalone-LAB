@@ -113,3 +113,10 @@ export async function realExchange(payload) {
 
 // GET /api/info: mode + realAvailable (whether AIDEMOLAB_REAL_* is configured).
 export const getInfo = () => getJson("/api/info");
+
+// P10 Real sign-in (login only; data stays mock). GET /api/signin: availability + who is signed in.
+export const getSignin = () => getJson("/api/signin");
+// POST /api/signin {password}: the pi.flow ceremony on the server; the password is sent once, never stored.
+export const postSignin = (password) => workspaceFetch("/api/signin", { method: "POST", body: JSON.stringify({ password }) });
+// POST /api/signout: clear this workspace's Real session server-side.
+export const postSignout = () => workspaceFetch("/api/signout", { method: "POST", body: JSON.stringify({}) });

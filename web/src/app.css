@@ -220,3 +220,13 @@ a.skip:focus { left: 0; }
   .rail { flex-wrap: wrap; }
   .rail button { flex: 1 1 30%; min-width: 96px; }
 }
+
+/* P10: the account chip (Real sign-in only) */
+.account-row { display: flex; justify-content: flex-end; padding: 4px 16px 0; }
+.account-chip { display: flex; align-items: center; gap: 8px; font-size: 13px; flex-wrap: wrap; }
+.token-raw { max-width: 480px; max-height: 180px; overflow: auto; font-size: 11px; background: var(--surface, #fff); border: 1px solid var(--line, #e5e7eb); border-radius: 8px; padding: 8px; word-break: break-all; white-space: pre-wrap; }
+.field { display: grid; gap: 4px; margin: 8px 0; }
+.field-label { font-weight: 600; font-size: 13px; }
+.field input { padding: 8px; border-radius: 8px; border: 1px solid var(--line, #e5e7eb); }
+.field-error { color: #b91c1c; font-size: 13px; }
+.stack { display: grid; gap: 4px; }

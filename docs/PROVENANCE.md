@@ -32,3 +32,10 @@ P3 (2026-11-11) WIRED the already-vendored `web/src/components/tokenchain/` file
 P5 (2026-11-11): `server/data/handoff.json` — vendored byte for byte from customer-agent-LAB `data/handoff.json` (schema `customer-agent-handoff/1`, the owner routing table); sha256 b02ac00f99b0a249. The `PROXY_PATHS` table in `server/src/usecases.js` is the same allow-list as customer-agent-LAB `web/src/handoff.js` (paths only, no URLs beyond the proxy routes). Every such file starts with `// Ported from AI-DEMO2 <path> @ <commit>; adapted (<what changed>); do not re-copy`.
 
 P5 follow-up (2026-11-11, this change): `server/data/handoff.json` — byte for byte from customer-agent-LAB `data/handoff.json`, source commit `c6547cad1523eeeca0b894248f80633390e89858`, sha256 `b02ac00f99b0a24919a150578a535541ed3b988a0c976d7669760087090c3a7f`, pinned in `server/data/handoff.json.sha256` and checked offline by `server/test/vendoredPins.test.js`. `server/data/proxy-paths.json` — the PROXY_PATHS map from customer-agent-LAB `web/src/handoff.js` (same source commit, 30 app paths, paths only), written as JSON; sha256 `fc429fe90ba19852eaac296c27a57750c1bc477fd0b06a348e3fbb6459bf8bb8`, pinned and checked the same way. `server/src/usecases.js` now loads PROXY_PATHS from that JSON (no change to the map itself). Nothing else copied.
+
+## P10 Real sign-in (2026-11-12)
+- `server/src/realSignin.js` and the e2e's sign-in phase follow the owner-verified pattern of customer-agent-LAB
+  (`server/src/real.js`, `web/src/components/SignInDialog.jsx` — read that repo, same MIT family); trimmed to
+  login-only: no agent token, no token exchange, no gateway leg. AI-DEMO2 code was not copied.
+- `server/test/fakePingone.js` is customer-agent-LAB's fake with its authorize scope check relaxed to the OIDC
+  scopes this lab asks for (login only).

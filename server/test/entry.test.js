@@ -11,6 +11,7 @@ test('the entry installs the netguard first, before it can open any socket', () 
   const guard = m.index;
   for (const later of ['runChecks()', 'startHttpServer({', 'loadEnvFile(']) assert.ok(src.indexOf(later) > guard, `${later} comes after the guard`);
   assert.ok(src.indexOf("import { installNetguard }") < guard);
-  // The allowlist is derived from the Real config: empty in Mock (provably offline), the PingOne auth hosts in Real.
-  assert.match(src.slice(guard, guard + 200), /outboundAllow: realEndpointHosts\(\)/, 'the netguard allowlist comes from realEndpointHosts()');
+  // The allowlist is derived from the Real config: empty in Mock (provably offline), the PingOne auth hosts in
+  // Real, plus the Real sign-in's IdP host (P10) when the sign-in is configured.
+  assert.match(src.slice(guard, guard + 260), /outboundAllow: \[\.\.\.realEndpointHosts\(\), \.\.\.signinEndpointHosts\(\)\]/, 'the netguard allowlist comes from realEndpointHosts() + signinEndpointHosts()');
 });
