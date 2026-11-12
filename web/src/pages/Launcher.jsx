@@ -24,7 +24,7 @@ export default function Launcher({ onRunHere }) {
   const [q, setQ] = useState("");
   const onProxy = proxied();
 
-  useEffect(() => { getUseCases().then((r) => setRows(r.body?.rows ?? []), () => setRows([])); }, []);
+  useEffect(() => { getUseCases().then((r) => setRows(r.rows ?? []), () => setRows([])); }, []);
 
   const byId = useMemo(() => Object.fromEntries(rows.map((r) => [r.id, r])), [rows]);
   const shown = useMemo(() => {
@@ -37,7 +37,7 @@ export default function Launcher({ onRunHere }) {
     if (chip.kind === "here") { onRunHere?.(row.id); return; }
     if (chip.kind !== "open" || !onProxy) return;
     getUseCases(row.id, chip.app).then((r) => {
-      if (r.body?.href) window.location.assign(r.body.href); // same tab: one lab cookie per browser
+      if (r.href) window.location.assign(r.href); // same tab: one lab cookie per browser
     }, () => {});
   };
 

@@ -86,10 +86,11 @@ export default function App() {
 
   return (
     <div className={`app${presenter ? " app--presenter" : ""}`}>
+      <a className="skip" href="#main">Skip to content</a>
       <ShellBar route={route} onReset={reset} presenter={presenter} onTogglePresenter={() => setPresenter((v) => !v)}>
         <ReturnLink app="ai-demo-standalone" variant="header" />
       </ShellBar>
-      <main>
+      <main id="main" tabIndex={-1}>
         <SimBanner />
         <ReturnLink app="ai-demo-standalone" />
         <p className="sr-only" role="status" aria-live="polite">{resetMsg}</p>

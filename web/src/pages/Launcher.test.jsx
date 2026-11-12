@@ -43,7 +43,7 @@ describe("proxied", () => {
 
 describe("Launcher", () => {
   test("renders one chip per row; a guide chip is disabled", async () => {
-    getUseCases.mockResolvedValue({ ok: true, status: 200, body: { rows: ROWS, href: null } });
+    getUseCases.mockResolvedValue({ ok: true, status: 200, rows: ROWS, href: null });
     const orig = window.location;
     try {
       delete window.location;
@@ -58,7 +58,7 @@ describe("Launcher", () => {
   test('"Runs here" calls onRunHere with the use case id', async () => {
     const user = userEvent.setup();
     const onRunHere = vi.fn();
-    getUseCases.mockResolvedValue({ ok: true, status: 200, body: { rows: ROWS, href: null } });
+    getUseCases.mockResolvedValue({ ok: true, status: 200, rows: ROWS, href: null });
     render(<Launcher onRunHere={onRunHere} />);
     await waitFor(() => expect(screen.getByTestId("uc-chip-UC1")).toBeTruthy());
     await user.click(screen.getByTestId("uc-chip-UC1"));
@@ -67,7 +67,7 @@ describe("Launcher", () => {
 
   test('"Opens <app>" navigates in the same tab to the server-built href', async () => {
     const user = userEvent.setup();
-    getUseCases.mockImplementation((uc, app) => Promise.resolve(HREF(uc, app)));
+    getUseCases.mockImplementation((uc, app) => Promise.resolve({ rows: ROWS, href: `../${app}/?from=ai-demo-standalone&uc=${uc}` }));
     const orig = window.location;
     const assign = vi.fn();
     try {
@@ -83,7 +83,7 @@ describe("Launcher", () => {
 
   test('behind a plain port the chip reads "Start <app> from the Shelf" and never navigates', async () => {
     const user = userEvent.setup();
-    getUseCases.mockImplementation((uc, app) => Promise.resolve(HREF(uc, app)));
+    getUseCases.mockImplementation((uc, app) => Promise.resolve({ rows: ROWS, href: `../${app}/?from=ai-demo-standalone&uc=${uc}` }));
     const orig = window.location;
     const assign = vi.fn();
     try {
@@ -99,7 +99,7 @@ describe("Launcher", () => {
 
   test("search narrows the rows by id or title", async () => {
     const user = userEvent.setup();
-    getUseCases.mockResolvedValue({ ok: true, status: 200, body: { rows: ROWS, href: null } });
+    getUseCases.mockResolvedValue({ ok: true, status: 200, rows: ROWS, href: null });
     render(<Launcher />);
     await waitFor(() => expect(screen.getAllByTestId(/^uc-row-/)).toHaveLength(3));
     await user.type(screen.getByTestId("uc-search"), "token theft");
@@ -108,13 +108,13 @@ describe("Launcher", () => {
   });
 
   test("the result count is announced politely", async () => {
-    getUseCases.mockResolvedValue({ ok: true, status: 200, body: { rows: ROWS, href: null } });
+    getUseCases.mockResolvedValue({ ok: true, status: 200, rows: ROWS, href: null });
     render(<Launcher />);
     await waitFor(() => expect(screen.getByTestId("uc-count").textContent).toBe("3 of 3 use cases shown"));
   });
 
   test("chips carry accessible names: Run <title> here / Open <title> in <app> / Guide", async () => {
-    getUseCases.mockResolvedValue({ ok: true, status: 200, body: { rows: ROWS, href: null } });
+    getUseCases.mockResolvedValue({ ok: true, status: 200, rows: ROWS, href: null });
     const orig = window.location;
     try {
       delete window.location;
@@ -132,7 +132,7 @@ describe("Launcher", () => {
     // The row names an app the fixed map has no path for: the server row carries path: null,
     // so even behind the proxy the Launcher must never build a target for it.
     const noPath = [{ id: "UCX", title: "Mystery app", route: "Hand off", apps: ["unlisted-app"], path: null, runsHere: false }];
-    getUseCases.mockResolvedValue({ ok: true, status: 200, body: { rows: noPath, href: null } });
+    getUseCases.mockResolvedValue({ rows: noPath, href: null });
     const orig = window.location;
     const assign = vi.fn();
     try {
@@ -150,7 +150,7 @@ describe("Launcher", () => {
 
   test("the server href is the only navigation target; a hostile href is never assigned", async () => {
     const user = userEvent.setup();
-    getUseCases.mockResolvedValue({ ok: true, status: 200, body: { rows: ROWS, href: null } });
+    getUseCases.mockResolvedValue({ ok: true, status: 200, rows: ROWS, href: null });
     const orig = window.location;
     const assign = vi.fn();
     try {

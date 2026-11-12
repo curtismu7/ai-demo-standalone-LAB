@@ -20,7 +20,7 @@ const GREETING = "Sign in with your customer account to access travel features: 
 // The 11 in-app chips: one per wired scenario. Airline wording where the copy allows —
 // the matcher keys on intent, not on the tool name (which stays as the engine names it).
 const CHIPS = [
-  { prompt: "Check my travel account balance", label: "Balance read (delegated token)", ucId: "UC1" },
+  { prompt: "Check my balance", label: "Balance read (delegated token)", ucId: "UC1" },
   { prompt: "Do I need MFA step-up for this change?", label: "MFA step-up", ucId: "UC7" },
   { prompt: "Who can approve a transfer? Human in the loop", label: "HITL approval", ucId: "UC8" },
   { prompt: "Am I in the required group for this fare?", label: "Group gate", ucId: "UC9" },
