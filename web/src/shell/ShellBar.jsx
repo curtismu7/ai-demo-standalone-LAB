@@ -8,6 +8,7 @@ const ROUTES = [
   { id: "observability", href: "#/observability", label: "Observability" },
   { id: "guide", href: "#/guide", label: "Guide" },
   { id: "welcome", href: "#/welcome", label: "Welcome" },
+  { id: "airline", href: "#/airline", label: "Airline" },
 ];
 const THEMES = ["auto", "light", "dark"];
 const SIZES = ["S", "M", "L"];

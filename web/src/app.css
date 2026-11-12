@@ -184,3 +184,18 @@ button { font-weight: 600; letter-spacing: 0.01em; }
 /* P7 a11y: the skip link is visually hidden until focused */
 a.skip { position: absolute; left: -9999px; top: 0; background: var(--accent, #b91c1c); color: #fff; padding: 8px 16px; border-radius: 0 0 8px 0; z-index: 1001; }
 a.skip:focus { left: 0; }
+
+/* P9: the airline page (hero, fare board, itineraries) */
+.airline .hero { background: linear-gradient(135deg, var(--accent, #b91c1c), #7f1d1d); color: #fff; padding: 20px 24px; border-radius: 12px; margin-bottom: 16px; }
+.airline .hero .eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; opacity: 0.85; margin: 0 0 6px; }
+.airline .hero-balance { font-size: 34px; font-weight: 700; margin: 0; font-variant-numeric: tabular-nums; }
+.fare-board, .itineraries { list-style: none; padding: 0; display: grid; gap: 8px; margin: 12px 0 20px; }
+.fare-board li, .itineraries li { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--line, #e5e7eb); border-radius: 10px; }
+.fare-board li .fare-route, .itineraries li .fare-route { flex: 1; font-weight: 600; }
+.fare-price { font-variant-numeric: tabular-nums; }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.06em; }
+.badge--booked { background: #ecfdf5; color: #047857; }
+.badge--refunded { background: #fef3c7; color: #92400e; }
+.itineraries li.refunded { opacity: 0.75; }
+.booking-form { display: grid; gap: 10px; }
+.booking-form select { padding: 8px; border-radius: 8px; border: 1px solid var(--line, #e5e7eb); }

@@ -7,6 +7,7 @@ import ShellBar from "./shell/ShellBar.jsx";
 import SimBanner from "./shell/SimBanner.jsx";
 import WelcomePage from "./pages/WelcomePage.jsx";
 import ObservabilityPage from "./pages/ObservabilityPage.jsx";
+import AirlinePage from "./pages/AirlinePage.jsx";
 import UseCasesPage from "./pages/UseCasesPage.jsx";
 import DashboardOnePage from "./pages/DashboardPage.jsx";
 import { readReturnContext } from "./return-link/returnTargets.js";
@@ -19,6 +20,7 @@ export const ROUTES = [
   { id: "observability", label: "Observability" },
   { id: "guide", label: "Guide" },
   { id: "welcome", label: "Welcome" },
+  { id: "airline", label: "Airline" },
 ];
 const DIAGRAM_ROUTE = "diagram"; // the stage-1 diagram view stays reachable under #/diagram (noted in the P1 PR)
 
@@ -105,6 +107,7 @@ export default function App() {
             {route === "use-cases" && <UseCasesPage story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} onRunHere={runHere} />}{route === "guide" && <GuidePage story={story} resetSignal={resetSignal} />}
             {route === "observability" && <ObservabilityPage />}
             {route === "welcome" && <WelcomePage />}
+            {route === "airline" && <AirlinePage />}
             {route === DIAGRAM_ROUTE && <DiagramRoute resetSignal={resetSignal} />}
           </>
         )}
