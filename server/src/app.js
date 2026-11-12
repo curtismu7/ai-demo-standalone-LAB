@@ -22,7 +22,7 @@ import { createRoster, keyAllows, KNOWN_SCOPES, NhiInputError } from './nhi.js';
 import { mountShelfRoute, shelfInfo } from './shelfLink.js';
 import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.js';
 import { matchTurn } from './assistant.js';
-import { brainSecret, brainConfigured, toolSchemas } from './brain.js';
+import { brainSecret, brainConfigured, toolSchemas, createBrainTurn } from './brain.js';
 import { createWorkspaces, workspaceFrom, serverKey, mintWorkspaceToken, verifyWorkspaceToken, workspaceTokenFingerprint } from './workspaces.js';
 import { createBookings } from './bookings.js';
 import { createRealSignin, RealRefused } from './realSignin.js';
@@ -459,6 +459,7 @@ export function createApp({
   // are same-origin by host): the route demands the per-boot shared secret instead, and it is
   // mounted only when both AIDEMO_BRAIN_URL and the secret are set. Everything else about the
   // call is the engine's own path.
+  const brainTurn = createBrainTurn({ env });
   if (brainConfigured(env)) {
     const secret = brainSecret(env);
     const toolGuard = (req, res, next) => {
@@ -509,10 +510,23 @@ export function createApp({
   // exactly the way the scenario states, recorded in the workspace), a redirect to a
   // standalone lab (a shelf folder name — the UI resolves the card), or an honest unknown.
   // The reply is always written from the run, never by the matcher.
-  api.post('/assistant/turn', withWorkspace((ws, req, res) => {
+  api.post('/assistant/turn', withWorkspace(async (ws, req, res) => {
     const body = req.body;
     if (body === null || typeof body !== 'object' || Array.isArray(body)) return res.status(400).json({ error: 'bad_request' });
     if (typeof body.message !== 'string' || !body.message.trim()) return res.status(400).json({ error: 'message_required', detail: 'body.message must be non-empty text (<= 500 chars)' });
+    // P2b: brain=langgraph asks the sidecar to plan the turn. Only when the brain is
+    // actually configured AND the turn is an in-app story (the matcher still decides the
+    // routing: a redirect or unknown needs no model) does the model run; every model
+    // failure falls back to the Scripted path below — the page never breaks on the brain.
+    if (body.brain === 'langgraph' && brainConfigured(env)) {
+      const routed = matchTurn(body.message.slice(0, 500));
+      if (routed.handling === 'in-app') {
+        try {
+          const folded = await brainTurn({ message: body.message.slice(0, 500), ws, workspaces, receiptsOf });
+          if (folded) return res.json(folded);
+        } catch { /* fall through to Scripted */ }
+      }
+    }
     const turn = matchTurn(body.message.slice(0, 500));
     if (turn.handling === 'unknown') {
       return res.json({ handling: 'unknown', reply: { text: 'I could not match that to a scripted demo. Try one of the suggestion chips, or open Use Cases.', by: 'agent', outcome: 'UNKNOWN' } });

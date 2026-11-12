@@ -6,6 +6,8 @@ import DashboardPage, { StepTiles, AssistantSection, PlanSection, EvidenceSectio
 
 vi.mock("../api", () => ({
   assistantTurn: vi.fn(),
+  assistantBrainInfo: vi.fn(async () => ({ ok: true, body: { available: false } })),
+  assistantBrainTurn: vi.fn(),
   getInfo: vi.fn(async () => ({ mode: infoReal ? "real" : "mock", realAvailable: infoReal })),
   realExchange: vi.fn(),
 }));
@@ -304,5 +306,37 @@ describe("RealExchangePanel", () => {
     realExchange.mockResolvedValueOnce({ ok: false, status: 400, body: { error: "invalid_request", detail: "The provided JWT has expired" } });
     await user.click(screen.getByTestId("rx-send"));
     await waitFor(() => expect(screen.getByTestId("rx-outcome").textContent).toContain("The provided JWT has expired"));
+  });
+});
+
+// P2b: the brain toggle — the label tells the truth about which brain ran.
+describe("DashboardPage > brain toggle", () => {
+  beforeEach(() => { localStorage.clear(); });
+  it("with the sidecar configured, a LangGraph pick labels the plan line LangGraph when the reply says so", async () => {
+    const api = await import("../api");
+    api.assistantBrainInfo.mockResolvedValue({ ok: true, body: { available: true } });
+    api.assistantBrainTurn.mockResolvedValue({ ok: true, status: 200, body: { handling: "in-app", ucId: "UC1", decision: "PERMIT", say: "ok", run: { ...RUN, tool: "get_balance" }, hops: RUN.hops, reply: { text: "Permitted.", by: "agent", outcome: "PERMIT", ucId: "UC1", tool: "get_balance", brain: "langgraph" } } });
+    localStorage.setItem("cal.dash.cfg.brain", "langgraph");
+    render(<DashboardPage story={STORY} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByTestId("dash-ask"), "check my balance");
+    await user.click(screen.getByTestId("dash-send"));
+    await waitFor(() => expect(screen.getByTestId("transcript").textContent).toContain("Permitted."));
+    expect(api.assistantBrainTurn).toHaveBeenCalledWith("check my balance");
+    expect(screen.getByTestId("brain-label").textContent).toMatch(/LangGraph/);
+  });
+
+  it("with the sidecar unconfigured, a LangGraph pick still uses the Scripted turn and the label says Scripted", async () => {
+    const api = await import("../api");
+    api.assistantBrainInfo.mockResolvedValue({ ok: true, body: { available: false } });
+    api.assistantTurn.mockResolvedValue({ ok: true, status: 200, body: { handling: "in-app", ucId: "UC1", decision: "PERMIT", say: "ok", run: { ...RUN, tool: "get_balance" }, hops: RUN.hops, reply: { text: "Permitted.", by: "agent", outcome: "PERMIT", ucId: "UC1", tool: "get_balance" } } });
+    localStorage.setItem("cal.dash.cfg.brain", "langgraph");
+    render(<DashboardPage story={STORY} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByTestId("dash-ask"), "check my balance");
+    await user.click(screen.getByTestId("dash-send"));
+    await waitFor(() => expect(screen.getByTestId("transcript").textContent).toContain("Permitted."));
+    expect(api.assistantBrainTurn).not.toHaveBeenCalled();
+    expect(screen.getByTestId("brain-label").textContent).toBe("Scripted");
   });
 });

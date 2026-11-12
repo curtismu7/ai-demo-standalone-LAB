@@ -77,3 +77,63 @@ export function createToolRoute({ workspaces, receiptsOf }) {
     return res.json({ result, hops: [] });
   };
 }
+
+// ── the fold: sidecar AG-UI SSE -> the /api/assistant/turn JSON ─────────────
+// Reads the sidecar's POST /run stream, collects text/tool events, and folds them into
+// the SAME shape the Scripted turn returns. The engine run (verdict, hops, tokens) is
+// the workspace's LAST recorded tool run — the model's tool calls went through
+// /api/assistant/tool, which recorded each one — so the evidence views render the real
+// engine output, never a model-invented story. Returns null when the sidecar produced
+// nothing usable (the caller falls back to Scripted).
+export function createBrainTurn({ fetchImpl = fetch, env = process.env } = {}) {
+  return async function brainTurn({ message, ws, workspaces, receiptsOf }) {
+    const secret = brainSecret(env);
+    const base = String(env.AIDEMOLAB_TOOL_URL || 'http://127.0.0.1:7810').replace(/\/api\/assistant\/tool$/, '');
+    const url = `${base || 'http://127.0.0.1:7810'}/run`;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), Number(env.AIDEMO_BRAIN_TURN_TIMEOUT_MS || 120_000));
+    let text = '';
+    let toolName = null;
+    let usage = null;
+    try {
+      const r = await fetchImpl(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-brain-secret': secret },
+        body: JSON.stringify({ message, threadId: ws, runId: `turn_${ws}_${Date.now()}`, tools: toolSchemas() }),
+        signal: ctrl.signal,
+      });
+      if (!r.ok || !r.body) return null;
+      const reader = r.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        for (const line of buf.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          buf = buf.slice(buf.indexOf(line) + line.length + 1);
+          let e; try { e = JSON.parse(line.slice(6)); } catch { continue; }
+          if (e.type === 'TEXT_MESSAGE_CONTENT') text += e.delta || '';
+          else if (e.type === 'TOOL_CALL_START') toolName = e.toolCallName || toolName;
+          else if (e.type === 'CUSTOM' && e.name === 'token_usage') usage = e.value || null;
+          else if (e.type === 'RUN_ERROR') return null; // sidecar failed: fall back
+        }
+      }
+    } catch {
+      return null; // unreachable sidecar: fall back to Scripted
+    } finally {
+      clearTimeout(timer);
+    }
+    text = text.trim();
+    if (!text && !toolName) return null;
+    const v = workspaces.state(ws);
+    const last = (workspaces.runs(ws).runs ?? [])[0] ?? null;
+    return {
+      handling: 'in-app', ucId: last?.ucId ?? 'brain-tool', scenarioId: null,
+      decision: last?.decision ?? null, say: last?.reason ?? text, run: null,
+      hops: [], demoHops: [], tokens10: [],
+      reply: { text: text || `Ran ${toolName ?? 'the tool'}.`, by: 'agent', outcome: last?.decision ?? 'RAN', ucId: last?.ucId ?? null, tool: toolName ?? last?.tool ?? null, brain: 'langgraph' },
+    };
+  };
+}

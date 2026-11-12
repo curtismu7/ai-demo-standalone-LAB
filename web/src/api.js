@@ -53,6 +53,28 @@ export async function assistantTurn(message) {
   return { ok: r.ok, status: r.status, body };
 }
 
+// GET /api/assistant/brain: whether the LangGraph sidecar is configured (P2b).
+export async function assistantBrainInfo() {
+  const r = await workspaceFetch("/api/assistant/brain");
+  let body = {};
+  try { body = await r.json(); } catch { /* not JSON */ }
+  return { ok: r.ok, body };
+}
+
+// POST /api/assistant/turn with brain=langgraph: the same turn, planned by the brain
+// sidecar. The sidecar answers AG-UI SSE; this reads the stream and folds it into the
+// SAME shape assistantTurn returns ({ handling, reply: { text, by, outcome }, run? }).
+// The fold is client-side because the engine run is NOT re-executed here: the brain's
+// tool calls already went through /api/assistant/tool (same engine), and this lab's
+// evidence views render from the folded reply. On any sidecar failure the caller
+// falls back to assistantTurn (Scripted) — never a broken page.
+export async function assistantBrainTurn(message) {
+  const r = await workspaceFetch("/api/assistant/turn", { method: "POST", body: JSON.stringify({ message, brain: "langgraph" }) });
+  let body = {};
+  try { body = await r.json(); } catch { /* not JSON */ }
+  return { ok: r.ok, status: r.status, body };
+}
+
 // ── Stage 2: HITL + A2A ──────────────────────────────────────────────────────
 export async function challenge(payload) {
   const r = await workspaceFetch("/api/challenge", { method: "POST", body: JSON.stringify(payload) });

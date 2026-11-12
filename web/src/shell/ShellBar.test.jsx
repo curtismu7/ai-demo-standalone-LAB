@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 const calls = [];
 const modeResponses = [];
 vi.mock("../api", () => ({
+  assistantBrainInfo: vi.fn(async () => ({ ok: true, body: { available: false } })),
   getJson: vi.fn(async (url) => { calls.push(url); return { banner: "SIMULATED", intro: "i", scenarios: [{ id: "uc1", title: "UC1", user: "demoUser", actor: "demo-agent", tool: "get_balance", expected: "PERMIT", lesson: "l" }], talkTrack: [{ id: "say-first", title: "Say first", say: "s" }] }; }),
   getRuns: vi.fn(async () => { calls.push("/api/runs"); return { workspace: "w-test", runs: [] }; }),
   resetWorkspace: vi.fn(async () => true),

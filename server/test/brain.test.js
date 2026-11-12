@@ -75,3 +75,68 @@ test('GET /api/assistant/brain names the tools the sidecar will see', async () =
     assert.ok(j.tools.includes('get_balance') && j.tools.includes('create_wire_transfer'));
   }, { env: BRAIN_ENV() });
 });
+
+// ── the fold: POST /api/assistant/turn with brain:"langgraph" ────────────────
+test('brain=langgraph with the sidecar up: the turn folds the AG-UI stream into the turn JSON and labels the reply brain:langgraph', async () => {
+  const calls = [];
+  // stub global fetch: the sidecar's /run answers an AG-UI SSE stream
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    if (!String(url).endsWith('/run')) return realFetch(url, opts); // the lab's own HTTP is real
+    calls.push({ url: String(url), body: opts?.body ? JSON.parse(opts.body) : null, headers: opts?.headers });
+    const sse = [
+      'data: {"type":"RUN_STARTED"}',
+      'data: {"type":"TOOL_CALL_START","toolCallName":"get_balance"}',
+      'data: {"type":"TEXT_MESSAGE_CONTENT","delta":"Balance read: "}',
+      'data: {"type":"TEXT_MESSAGE_CONTENT","delta":"permitted by the engine."}',
+      'data: {"type":"RUN_FINISHED"}',
+      '',
+    ].join('\n');
+    const enc = new TextEncoder();
+    let sent = false;
+    return {
+      ok: true,
+      body: { getReader: () => ({ read: async () => (sent ? { done: true } : (sent = true, { done: false, value: enc.encode(sse) })) }) },
+    };
+  };
+  try {
+    await withServer(async (url) => {
+      // first run a Scripted turn so the workspace has a recorded engine run for the fold
+      const seeded = await (await fetch(`${url}/api/assistant/turn`, { method: 'POST', headers: { origin: url, 'content-type': 'application/json' }, body: JSON.stringify({ message: 'check my balance' }) })).json();
+      assert.ok(seeded.reply);
+      const r = await fetch(`${url}/api/assistant/turn`, { method: 'POST', headers: { origin: url, 'content-type': 'application/json' }, body: JSON.stringify({ message: 'check my balance', brain: 'langgraph' }) });
+      const j = await r.json();
+      assert.equal(j.handling, 'in-app');
+      assert.equal(j.reply.brain, 'langgraph');
+      assert.match(j.reply.text, /permitted by the engine/);
+      assert.equal(calls.at(-1).headers['x-brain-secret'], TEST_SECRET);
+    }, { env: BRAIN_ENV() });
+  } finally { globalThis.fetch = realFetch; }
+});
+
+test('brain=langgraph with the sidecar DOWN: the turn falls back to Scripted — the page never breaks on the brain', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => (String(url).endsWith('/run') ? (() => { throw new Error('connection refused'); })() : realFetch(url, opts));
+  try {
+    await withServer(async (url) => {
+      const r = await fetch(`${url}/api/assistant/turn`, { method: 'POST', headers: { origin: url, 'content-type': 'application/json' }, body: JSON.stringify({ message: 'check my balance', brain: 'langgraph' }) });
+      const j = await r.json();
+      assert.equal(j.handling, 'in-app');
+      assert.notEqual(j.reply.brain, 'langgraph'); // the Scripted reply carries no brain label
+    }, { env: BRAIN_ENV() });
+  } finally { globalThis.fetch = realFetch; }
+});
+
+test('brain=langgraph with the brain NOT configured: the Scripted matcher answers, no model call is attempted', async () => {
+  let modelCalled = false;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => { if (String(url).endsWith('/run')) modelCalled = true; return realFetch(url, opts); };
+  try {
+    await withServer(async (url) => {
+      const j = await (await fetch(`${url}/api/assistant/turn`, { method: 'POST', headers: { origin: url, 'content-type': 'application/json' }, body: JSON.stringify({ message: 'check my balance', brain: 'langgraph' }) })).json();
+      assert.equal(j.handling, 'in-app');
+      assert.notEqual(j.reply.brain, 'langgraph');
+      assert.equal(modelCalled, false, 'no model call when the brain is unconfigured');
+    });
+  } finally { globalThis.fetch = realFetch; }
+});
