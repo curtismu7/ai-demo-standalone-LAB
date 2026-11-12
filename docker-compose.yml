@@ -29,5 +29,29 @@ services:
       start_interval: 2s
       timeout: 5s
       retries: 3
+  # P2b: the LangGraph brain sidecar. OFF by default (the `brain` profile); publishes NO
+  # host port and shares the lab's network namespace, so the model URL the sidecar dials is
+  # the same loopback the lab itself is allowed to dial (netguard governs both).
+  brain:
+    build:
+      context: .
+      dockerfile: brain/Dockerfile
+    profiles: ["brain"]
+    network_mode: "service:ai-demo-standalone"
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      AIDEMO_BRAIN_URL: ${AIDEMO_BRAIN_URL:-}
+      AIDEMO_BRAIN_MODEL: ${AIDEMO_BRAIN_MODEL:-gpt-oss-20b}
+      AIDEMOLAB_BRAIN_SECRET: ${AIDEMOLAB_BRAIN_SECRET:-}
+      AIDEMOLAB_TOOL_URL: http://127.0.0.1:7810/api/assistant/tool
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 volumes:
   ws-state:

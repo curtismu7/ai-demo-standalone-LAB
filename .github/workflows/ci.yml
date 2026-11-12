@@ -65,6 +65,20 @@ jobs:
           grep -q 'demo-health/1' /tmp/health.json
           docker rm -f smoke > /dev/null
 
+  # The brain sidecar (P2b): Python tests with the scripted tool-calling ChatModel (no live LLM).
+  # Pinned versions, GitHub-hosted (the owner's 2026-11-10 waiver of the Node-26-only rule for this
+  # one job). The sidecar is OFF by default; this job only proves its slice works and imports clean.
+  brain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --no-cache-dir -r brain/requirements.txt pytest
+      - run: python -m pytest brain/tests/test_brain.py -q
+
   secrets:
     runs-on: ubuntu-latest
     steps:
