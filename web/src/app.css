@@ -52,6 +52,10 @@ label.inline { display: inline-flex; margin-top: 0; font-weight: 400; }
 .tag { display: inline-block; padding: 1px 8px; border-radius: var(--radius-pill); border: 1px solid var(--th-border-strong); background: var(--th-bg-inset); font-size: var(--font-size-2xs); font-weight: 600; }
 .tag--ok { color: var(--th-ok-text); background: var(--th-ok-bg); border-color: var(--th-ok); }
 .tag--warn { color: var(--th-status-warning-text); background: var(--th-status-warning-bg); border-color: var(--th-status-warning); }
+.obs-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
+.obs-table th, .obs-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--th-border); vertical-align: top; }
+.obs-table th { font-size: var(--font-size-2xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--th-text-muted); }
+.obs-table td.mono, .obs-table .mono { font-family: var(--font-mono); font-size: var(--font-size-xs); }
 .facts { padding-left: 18px; line-height: 1.5; font-size: var(--font-size-sm); }
 .facts li { margin-bottom: 6px; }
 .verdict { border: 2px solid; border-radius: var(--radius-md); padding: 10px 14px; }

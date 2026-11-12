@@ -1,35 +1,39 @@
 import { useEffect, useState } from "react";
 import { setMode, getInfo } from "../api";
+import TopMenu, { applyFontSize } from "../top-menu/TopMenu.jsx";
 
 const ROUTES = [
   { id: "dashboard", href: "#/dashboard", label: "Dashboard" },
   { id: "use-cases", href: "#/use-cases", label: "Use Cases" },
+  { id: "observability", href: "#/observability", label: "Observability" },
   { id: "guide", href: "#/guide", label: "Guide" },
   { id: "welcome", href: "#/welcome", label: "Welcome" },
 ];
-const SIZES = [
-  { id: "auto", label: "A" },
-  { id: "large", label: "A+" },
-];
+const THEMES = ["auto", "light", "dark"];
+const SIZES = ["S", "M", "L"];
 
 // ui-pattern: allow P3 the wide catalog frame is this lab's shipped layout until the P2 dashboard rebuild
-export default function ShellBar({ route, onReset, children }) {
+export default function ShellBar({ route, onReset, presenter = false, onTogglePresenter, children }) {
   const [theme, setTheme] = useState(() => {
-    try { return document.documentElement.dataset.theme || "light"; } catch { return "light"; }
+    try { const t = document.documentElement.dataset.theme; return ["auto", "light", "dark"].includes(t) ? t : "auto"; } catch { return "auto"; }
   });
-  const [size, setSize] = useState("auto");
+  const [fontStep, setFontStep] = useState(() => { try { const f = localStorage.getItem("aidemo.font"); return SIZES.includes(f) ? f : "M"; } catch { return "M"; } });
   const [modeMsg, setModeMsg] = useState("");
   const [realAvailable, setRealAvailable] = useState(false);
   const [mode, setModeState] = useState("mock");
 
   useEffect(() => { getInfo().then((i) => { setRealAvailable(Boolean(i?.realAvailable)); setModeState(i?.mode || "mock"); }).catch(() => {}); }, []);
 
+  // "auto" removes data-theme so the OS preference (tokens.css / main.jsx mirror) shows through.
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    if (theme === "auto") delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem("aidemo.theme", theme); } catch { /* not remembered */ }
   }, [theme]);
   useEffect(() => {
-    document.documentElement.style.fontSize = size === "large" ? "18px" : "";
-  }, [size]);
+    applyFontSize(fontStep);
+    try { localStorage.setItem("aidemo.font", fontStep); } catch { /* not remembered */ }
+  }, [fontStep]);
 
   // Rule 19: clicking Real (or Mock) calls POST /api/mode. Real answers 409 while unconfigured;
   // when configured (AIDEMOLAB_REAL_*), Real activates the real PingOne exchange on the dashboard.
@@ -40,7 +44,6 @@ export default function ShellBar({ route, onReset, children }) {
       ? (source === "real" ? "Switched to Real: the dashboard's Real PingOne exchange panel is active." : "Switched to Mock: everything is simulated again.")
       : res.body?.detail || "Real mode is not configured for this lab.");
   };
-  const pickReal = () => pickMode("real");
 
   return (
     <header className="shell-bar">
@@ -55,26 +58,17 @@ export default function ShellBar({ route, onReset, children }) {
         ))}
       </nav>
       <span className="shell-right">
-        <span className="seg" role="group" aria-label="Data source" data-testid="mode-toggle">
-          <button type="button" aria-pressed={mode !== "real"} data-testid="mode-mock" onClick={() => pickMode("mock")}>Mock</button>
-          <button
-            type="button"
-            aria-pressed={mode === "real"}
-            data-testid="mode-real"
-            title={realAvailable ? "Real mode: the dashboard's Real PingOne exchange panel is active" : "Real mode is not configured for this lab"}
-            onClick={pickReal}
-          >Real</button>
-        </span>
-        <button type="button" data-testid="theme-toggle" aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`} title="Toggle dark mode" onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}>
-          {theme === "dark" ? "☀" : "🌙"}
-        </button>
-        <button type="button" data-testid="text-size" aria-label="Text size" title="Text size" onClick={() => setSize((s) => (s === "auto" ? "large" : "auto"))}>
-          {SIZES.find((s) => s.id === size)?.label}
-        </button>
-        {children}
-        <button type="button" data-testid="demo-controls" disabled title="Demo controls arrive in a later phase">Demo Controls</button>
-        {onReset && <button type="button" onClick={onReset} data-testid="reset">Reset</button>}
-        <button type="button" data-testid="presenter" title="Presenter mode (P key)">Presenter</button>
+        <TopMenu
+          mode={{ value: mode === "real" ? "real" : "mock", onChange: pickMode, realAvailable, realHint: "Real mode is not configured for this lab" }}
+          theme={{ value: theme, onChange: setTheme }}
+          fontSize={{ value: fontStep, onChange: setFontStep }}
+          present={onTogglePresenter ? { active: presenter, onToggle: onTogglePresenter, label: "Presenter" } : undefined}
+          help={{ href: "https://github.com/curtismu7/ai-demo-standalone-LAB#readme" }}
+          version={null}
+          onReset={onReset}
+        >
+          {children}
+        </TopMenu>
       </span>
       {modeMsg && <p className="mode-msg" role="status" data-testid="mode-msg">{modeMsg}</p>}
     </header>

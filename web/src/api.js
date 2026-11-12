@@ -99,6 +99,9 @@ export const nhiRevoke = (agentId) => workspaceFetch("/api/nhi/revoke", { method
 export const getJml = () => getJson("/api/nhi/jml");
 export const getUseCases = (uc, app) => getJson(`/api/usecases${uc ? `?uc=${encodeURIComponent(uc)}${app ? `&app=${encodeURIComponent(app)}` : ""}` : ""}`);
 
+// GET /api/runs: this workspace's audit trail (tool, decision, reason, blocked, ucId, at).
+export const getRuns = () => getJson("/api/runs");
+
 // POST /api/real-exchange: the real PingOne RFC 8693 exchange (third-party JWT as the actor token).
 // 409 when Real is not configured; 400/401/403/502 carry PingOne's refusal as DATA.
 export async function realExchange(payload) {

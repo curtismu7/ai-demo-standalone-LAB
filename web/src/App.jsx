@@ -6,6 +6,7 @@ import ReturnLink from "./return-link/ReturnLink.jsx";
 import ShellBar from "./shell/ShellBar.jsx";
 import SimBanner from "./shell/SimBanner.jsx";
 import WelcomePage from "./pages/WelcomePage.jsx";
+import ObservabilityPage from "./pages/ObservabilityPage.jsx";
 import UseCasesPage from "./pages/UseCasesPage.jsx";
 import DashboardOnePage from "./pages/DashboardPage.jsx";
 import { readReturnContext } from "./return-link/returnTargets.js";
@@ -15,6 +16,7 @@ import { getJson, resetWorkspace } from "./api";
 export const ROUTES = [
   { id: "dashboard", label: "Dashboard" },
   { id: "use-cases", label: "Use Cases" },
+  { id: "observability", label: "Observability" },
   { id: "guide", label: "Guide" },
   { id: "welcome", label: "Welcome" },
 ];
@@ -85,7 +87,7 @@ export default function App() {
 
   return (
     <div className={`app${presenter ? " app--presenter" : ""}`}>
-      <ShellBar route={route} onReset={reset}>
+      <ShellBar route={route} onReset={reset} presenter={presenter} onTogglePresenter={() => setPresenter((v) => !v)}>
         <ReturnLink app="ai-demo-standalone" variant="header" />
       </ShellBar>
       <main>
@@ -101,6 +103,7 @@ export default function App() {
             )}
             {route === "dashboard" && <DashboardPage story={story} requestedUc={route === "dashboard" && requested && /^UC/.test(requested) ? requested : null} />}
             {route === "use-cases" && <UseCasesPage story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} onRunHere={runHere} />}{route === "guide" && <GuidePage story={story} resetSignal={resetSignal} />}
+            {route === "observability" && <ObservabilityPage />}
             {route === "welcome" && <WelcomePage />}
             {route === DIAGRAM_ROUTE && <DiagramRoute resetSignal={resetSignal} />}
           </>

@@ -7,6 +7,7 @@ const calls = [];
 const modeResponses = [];
 vi.mock("../api", () => ({
   getJson: vi.fn(async (url) => { calls.push(url); return { banner: "SIMULATED", intro: "i", scenarios: [{ id: "uc1", title: "UC1", user: "demoUser", actor: "demo-agent", tool: "get_balance", expected: "PERMIT", lesson: "l" }], talkTrack: [{ id: "say-first", title: "Say first", say: "s" }] }; }),
+  getRuns: vi.fn(async () => ({ workspace: "w-test", runs: [] })),
   resetWorkspace: vi.fn(async () => true),
   setMode: vi.fn(async (source) => modeResponses.shift() || { ok: false, status: 409, body: { error: "real_not_configured", detail: "Real mode needs a live policy engine configuration." } }),
   getInfo: vi.fn(async () => ({ mode: "mock", realAvailable: false })),
@@ -24,7 +25,7 @@ describe("ShellBar", () => {
   it("renders the nav pills with hash-route hrefs", () => {
     window.location.hash = "";
     render(<App />);
-    for (const [id, href] of [["dashboard", "#/dashboard"], ["use-cases", "#/use-cases"], ["guide", "#/guide"], ["welcome", "#/welcome"]]) {
+    for (const [id, href] of [["dashboard", "#/dashboard"], ["use-cases", "#/use-cases"], ["observability", "#/observability"], ["guide", "#/guide"], ["welcome", "#/welcome"]]) {
       const link = screen.getByTestId(`nav-${id}`);
       expect(link.getAttribute("href")).toBe(href);
     }
@@ -36,28 +37,30 @@ describe("ShellBar", () => {
     expect(screen.getByText("AI Demo")).toBeTruthy();
   });
 
-  it("Real is disabled-looking reserved: clicking it calls POST /api/mode and reports 409", async () => {
-    const user = userEvent.setup();
+  it("Real is reserved while unconfigured: the option is disabled with an explanatory tooltip", async () => {
     render(<App />);
-    const real = screen.getByTestId("mode-real");
+    await waitFor(() => expect(screen.getByTestId("mode-select")).toBeInTheDocument());
+    const select = screen.getByTestId("mode-select");
+    expect(select).toHaveValue("mock");
+    const real = select.querySelector('option[value="real"]');
+    expect(real.disabled).toBe(true);
     expect(real.getAttribute("title")).toBe("Real mode is not configured for this lab");
-    await user.click(real);
-    await waitFor(() => expect(screen.getAllByRole("status").some((el) => el.textContent.length > 0)).toBe(true));
   });
 
-  it("Mock is the pressed state; Demo Controls exists and is inert (disabled)", () => {
+  it("Mock is the default selection from the server's answer", () => {
     render(<App />);
-    expect(screen.getByTestId("mode-mock").getAttribute("aria-pressed")).toBe("true");
-    const controls = screen.getByTestId("demo-controls");
-    expect(controls.disabled).toBe(true);
+    expect(screen.getByTestId("mock-badge").textContent).toBe("MOCK");
+    expect(screen.getByText("AI Demo")).toBeTruthy();
   });
 
-  it("the theme toggle flips data-theme on the document root", async () => {
+  it("the theme picker sets data-theme on the document root", async () => {
     const user = userEvent.setup();
     render(<App />);
-    const before = document.documentElement.dataset.theme;
-    await user.click(screen.getByTestId("theme-toggle"));
-    expect(document.documentElement.dataset.theme).toBe(before === "dark" ? "light" : "dark");
+    await waitFor(() => expect(screen.getByTestId("theme-select")).toBeInTheDocument());
+    await user.selectOptions(screen.getByTestId("theme-select"), "dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    await user.selectOptions(screen.getByTestId("theme-select"), "light");
+    expect(document.documentElement.dataset.theme).toBe("light");
   });
 });
 
@@ -102,6 +105,14 @@ describe("hash routing", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Welcome");
   });
 
+  it("#/observability shows the audit-trail page and reads /api/runs", async () => {
+    window.location.hash = "#/observability";
+    render(<App />);
+    await waitFor(() => expect(screen.getByTestId("observability-page")).toBeTruthy());
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Observability");
+    await waitFor(() => expect(calls.some((u) => String(u).startsWith("/api/runs"))).toBe(true));
+  });
+
   it("a scenario hash (#/scenario-uc9) opens the use-cases page with that scenario requested", async () => {
     window.location.hash = "#/scenario-uc9";
     render(<App />);
@@ -109,7 +120,7 @@ describe("hash routing", () => {
   });
 
   it("each page has exactly one h1", async () => {
-    for (const route of ["#/use-cases", "#/guide", "#/welcome", ""]) {
+    for (const route of ["#/use-cases", "#/observability", "#/guide", "#/welcome", ""]) {
       window.location.hash = route;
       const { unmount } = render(<App />);
       await waitFor(() => expect(document.querySelector("main").children.length > 0).toBe(true));

@@ -76,7 +76,7 @@ export function createApp({
     res.json({ schema: CATALOG.schema, tracks: [...new Set(CATALOG.useCases.map((u) => u.track))], verticals: CATALOG.verticals, count: ucs.length, useCases: ucs });
   });
   api.get('/diagram', (req, res) => { res.set('Cache-Control', 'no-store'); res.json(buildDiagram(castFor(req), DIAGRAM_NAMES.includes(req.query.name) ? req.query.name : DIAGRAM_NAMES[0])); });
-  api.get('/info', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json({ mode: modeFrom(), source: modeFrom(), simulated: true, realAvailable: realAvailableFrom() }); });
+  api.get('/info', (_req, res) => { res.set('Cache-Control', 'no-store'); let version = null; try { version = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version || null; } catch { /* no version */ } res.json({ mode: modeFrom(), source: modeFrom(), simulated: true, realAvailable: realAvailableFrom(), version }); });
   api.post('/mode', (req, res) => {
     const body = req.body;
     if (!body || typeof body !== 'object' || Array.isArray(body) || !['mock', 'real'].includes(body.source)) {
