@@ -153,3 +153,20 @@ Loopback Host check (plus `LAB_ALLOWED_HOSTS` behind the lab-proxy), same-origin
 ## Attribution
 
 The scaffold (workspaces, safety, doctor, netguard, return-link, diagram components) was copied from sibling -LAB repos of this family (mcp-gateway-lab-LAB and hitl-mfa-lab-LAB); the PDP, data and UI are this lab's own. The catalog (`server/data/catalog.json`) was extracted on 2026-11-11 from the AI-DEMO2 dashboard's `useCases.js` config as read-only shapes; the mock decisions live here. The HITL and A2A engines follow the shapes of the sibling HITL and A2A labs (shapes only). No cross-repo imports.
+
+## Real sign-in (P10, owner-run)
+
+The Mock | Real story gains a real **sign-in** (login only; the data behind the dashboard stays mock). With the
+`AIDEMOLAB_SIGNIN_*` settings in this lab's own `.env`, the **Sign in** chip at the top of the page runs a real
+authorization-code + PKCE S256 ceremony with `response_mode=pi.flow` — no redirect — against PingOne (default) or
+PingFederate (`AIDEMOLAB_SIGNIN_PROVIDER=pingfederate` + `AIDEMOLAB_SIGNIN_BASE_URL`). The password step is the
+standard Sign in modal; the password is sent once by this lab's server to the IdP's flows API and is never stored,
+logged or shown. The signed-in user and their REAL-labelled access token are shown on the page; **Sign out** clears
+the session server-side. Without the settings nothing changes: the chip is hidden, no external call is made
+(the netguard allowlist carries the IdP host only when configured), and the Real mode toggle keeps its rule-19 409.
+
+Owner setup: create one OAuth client on the IdP whose redirect list contains `http://127.0.0.1:7810/callback`, put
+the client id/secret plus the demo username (and the environment id/region for PingOne, or the base URL for
+PingFederate) into `.env` beside `docker-compose.yml`, and restart. Agents test against loopback fakes only
+(`AIDEMOLAB_SIGNIN_TEST_BASE`), never the tenant. Pattern proven in customer-agent-LAB (its `real.js`); this lab's
+copy is login-only and AI-DEMO2 code was not imported.

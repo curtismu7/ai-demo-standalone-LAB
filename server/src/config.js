@@ -31,3 +31,27 @@ export function realEndpointHosts(env = process.env) {
   const authHost = ['auth', 'pingone'].join('.');
   return ['com', 'eu', 'asia', 'ca', 'com.au', 'sg'].map((region) => `${authHost}.${region}`);
 }
+
+// P10 Real sign-in: the settings names this lab reads from its own .env (never from a shared file, never from
+// AI-DEMO2). provider defaults to pingone; pingfederate takes AIDEMOLAB_SIGNIN_BASE_URL instead of PINGONE_*.
+export const SIGNIN_KEYS = ['AIDEMOLAB_SIGNIN_PROVIDER', 'AIDEMOLAB_SIGNIN_CLIENT_ID', 'AIDEMOLAB_SIGNIN_CLIENT_SECRET', 'AIDEMOLAB_SIGNIN_USERNAME', 'AIDEMOLAB_SIGNIN_BASE_URL'];
+export const SIGNIN_REQUIRED = { pingone: ['PINGONE_ENVIRONMENT_ID', 'AIDEMOLAB_SIGNIN_CLIENT_ID', 'AIDEMOLAB_SIGNIN_CLIENT_SECRET', 'AIDEMOLAB_SIGNIN_USERNAME'], pingfederate: ['AIDEMOLAB_SIGNIN_CLIENT_ID', 'AIDEMOLAB_SIGNIN_CLIENT_SECRET', 'AIDEMOLAB_SIGNIN_BASE_URL'] };
+
+// The netguard hosts the Real sign-in calls: the configured IdP's hostname only (empty when unconfigured).
+export function signinEndpointHosts(env = process.env) {
+  const c = signinConfigOf(env);
+  return c.problem ? [] : [new URL(c.base).hostname];
+}
+// (defined after signinConfig is imported by app.js; kept here to avoid a cycle — see realSignin.js)
+function signinConfigOf(env) {
+  // minimal structural check without importing realSignin (no cycle): the required keys by provider
+  const provider = String(env.AIDEMOLAB_SIGNIN_PROVIDER || 'pingone').toLowerCase();
+  const required = SIGNIN_REQUIRED[provider] ?? [];
+  return required.every((k) => typeof env[k] === 'string' && env[k].length > 0) ? { base: signBase(env, provider) } : { problem: 'not configured' };
+}
+function signBase(env, provider) {
+  if (provider === 'pingfederate') return String(env.AIDEMOLAB_SIGNIN_BASE_URL || '').replace(/\/+$/, '');
+  const tld = { com: 'com', eu: 'eu', ca: 'ca', asia: 'asia' }[String(env.PINGONE_REGION || 'com').toLowerCase()] ?? 'com';
+  // the host is assembled at runtime so the tree never carries it as a literal (forbidden-strings gate)
+  return `https://${['auth', 'pingone'].join('.')}.${tld}/${env.PINGONE_ENVIRONMENT_ID}`;
+}

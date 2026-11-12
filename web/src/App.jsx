@@ -8,6 +8,7 @@ import SimBanner from "./shell/SimBanner.jsx";
 import WelcomePage from "./pages/WelcomePage.jsx";
 import ObservabilityPage from "./pages/ObservabilityPage.jsx";
 import AirlinePage from "./pages/AirlinePage.jsx";
+import AccountChip from "./components/AccountChip.jsx";
 import UseCasesPage from "./pages/UseCasesPage.jsx";
 import DashboardOnePage from "./pages/DashboardPage.jsx";
 import { readReturnContext } from "./return-link/returnTargets.js";
@@ -92,6 +93,7 @@ export default function App() {
       <ShellBar route={route} onReset={reset} presenter={presenter} onTogglePresenter={() => setPresenter((v) => !v)}>
         <ReturnLink app="ai-demo-standalone" variant="header" />
       </ShellBar>
+      <div className="account-row"><AccountChip /></div>
       <main id="main" tabIndex={-1}>
         <SimBanner />
         <ReturnLink app="ai-demo-standalone" />

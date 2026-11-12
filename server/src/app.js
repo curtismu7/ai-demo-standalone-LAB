@@ -24,6 +24,8 @@ import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.
 import { matchTurn } from './assistant.js';
 import { createWorkspaces, workspaceFrom, serverKey, mintWorkspaceToken, verifyWorkspaceToken, workspaceTokenFingerprint } from './workspaces.js';
 import { createBookings } from './bookings.js';
+import { createRealSignin, RealRefused } from './realSignin.js';
+import { signinConfig } from './realSignin.js';
 import { SCENARIOS } from './policyData.js';
 import { seedFor, tokenFor, callArgsFor } from './scenario.js';
 import { toDemoHops, tokenCardsFrom } from './evidenceAdapter.js';
@@ -45,6 +47,11 @@ export function createApp({
   wsKey = serverKey(process.env),
   // Durable stores: set stateDir (AIDEMOLAB_STATE_DIR) to persist each workspace to disk.
   stateDir = process.env.AIDEMOLAB_STATE_DIR || null,
+  // P10 Real sign-in (owner-run). env is the settings source (tests inject a fake); signin is the createRealSignin
+  // override for tests. With no valid configuration the sign-in is simply unavailable (GET /api/signin) and the
+  // Real toggle keeps its rule-19 409.
+  env = process.env,
+  signin,
 } = {}) {
   const hydrateExtra = (extra, snap) => {
     extra.receipts = createReceipts({ initial: snap.receipts, signingKey: snap.receipts?.signingKey ?? undefined });
@@ -56,6 +63,9 @@ export function createApp({
     makeDirectory: () => structuredClone(DEFAULT_DIRECTORY), stateDir, hydrateExtra,
     makeExtra: () => ({ ...newExtra(), rateLimiter: createRateLimiter({ max: 8 }), roster: createRoster() }),
   });
+  const realSignin = signin ?? createRealSignin({ config: signinConfig(env, env) });
+  const signinSettingsComplete = Boolean(env.AIDEMOLAB_SIGNIN_CLIENT_ID && env.AIDEMOLAB_SIGNIN_CLIENT_SECRET && (env.PINGONE_ENVIRONMENT_ID || env.AIDEMOLAB_SIGNIN_BASE_URL));
+
   const app = express();
   app.disable('x-powered-by');
   app.use(hostCheck);
@@ -522,6 +532,37 @@ export function createApp({
     if (r.error) return res.status(400).json({ error: r.error });
     res.set('Cache-Control', 'no-store');
     res.json({ schema: 'bookings/1', ...bookingsOf(workspaces.state(ws)).state() });
+  }));
+
+  // P10 Real SIGN-IN only (owner-run). GET: availability, who is signed in, the username to prefill.
+  // POST {password}: the pi.flow sign-in on the server (realSignin.js). The password is used once and never
+  // stored, logged or returned; errors are fixed text. Sign-out clears the session server-side.
+  api.get('/signin', withWorkspace((ws, _req, res) => {
+    const why = realSignin.problem();
+    const s = why ? null : realSignin.session(ws);
+    res.set('Cache-Control', 'no-store');
+    res.json({ available: why === null, reason: why, method: 'pi.flow', redirect: false, provider: realSignin.provider(), username: why ? null : realSignin.username(), signedIn: Boolean(s), user: s ? realSignin.userOf(s) : null });
+  }));
+
+  api.post('/signin', withWorkspace(async (ws, req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const why = realSignin.problem();
+    if (why) return res.status(409).json({ error: 'real_not_available', message: why });
+    const pw = req.body?.password;
+    if (typeof pw !== 'string' || pw.length < 1 || pw.length > 256) return res.status(400).json({ error: 'bad_password', detail: 'type the password (1 to 256 characters)' });
+    let out;
+    try { out = await realSignin.signIn(ws, pw); } catch (e) {
+      if (e instanceof RealRefused) return res.status(e.status).json({ error: e.code, message: e.message });
+      throw e;
+    }
+    if (!out.ok) return res.status(out.status).json({ error: out.error, message: out.message, idp: out.idp ?? null, steps: out.steps });
+    return res.json({ signedIn: true, user: out.user, steps: out.steps, tokens: out.tokens });
+  }));
+
+  api.post('/signout', withWorkspace((ws, _req, res) => {
+    res.set('Cache-Control', 'no-store');
+    realSignin.signOut(ws);
+    res.json({ signedIn: false });
   }));
 
   api.post('/reset', withWorkspace((ws, _req, res) => {

@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { startFakePingOne, USER_CLIENT_ID, USER_CLIENT_SECRET, DEMO_USERNAME, DEMO_PASSWORD, ENV_ID } from '../server/test/fakePingone.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const shots = process.env.E2E_SHOTS || path.join(root, '.data', 'e2e-screenshots');
@@ -35,6 +36,21 @@ let up = false;
 for (let i = 0; i < 160 && !up; i++) { try { up = (await fetch(`${base}/api/health`)).ok; } catch { await sleep(250); } }
 if (!up) { server.kill(); console.error('server did not start'); process.exit(2); }
 fs.mkdirSync(shots, { recursive: true });
+
+// P10: a second lab instance with Real sign-in configured against a FAKE PingOne on loopback (no real tenant).
+const fake = await startFakePingOne();
+const signinPort = 7810; // the same port is used after the main server stops? No: run the signin lab on the SAME process after? We need two servers. Use the loopback port 7811? The app pins 7810. Run the sign-in instance AFTER the main mock instance's checks, on the same port: stop the first, start the second.
+const signinEnv = {
+  ...process.env, PORT: '7810',
+  AIDEMOLAB_SIGNIN_PROVIDER: 'pingone',
+  AIDEMOLAB_SIGNIN_CLIENT_ID: USER_CLIENT_ID,
+  AIDEMOLAB_SIGNIN_CLIENT_SECRET: USER_CLIENT_SECRET,
+  AIDEMOLAB_SIGNIN_USERNAME: DEMO_USERNAME,
+  PINGONE_ENVIRONMENT_ID: ENV_ID,
+  AIDEMOLAB_SIGNIN_TEST_BASE: fake.base,
+};
+for (const k of ['AIDEMOLAB_REAL_URL', 'AIDEMOLAB_REAL_CLIENT_ID', 'AIDEMOLAB_REAL_CLIENT_SECRET']) delete signinEnv[k];
+let signinServer = null;
 
 const browser = await chromium.launch();
 const foreign = [];
@@ -133,10 +149,58 @@ try {
     await page.close();
   }
   check(foreign.length === 0, 'the lab never asked for a foreign host');
-} catch (e) {
-  console.error(e); failures += 1;
+
+  // ---- P10: the Real sign-in against the loopback fake PingOne (a second lab instance on the same port) ----
+  try {
+    server.kill();
+    await new Promise((r) => setTimeout(r, 500));
+    signinServer = spawn(process.execPath, ['server/src/index.js'], { cwd: root, env: signinEnv, stdio: 'inherit' });
+    let sup = false;
+    for (let i = 0; i < 160 && !sup; i++) { try { sup = (await fetch(`${base}/api/health`)).ok; } catch { await sleep(250); } }
+    if (!sup) throw new Error('the sign-in lab instance did not start');
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, colorScheme: 'dark' });
+    const errors = []; const offOrigin = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    page.on('request', (r) => { if (!r.url().startsWith(base) && !/^(data|blob):/.test(r.url()) && !/fonts\.(googleapis|gstatic)\.com/.test(r.url())) offOrigin.push(r.url()); });
+    const tag = '[signin]';
+    await page.goto(base + '/#/dashboard');
+    await page.getByTestId('open-signin').waitFor({ timeout: 10000 });
+    check(true, `${tag} the account chip shows Sign in when the sign-in is configured`);
+    await page.getByTestId('open-signin').click();
+    await page.getByTestId('signin-dialog').waitFor({ timeout: 5000 });
+    check(true, `${tag} the Sign in modal opens`);
+    check((await page.getByTestId('signin-username').inputValue()) === DEMO_USERNAME, `${tag} the username is prefilled from settings`);
+    // the wrong password first: a fixed error, no echo
+    await page.getByTestId('signin-password').fill('wrong-password-1');
+    await page.getByTestId('signin-submit').click();
+    await page.getByTestId('signin-error').waitFor({ timeout: 15000 });
+    const errText = await page.getByTestId('signin-error').innerText();
+    check(!errText.includes('wrong-password-1'), `${tag} a refused sign-in never echoes the password`);
+    // the right password: the user and the REAL token
+    await page.getByTestId('signin-password').fill(DEMO_PASSWORD);
+    await page.getByTestId('signin-submit').click();
+    await page.getByTestId('account-user').waitFor({ timeout: 15000 });
+    check(true, `${tag} the real sign-in completes and the user shows`);
+    await page.getByTestId('toggle-token').click();
+    await page.getByTestId('real-token').waitFor({ timeout: 5000 });
+    const tok = await page.getByTestId('real-token').innerText();
+    check(tok.includes('REAL'), `${tag} the token is shown with the REAL label`);
+    check(!tok.includes(DEMO_PASSWORD), `${tag} the password is nowhere in the token display`);
+    await page.screenshot({ path: path.join(shots, 'signin-real.png') });
+    await page.getByTestId('signout').click();
+    await page.getByTestId('open-signin').waitFor({ timeout: 5000 });
+    check(true, `${tag} sign-out clears the session`);
+    check(offOrigin.length === 0, `${tag} no off-origin request beyond the loopback fake ${JSON.stringify(offOrigin)}`);
+    check(errors.filter((m) => !m.includes('401')).length === 0, `${tag} no page or console errors beyond the intentional 401 probe`);
+    await page.close();
+  } catch (e) {
+    console.error(e); failures += 1;
+  }
 } finally {
   await browser.close();
   server.kill();
+  if (signinServer) signinServer.kill();
+  await fake.close();
 }
 console.log(`${failures} check(s) FAILED`); if (failures) { console.log(`screenshots: ${shots}`); process.exit(1); }
