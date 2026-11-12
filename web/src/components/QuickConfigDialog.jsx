@@ -16,7 +16,8 @@ const PREF = {
   rfc: "cal.dash.cfg.rfc",
   follow: "cal.dash.cfg.follow",
   slow: "cal.dash.cfg.slow",
-};
+  brain: "cal.dash.cfg.brain",
+};;
 
 // The view cards: which evidence component the Token Chain card renders. "Server flow" is
 // the sequence view plus the reel stacked (lab-own composition); "Token topology" is not
@@ -45,6 +46,7 @@ export function readConfig() {
     rfc: load(PREF.rfc, (v) => v === true || v === "true", false),
     follow: load(PREF.follow, (v) => v === true || v === "true", true),
     slow: load(PREF.slow, (v) => v === true || v === "true", false),
+    brain: load(PREF.brain, (v) => v === "scripted" || v === "langgraph", "scripted"),
   };
 }
 
@@ -72,7 +74,7 @@ function Check({ label, checked, onChange, testId }) {
   );
 }
 
-export default function QuickConfigDialog({ isOpen, onClose, config, onChange }) {
+export default function QuickConfigDialog({ isOpen, onClose, config, onChange, brainAvailable = false }) {
   const set = (key, ok, value) => { if (ok(value)) { writePref(PREF[key], value); onChange(key, value); } };
 
   // Focus returns to the opener on close: FloatingDialog restores focus itself when given
@@ -97,6 +99,13 @@ export default function QuickConfigDialog({ isOpen, onClose, config, onChange })
       noBackdrop
     >
       <div className="qc" data-testid="quick-config-body">
+        <SegGroup
+          label={`Brain${brainAvailable ? "" : " (LangGraph needs AIDEMO_BRAIN_URL: the Scripted brain stays)"}`}
+          testId="qc-brain"
+          options={[{ id: "scripted", label: "Scripted" }, { id: "langgraph", label: "LangGraph" }]}
+          value={config.brain || "scripted"}
+          onChange={(v) => set("brain", (x) => x === "scripted" || x === "langgraph", v)}
+        />
         <SegGroup
           label="Theme"
           testId="qc-theme"

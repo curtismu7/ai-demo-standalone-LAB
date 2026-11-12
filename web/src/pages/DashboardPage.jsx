@@ -5,7 +5,7 @@
 // Airline copy everywhere; engine tool names stay as-is (renaming is plan phase P6).
 import { useCallback, useEffect, useRef, useState } from "react";
 import Json from "../components/Json";
-import { assistantTurn } from "../api";
+import { assistantTurn, assistantBrainInfo, assistantBrainTurn } from "../api";
 import { visible } from "../safeText";
 import ChainView from "../components/ChainView.jsx";
 import RealExchangePanel from "../components/RealExchangePanel.jsx";
@@ -139,7 +139,7 @@ export function AssistantSection({ transcript, run, onSend, busy, fail, onChip }
 }
 
 /** Section 2: the plan — the one tool call, the brain label, the token-exchange line. */
-export function PlanSection({ run }) {
+export function PlanSection({ run, brainUsed }) {
   if (!run) return (
     <section className="panel" id="dash-plan" aria-labelledby="dash-plan-h" data-testid="plan-section">
       <h2 id="dash-plan-h">Agent &amp; tools <span className="tag">Agent</span></h2>
@@ -150,7 +150,7 @@ export function PlanSection({ run }) {
   return (
     <section className="panel" id="dash-plan" aria-labelledby="dash-plan-h" data-testid="plan-section">
       <h2 id="dash-plan-h">Agent &amp; tools <span className="tag">Agent</span></h2>
-      <p data-testid="plan-line">The agent planned one tool call: <code>{visible(run.tool)}</code> — brain: <b data-testid="brain-label">Scripted</b></p>
+      <p data-testid="plan-line">The agent planned one tool call: <code>{visible(run.tool)}</code> — brain: <b data-testid="brain-label">{brainUsed === "langgraph" ? "LangGraph (gpt-oss-20b)" : "Scripted"}</b></p>
       <Json value={{ tool: run.tool, args, decision: run.decision, code: run.code ?? null }} label="The tool-call plan" />
       <p className="muted" data-testid="token-exchange-line">Token exchange (RFC 8693): the delegated token carries <code>sub={visible(run.user)}</code>, <code>act={"{ sub: "}{visible(run.act?.sub || "(none)")}"}</code> — the consent exchange is the only place <code>act</code> is minted.</p>
     </section>
@@ -257,6 +257,11 @@ export default function DashboardPage({ story, requestedUc }) {
   const [qcOpen, setQcOpen] = useState(false);
   const qcOpenerRef = useRef(null);
   const [cfg, setCfg] = useState(() => readConfig());
+  // P2b: the brain toggle. available is what the SERVER says (the sidecar configured);
+  // a LangGraph pick with the sidecar down falls back to Scripted (server-side) and the
+  // label says so — the toggle never lies about what actually ran.
+  const [brainAvailable, setBrainAvailable] = useState(false);
+  const [brainUsed, setBrainUsed] = useState("scripted");
   const onCfg = useCallback((key, value) => setCfg((c) => ({ ...c, [key]: value })), []);
   // A11y: on close, focus returns to the "Demo controls" opener (FloatingDialog restores to
   // the element focused before it opened; the ref keeps that the opener button, always).
@@ -264,11 +269,20 @@ export default function DashboardPage({ story, requestedUc }) {
 
   // The Real PingOne exchange panel is active only when Real mode is configured (AIDEMOLAB_REAL_*).
   useEffect(() => { getInfo().then((i) => setRealAvailable(Boolean(i?.realAvailable))).catch(() => setRealAvailable(false)); }, []);
+  useEffect(() => { assistantBrainInfo().then((r) => setBrainAvailable(Boolean(r.body?.available))).catch(() => setBrainAvailable(false)); }, []);
 
+  // The brain pick rides refs: send keeps its [] deps (the other session's contract) but must
+  // see the CURRENT toggle, not the mount-time one.
+  const cfgRef = useRef(cfg);
+  cfgRef.current = cfg;
+  const brainAvailableRef = useRef(brainAvailable);
+  brainAvailableRef.current = brainAvailable;
   const send = useCallback(async (message) => {
     setBusy(true); setFail(null);
     setTranscript((t) => [...t, { who: "user", text: message }]);
-    const r = await assistantTurn(message).catch(() => ({ ok: false, body: {} }));
+    const wantBrain = cfgRef.current.brain === "langgraph" && brainAvailableRef.current;
+    const r = await (wantBrain ? assistantBrainTurn(message) : assistantTurn(message)).catch(() => ({ ok: false, body: {} }));
+    setBrainUsed(r.body?.reply?.brain === "langgraph" ? "langgraph" : "scripted");
     setBusy(false);
     if (!r.ok || !r.body.reply) { setFail(r.body.detail || "The assistant could not answer. Is the server running?"); return; }
     const reply = r.body.reply;
@@ -318,13 +332,13 @@ export default function DashboardPage({ story, requestedUc }) {
         <button type="button" className="dash-qc-btn" onClick={() => setQcOpen(true)} ref={qcOpenerRef} data-testid="qc-open">Demo controls</button>
       </div>
       <AssistantSection transcript={transcript} run={run} onSend={send} onChip={onChip} busy={busy} fail={fail} />
-      <PlanSection run={run} />
+      <PlanSection run={run} brainUsed={brainUsed} />
       <RealExchangePanel realAvailable={realAvailable} />
       <EvidenceSection run={run} cfg={cfg} />
       <ProductsSection run={run} />
       <TalkTrackSection run={run} />
       <p className="muted">Run a real use case from <a href="#/use-cases">Use Cases</a> to fill these sections — including resolving an obligation (consent, MFA, CIBA) with its receipt.</p>
-      <QuickConfigDialog isOpen={qcOpen} onClose={closeQc} config={cfg} onChange={onCfg} />
+      <QuickConfigDialog isOpen={qcOpen} onClose={closeQc} config={cfg} onChange={onCfg} brainAvailable={brainAvailable} />
     </div>
   );
 }

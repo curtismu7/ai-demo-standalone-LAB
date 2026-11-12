@@ -11,6 +11,7 @@ import { AssistantSection, StepTiles } from "./DashboardPage";
 import DashboardPage from "./DashboardPage";
 
 vi.mock("../api", () => ({
+  assistantBrainInfo: vi.fn(async () => ({ ok: true, body: { available: false } })),
   assistantTurn: vi.fn(async () => ({ ok: true, body: { reply: { by: "agent", text: "done" }, run: null } })),
   getInfo: vi.fn(async () => ({ mode: "mock", realAvailable: false })),
   realExchange: vi.fn(),
