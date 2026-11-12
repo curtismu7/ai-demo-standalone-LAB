@@ -6,4 +6,4 @@
   padding: 4px 14px; font-size: 0.82rem; cursor: pointer;
 }
 .dash-qc-btn:hover { border-color: var(--accent, #b91c1c); }
-.dashboard-page--white { background: #fff; color: #17150f; }
+.dashboard-page--white { background: var(--th-bg-card, #fff); color: var(--th-text, #17150f); }
