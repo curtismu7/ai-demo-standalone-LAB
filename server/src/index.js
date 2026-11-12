@@ -5,12 +5,14 @@ import { allPassed, runChecks } from './doctor.js';
 import { assertBindAllowed, bindHost, resolvePort } from './safety.js';
 import { modeFrom, realAvailableFrom, realEndpointHosts, signinEndpointHosts } from './config.js';
 
-// The outbound allowlist is exactly what Real mode calls (the PingOne auth hosts) when Real is configured
-// via AIDEMOLAB_REAL_*, and empty otherwise: Mock mode stays provably offline.
-// P10: the Real sign-in's IdP host joins the allowlist only when the sign-in is configured.
-installNetguard({ outboundAllow: [...realEndpointHosts(), ...signinEndpointHosts()] }); // before anything else can open a socket
-
+// The .env (this lab's own, beside docker-compose.yml) is read BEFORE the netguard is installed: loading a file
+// opens no socket, and the guard's allowlist is derived from that configuration (Real sign-in's IdP host, the
+// AIDEMOLAB_REAL_* exchange hosts). In Docker, compose substitutes the same names into the environment directly.
 try { process.loadEnvFile(fileURLToPath(new URL('../../.env', import.meta.url))); } catch { /* no .env */ }
+
+// The outbound allowlist is exactly what Real mode calls when configured, and empty otherwise: Mock mode stays
+// provably offline. The Real sign-in's IdP host joins only when the sign-in is configured (P10).
+installNetguard({ outboundAllow: [...realEndpointHosts(), ...signinEndpointHosts()] }); // before anything else can open a socket
 
 const checks = await runChecks();
 if (!allPassed(checks)) {
