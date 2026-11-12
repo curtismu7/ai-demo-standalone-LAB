@@ -52,3 +52,19 @@ test('the container is locked down: read-only fs, no capabilities, no new privil
   assert.match(compose, /cap_drop: \[ALL\]/);
   assert.match(compose, /no-new-privileges:true/);
 });
+
+// P2b: the brain sidecar is OFF by default and gives the sidecar nothing it could exfiltrate with.
+test('the brain sidecar is profile-gated, publishes no port, and sets no env_file', () => {
+  const compose = here('docker-compose.yml');
+  const brain = /  brain:\n(?:    .*\n)*/.exec(compose)?.[0] ?? '';
+  assert.ok(brain, 'the compose file declares the brain service');
+  assert.match(brain, /profiles:\s*\["?brain"?\]/, 'the sidecar runs only under the brain profile (off by default)');
+  assert.doesNotMatch(brain, /ports:/, 'the sidecar publishes NO host port');
+  assert.doesNotMatch(brain, /env_file:/, 'the sidecar gets no env_file (no host .env, no secrets file)');
+  assert.match(brain, /network_mode:\s*"service:ai-demo-standalone"/, 'the sidecar shares the lab network namespace (nothing of its own is exposed)');
+  assert.match(brain, /restart: unless-stopped/, 'rule 21');
+  // the lab service itself does not wait for the sidecar and does not enable the profile
+  const lab = compose.split('  brain:')[0];
+  assert.doesNotMatch(lab, /depends_on:\s*\n\s*-?\s*brain/, 'the lab never waits for the sidecar');
+  assert.match(compose, /AIDEMO_BRAIN_URL:\s*\$\{AIDEMO_BRAIN_URL:-\}/, 'the model URL is empty by default: no model call');
+});

@@ -1,41 +1,37 @@
-# Provenance: what was copied into this repo, from where, and how it is pinned
+# Provenance
 
-**The copy rule (owner, 2026-11-10): reuse means copy.** Anything this app reuses is copied into this repo and committed. Nothing here points at a running AI-DEMO2 (no service, container, network, hostname, path, env var or import), because it will not exist on other people's machines. `scripts/no-ai-demo2.test.mjs` fails the build if anything does.
+Files copied from other repositories into this one, with their licences and the
+changes made here. THE COPY RULE (this repo's README): reuse means copy into
+this repo, never reference another repo at run time.
 
-Source repo for the shared items below: `curtismu7/AI-DEMO-Standalone`, folder `shared/`. "Commit" is the last commit that changed that path (checked on main `11522d9`, 2026-11-10). Vendored copies are never edited here: change the shared source, re-pin, then re-copy.
+## `brain/` — copied from AI-DEMO2 `langchain_agent/` (MIT)
 
-| File or folder | Source repo and path | Source commit | How it is pinned | Removed or changed |
-|---|---|---|---|---|
-| `web/src/styles/standalone-ui.css` | AI-DEMO-Standalone `shared/standalone-ui.css` | `4845d15` | `scripts/standalone-ui.sha256` (hash), `scripts/standalone-ui.test.mjs` (offline), `scripts/check-ui-standard.sh` (also compares with the canonical file on GitHub main; CI runs it) | Nothing. Not imported by a page yet (plan phase P1). |
-| `scripts/check-ui-standard.sh` | AI-DEMO-Standalone `shared/check-ui-standard.sh` (as vendored by customer-agent-LAB `scripts/check-ui-standard.sh`) | `2c9c82e` | None (a script, not a pinned asset) | One line: `copy_rel` points at `web/src/styles/standalone-ui.css`. |
-| `web/src/floating-dialog/` (`FloatingDialog.jsx`, `floating-dialog.css`, `floating-dialog.test.jsx`, `geometry.js`, `useFloatingPanel.js`) | AI-DEMO-Standalone `shared/floating-dialog/` | `fb9381f` | `floating-dialog.sha256` and `web/src/floating-dialog.pin.test.js` (hashes, file list, commit named on the first line) | Byte for byte. `README.md` not copied. Not imported by a page yet (P4). |
-| `web/src/evidence/` (`ActorCard.jsx`, `MovieReel.jsx`, `SequenceView.jsx`, `StepDetailPanel.jsx`, `Tag.jsx`, `evidence.css`, `evidence.test.jsx`, `fixtures.js`, `lanes.js`, `safeText.js`) | AI-DEMO-Standalone `shared/evidence/` | `2ed8465` | `evidence.sha256` and the same pin test | Byte for byte. `README.md` not copied. `evidence.sha256` is new (the shared folder has none; the format is the one pingcli-LAB uses). Not imported by a page yet (P3). |
-| `web/src/floating-dialog.pin.test.js` | pingcli-LAB `web/src/floating-dialog.pin.test.js` (test pattern) | `d6a5a99` | Itself a test | Byte for byte. |
-| `server/src/vendor/hopDetail.mjs`, `server/src/vendor/hop-catalog.json`, `server/test/hopDetail.test.js` | AI-DEMO-Standalone `shared/hop-detail/` (`hopDetail.mjs`, `hop-catalog.json`, `hopDetail.test.mjs`) | `4845d15` | One header line in `hopDetail.mjs` and in the test names the commit (the folder's README convention); `server/src/vendor/hop-detail.sha256` pins the hashes of the three shared originals; `server/test/hopDetail.pin.test.js` checks them after undoing the edits below | `hop-catalog.json`: none. `hopDetail.mjs`: one header line added. Test: one header line added, two import paths adjusted, renamed `.test.js` for the server's `test/*.test.js` glob. `README.md` not copied. Not used by the server yet (P3). |
-| `web/src/return-link/` (`ReturnLink.jsx`, `ReturnLink.test.jsx`, `returnTargets.js`) | AI-DEMO-Standalone `shared/return-link/` | `a00848a` | `return-link.sha256`, `scripts/return-link.test.mjs` | Already vendored in stage 1, byte for byte. Pin re-checked against main on 2026-11-10: the three hashes are unchanged. |
-| `server/data/catalog.json` | AI-DEMO2 `demo_api_server/config/useCases.js` (read-only; the 87 use cases, tracks, titles, expected outcomes, buyer stories) | Not recorded when it was extracted in stage 1 (UNVERIFIED) | None | Reshaped into this app's catalog format; the decisions behind each use case are this app's own mock. Four names in it still come from AI-DEMO2 (a client, an audience and an index named in use case narratives, plus the file's own schema label, which `CLAUDE.md` also mentions): the exceptions list in `scripts/no-ai-demo2.test.mjs` names each one, and each goes when the text is reworded. |
-| `docs/content-pack.schema.json` | The Learning Hub research copy of the content-pack schema | Not recorded (UNVERIFIED) | `scripts/validate-content-pack.mjs` validates `content-pack.json` against it | None known. |
+AI-DEMO2's `langchain_agent/` directory carries the MIT licence notice of its
+origin project; the files below were copied on 2026-11-12 from
+`curtismu7/AI-DEMO2@origin/main` and adapted for this lab. Nothing imports or
+fetches from AI-DEMO2 at run time; the `no-ai-demo2` gate (`scripts/no-ai-demo2.test.mjs`)
+enforces that.
 
-| `web/src/components/tokenchain/` (`TokenChainNodeRail.jsx` + `.css`, `TokenCard.jsx` + `.css`, `claimGlossary.js`, `TokenColorSystem.js`, `JsonHighlight.jsx` + `.css`) | AI-DEMO2 `demo_api_ui/src/components/TokenChainNodeRail.{jsx,css}`, `TokenCard.{jsx,css}`, `constants/claimGlossary.js`, `components/TokenColorSystem.js`, `components/shared/JsonHighlight.{jsx,css}` | `2c7ca86e0` | Provenance header on the first line of each file names the source path and commit; the no-AI-DEMO2 gate treats the folder as vendored (its headers are allowed to name the source) | See below. Not imported by a page yet (P2/P3). |
-| `web/src/hooks/useDividerDrag.js` | AI-DEMO2 `demo_api_ui/src/hooks/useDividerDrag.js` | `2c7ca86e0` | Provenance header (same convention) | None (no imports beyond React). Not used by a page yet (P2). |
+| File here | From there | Change |
+|---|---|---|
+| `brain/src/agui/event_types.py` | `langchain_agent/src/agui/event_types.py` | none (byte copy) |
+| `brain/src/agui/emitter.py` | `langchain_agent/src/agui/emitter.py` | none (byte copy) |
+| `brain/src/agui/sse_transport.py` | `langchain_agent/src/agui/sse_transport.py` | none (byte copy) |
+| `brain/src/agui/bff_tool_adapter.py` | `langchain_agent/src/agui/bff_tool_adapter.py` | header note; allowed hosts are this lab's service names (the source's AI-DEMO2 hosts removed); `build_bff_tools` gained `extra_tools`/`bff_internal_secret` parameters; the dev-default shared secret removed (this lab passes its per-boot secret explicitly) |
+| `brain/src/agui_run_handler.py` | `langchain_agent/src/api/agui_run_handler.py` | header note; metrics import stubbed; the default tool URL is this lab's route; the processor call is `BrainProcessor.process_run` (no per-run provider override, no vertical flavor, no user identity) |
+| `brain/src/message_processor.py` | `langchain_agent/src/api/message_processor.py` | ONLY the BFF-tool branch: the streaming core (`astream_events` text/tool routing), the deterministic policy-denial fallback, the no-visible-output guard and the pre-model token trim; the MCP graph path, guardrails, Opik, Helix and per-run provider overrides are cut; the system prompt is this lab's own |
+| `brain/src/llm_factory.py` | `langchain_agent/src/agent/llm_factory.py` | cut to the llamacpp provider only; the URL comes from this lab's `AIDEMO_BRAIN_URL` (empty default = no model call); model default gpt-oss-20b |
+| `brain/src/metrics.py` | `langchain_agent/src/metrics.py` | reduced to in-process counters (no OpenTelemetry/Prometheus in this lab) |
+| `brain/tests/test_brain.py` | pattern from the spike (see below) | new |
 
-LAB ADJUSTMENTS in `web/src/components/tokenchain/` (2026-11-11):
-- `TokenChainNodeRail.jsx`: `laneLabel` was imported from `services/tokenChainTrace/buildTraceSteps`; only its label map was used, so the map is inlined (labels reworded for the airline domain). No other change.
-- `TokenChainNodeRail.css`, `TokenCard.css`, `JsonHighlight.css`: every hard-coded hex colour is mapped to the family tokens (`--th-*` from `web/src/tokens.css`, `--status-*`/`--danger-text` from the shared stylesheet); where the source recoloured dark themes with separate hex values, one theme-aware token replaces the pair. Four `var()` fallback hexes remain (they fire only if a token is unset). No purple anywhere.
-- `TokenCard.jsx`: the source POSTed `/api/token-display/raw-decode` to the AI-DEMO2 BFF; this lab has no BFF, so the decode is a local `localDecode()` (base64url, browser-side; the tokens shown are mock JWTs). The `tokenType` BFF field is dropped (the prop or `deriveTokenCategory` covers it). Import paths adjusted to the flat folder.
-- `claimGlossary.js`, `TokenColorSystem.js`, `JsonHighlight.jsx`, `useDividerDrag.js`: header comment only.
+New code written for this lab (not copied): `brain/src/engine_tools.py` (the lab
+tool-route client), `brain/src/app.py` (entrypoint), `brain/Dockerfile`,
+`brain/README.md`, `server/src/brain.js`, the tool route in `server/src/app.js`,
+and the tests around them.
 
-What the shared items were themselves made from (the shared `README.md` files in AI-DEMO-Standalone say so): `floating-dialog` and `evidence` were ported there from AI-DEMO2 screens (the draggable modal, the sequence/reel diagram and the step detail panel) and restyled to the Ping UI standard; `hop-catalog.json` is teaching text rewritten there with no identifiers. This repo copies from the shared folder, not from AI-DEMO2.
+## CI waiver (owner decision 2026-11-10)
 
-P3 (2026-11-11) WIRED the already-vendored `web/src/components/tokenchain/` files (no re-copy): `TokenCardsPanel.jsx` imports `claimGlossary.js` and `JsonHighlight.jsx` from there; `ChainView.jsx` composes the vendored evidence views (MovieReel, SequenceView, StepDetailPanel). `TokenCardsPanel.jsx`, `ChainView.jsx` and `server/src/evidenceAdapter.js` are lab-own (the act diff and the view composition per the plan's slim rule). Still not copied: the LangChain assistant harness slice.
-
-P5 (2026-11-11): `server/data/handoff.json` — vendored byte for byte from customer-agent-LAB `data/handoff.json` (schema `customer-agent-handoff/1`, the owner routing table); sha256 b02ac00f99b0a249. The `PROXY_PATHS` table in `server/src/usecases.js` is the same allow-list as customer-agent-LAB `web/src/handoff.js` (paths only, no URLs beyond the proxy routes). Every such file starts with `// Ported from AI-DEMO2 <path> @ <commit>; adapted (<what changed>); do not re-copy`.
-
-P5 follow-up (2026-11-11, this change): `server/data/handoff.json` — byte for byte from customer-agent-LAB `data/handoff.json`, source commit `c6547cad1523eeeca0b894248f80633390e89858`, sha256 `b02ac00f99b0a24919a150578a535541ed3b988a0c976d7669760087090c3a7f`, pinned in `server/data/handoff.json.sha256` and checked offline by `server/test/vendoredPins.test.js`. `server/data/proxy-paths.json` — the PROXY_PATHS map from customer-agent-LAB `web/src/handoff.js` (same source commit, 30 app paths, paths only), written as JSON; sha256 `fc429fe90ba19852eaac296c27a57750c1bc477fd0b06a348e3fbb6459bf8bb8`, pinned and checked the same way. `server/src/usecases.js` now loads PROXY_PATHS from that JSON (no change to the map itself). Nothing else copied.
-
-## P10 Real sign-in (2026-11-12)
-- `server/src/realSignin.js` and the e2e's sign-in phase follow the owner-verified pattern of customer-agent-LAB
-  (`server/src/real.js`, `web/src/components/SignInDialog.jsx` — read that repo, same MIT family); trimmed to
-  login-only: no agent token, no token exchange, no gateway leg. AI-DEMO2 code was not copied.
-- `server/test/fakePingone.js` is customer-agent-LAB's fake with its authorize scope check relaxed to the OIDC
-  scopes this lab asks for (login only).
+The lab is Node-26-only, but the brain sidecar is literal Python (LangChain/LangGraph,
+owner-confirmed Option A). Its CI job (`brain`) runs on a GitHub-hosted runner with
+pinned Python 3.12 and pinned package versions; it executes the sidecar's pytest suite
+with a scripted tool-calling ChatModel — no live LLM, no network.

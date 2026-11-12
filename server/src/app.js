@@ -22,11 +22,12 @@ import { createRoster, keyAllows, KNOWN_SCOPES, NhiInputError } from './nhi.js';
 import { mountShelfRoute, shelfInfo } from './shelfLink.js';
 import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.js';
 import { matchTurn } from './assistant.js';
+import { brainSecret, brainConfigured, toolSchemas } from './brain.js';
 import { createWorkspaces, workspaceFrom, serverKey, mintWorkspaceToken, verifyWorkspaceToken, workspaceTokenFingerprint } from './workspaces.js';
 import { createBookings } from './bookings.js';
 import { createRealSignin, RealRefused } from './realSignin.js';
 import { signinConfig } from './realSignin.js';
-import { SCENARIOS } from './policyData.js';
+import { SCENARIOS, TOOLS } from './policyData.js';
 import { seedFor, tokenFor, callArgsFor } from './scenario.js';
 import { toDemoHops, tokenCardsFrom } from './evidenceAdapter.js';
 import { buildDemoHops, buildTokenCards } from './hops.js';
@@ -452,6 +453,56 @@ export function createApp({
     const roster = v.extra?.roster || createRoster();
     res.json({ events: roster.jml.all(), workspace: ws });
   }));
+
+  // ── P2b: the brain sidecar's tool route. Same-origin is not enough here (the sidecar is
+  // a different container sharing the network namespace, so its calls come from loopback and
+  // are same-origin by host): the route demands the per-boot shared secret instead, and it is
+  // mounted only when both AIDEMO_BRAIN_URL and the secret are set. Everything else about the
+  // call is the engine's own path.
+  if (brainConfigured(env)) {
+    const secret = brainSecret(env);
+    const toolGuard = (req, res, next) => {
+      if (req.headers['x-brain-secret'] !== secret) return res.status(401).json({ error: 'brain_secret_required' });
+      next();
+    };
+    api.post('/assistant/tool', express.json({ limit: '8kb' }), toolGuard, (req, res) => {
+      const body = req.body;
+      if (typeof body?.tool !== 'string' || !/^[a-z_]{1,40}$/.test(body.tool) || typeof body?.args !== 'object' || body.args === null) {
+        return res.status(400).json({ error: 'bad_request' });
+      }
+      // An allow-list BEFORE the engine: the engine's gate checks groups/tiers/amounts,
+      // not whether the tool name is one this lab actually has (an invented name would
+      // otherwise sail through as a permit). The model may only call the lab's tools.
+      const KNOWN_TOOLS = new Set(TOOLS.map((t) => t.name));
+      if (!KNOWN_TOOLS.has(body.tool)) {
+        return res.status(400).json({ error: 'unknown_tool', detail: `the brain may only call the lab's own tools (${[...KNOWN_TOOLS].join(', ')})` });
+      }
+      const ws = workspaceFrom(req) || 'brain';
+      const v = workspaces.state(ws);
+      const dir = v.directory || structuredClone(DEFAULT_DIRECTORY);
+      const user = Object.keys(dir)[0] || 'demoUser';
+      const entry = dir[user] || structuredClone(DEFAULT_DIRECTORY.demoUser);
+      const tool = body.tool;
+      const amount = Number.isFinite(Number(body.args.amount)) ? Number(body.args.amount) : null;
+      const token = tokenFor({ user, actor: 'demo-agent', tool });
+      const { verdict, obligation } = decideWithObligation({
+        token, groups: entry.groups, tier: entry.tier, tool, amount,
+        resourceOwner: user, query: String(body.args.query ?? ''), consentGiven: false,
+        receipts: receiptsOf(v), authorizedActors: DEFAULT_ACTORS, audience: AUDIENCE, now: () => Date.now(),
+      });
+      workspaces.record(ws, { tool, decision: verdict.decision, reason: verdict.reason, token, blocked: verdict.code, ucId: 'brain-tool' });
+      const result = verdict.decision === 'PERMIT'
+        ? { result: 'PERMIT', tool, amount }
+        : { result: verdict.decision, code: verdict.code, reason: verdict.reason, obligation: obligation ?? undefined };
+      return res.json({ result, hops: [] });
+    });
+    // The sidecar proxies its /run here for the UI's SSE read; the lab folds nothing: the UI
+    // reads the AG-UI stream directly from the sidecar through this same-origin pass-through.
+    api.post('/assistant/brain-run', toolGuard, () => { /* the sidecar is reached directly; reserved */ });
+    api.get('/assistant/brain', (_req, res) => res.json({ schema: 'brain-info/1', available: true, tools: toolSchemas().map((t) => t.name) }));
+  } else {
+    api.get('/assistant/brain', (_req, res) => res.json({ schema: 'brain-info/1', available: false, reason: 'AIDEMO_BRAIN_URL or the shared secret is unset: the Scripted brain stays' }));
+  }
 
   // ── P2: the one-page dashboard's assistant turn. The Scripted brain matches ONE prompt to
   // ONE handling: an in-app scenario (run through the SAME engine as /api/authorize, seeded
