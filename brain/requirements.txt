@@ -1,0 +1,7 @@
+fastapi==0.162.5
+httpx==0.28.1
+langchain-core==1.8.0
+langchain-openai==1.7.4
+langgraph==1.2.20
+pydantic==2.14.3
+uvicorn==0.54.0
