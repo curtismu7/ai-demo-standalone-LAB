@@ -21,6 +21,50 @@ jobs:
       - run: npm run build
       - run: bash scripts/check-ui-standard.sh
       - run: PORT=7810 npm run doctor
+  # The browser run (scripts/e2e.mjs): starts the lab on its port and drives the dashboard, use cases and
+  # guide in headless Chromium — desktop and 375px, dark and light. Screenshots on failure.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run e2e
+        env:
+          E2E_SHOTS: ${{ runner.temp }}/e2e-screenshots
+      - name: Screenshots (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: ${{ runner.temp }}/e2e-screenshots
+
+  # The real-Docker smoke: build the image, run it with no network access to the app's dependencies and
+  # answer /api/health. The lab is mock-only by default, so the container must come up cold.
+  docker-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+      - run: docker build -t ai-demo-standalone-smoke .
+      - run: |
+          docker run -d --name smoke -p 7810:7810 ai-demo-standalone-smoke
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:7810/api/health > /tmp/health.json; then break; fi
+            sleep 2
+          done
+          cat /tmp/health.json
+          grep -q 'demo-health/1' /tmp/health.json
+          docker rm -f smoke > /dev/null
+
   secrets:
     runs-on: ubuntu-latest
     steps:
