@@ -17,6 +17,19 @@ services:
       # Durable workspace stores + a stable workspace-signing key (set in .env to survive restarts).
       AIDEMOLAB_STATE_DIR: /state
       AIDEMOLAB_SERVER_KEY: ${AIDEMOLAB_SERVER_KEY:-}
+      # Owner-run pass-throughs (empty by default; the values live in .env beside this file and are
+      # NEVER baked into the image): P10 Real sign-in and the Real token exchange. compose auto-loads
+      # .env for interpolation, so these reach the container only when the .env actually sets them.
+      AIDEMOLAB_SIGNIN_PROVIDER: ${AIDEMOLAB_SIGNIN_PROVIDER:-}
+      AIDEMOLAB_SIGNIN_CLIENT_ID: ${AIDEMOLAB_SIGNIN_CLIENT_ID:-}
+      AIDEMOLAB_SIGNIN_CLIENT_SECRET: ${AIDEMOLAB_SIGNIN_CLIENT_SECRET:-}
+      AIDEMOLAB_SIGNIN_USERNAME: ${AIDEMOLAB_SIGNIN_USERNAME:-}
+      AIDEMOLAB_SIGNIN_BASE_URL: ${AIDEMOLAB_SIGNIN_BASE_URL:-}
+      PINGONE_ENVIRONMENT_ID: ${PINGONE_ENVIRONMENT_ID:-}
+      PINGONE_REGION: ${PINGONE_REGION:-}
+      AIDEMOLAB_REAL_URL: ${AIDEMOLAB_REAL_URL:-}
+      AIDEMOLAB_REAL_CLIENT_ID: ${AIDEMOLAB_REAL_CLIENT_ID:-}
+      AIDEMOLAB_REAL_CLIENT_SECRET: ${AIDEMOLAB_REAL_CLIENT_SECRET:-}
     read_only: true
     volumes:
       - ws-state:/state
