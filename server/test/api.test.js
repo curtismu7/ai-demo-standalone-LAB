@@ -21,7 +21,9 @@ test('health is GET only; unknown API paths are 404 JSON; non-loopback Host refu
 
 test('GET /api/info: mock and simulated; no hosted field (hosted mode is not a thing for standalone labs)', async () => {
   await withServer(async (url) => {
-    assert.deepEqual(await (await fetch(`${url}/api/info`)).json(), { mode: 'mock', source: 'mock', simulated: true, realAvailable: false });
+    const info = await (await fetch(`${url}/api/info`)).json();
+    assert.deepEqual({ ...info, version: undefined }, { mode: 'mock', source: 'mock', simulated: true, realAvailable: false, version: undefined });
+    assert.equal(typeof info.version, 'string');
     assert.match((await (await fetch(`${url}/api/scenarios`)).json()).banner, /^SIMULATED/);
   });
 });

@@ -54,9 +54,8 @@ export default function App() {
   const [resetMsg, setResetMsg] = useState("");
 
   useEffect(() => { getJson("/api/scenarios").then((j) => { setStory(j); setError(null); }, (e) => setError(e.message)); }, []);
-  const hashGuard = { handled: false };
   useEffect(() => {
-    const on = () => { if (hashGuard.handled) return; hashGuard.handled = true; const p = hashRoute(); setRoute((r) => (p.route === r ? r : p.route)); setRequested((v) => (p.scenario === v ? v : p.scenario)); };
+    const on = () => { const p = hashRoute(); setRoute((r) => (p.route === r ? r : p.route)); setRequested((v) => (p.scenario === v ? v : p.scenario)); };
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
   }, []);
