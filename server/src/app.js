@@ -23,6 +23,7 @@ import { mountShelfRoute, shelfInfo } from './shelfLink.js';
 import { explain, lessonFor, buildHops, newTrace, productCast } from './explain.js';
 import { matchTurn } from './assistant.js';
 import { createWorkspaces, workspaceFrom, serverKey, mintWorkspaceToken, verifyWorkspaceToken, workspaceTokenFingerprint } from './workspaces.js';
+import { createBookings } from './bookings.js';
 import { SCENARIOS } from './policyData.js';
 import { seedFor, tokenFor, callArgsFor } from './scenario.js';
 import { toDemoHops, tokenCardsFrom } from './evidenceAdapter.js';
@@ -34,7 +35,7 @@ const WEB_DIST = process.env.WEB_DIST || path.resolve(HERE, '../../web/dist');
 const CONFIG = process.env.CUSTOMER_CONFIG || path.resolve(HERE, '../../customer.config.json');
 
 // Per-workspace stores beside the directory: challenges + receipts (hitl.js), the A2A specialist registry.
-const newExtra = () => ({ receipts: createReceipts(), registry: createRegistry({}), generalistToken: null });
+const newExtra = () => ({ receipts: createReceipts(), registry: createRegistry({}), generalistToken: null, bookings: createBookings() });
 
 export function createApp({
   health = createHealth(), configFile = CONFIG,
@@ -102,6 +103,13 @@ export function createApp({
     v.extra = v.extra || newExtra();
     v.extra.receipts = v.extra.receipts || createReceipts();
     return v.extra.receipts;
+  };
+
+  // The per-workspace booking system (created on first use; injected workspaces may lack it).
+  const bookingsOf = (v) => {
+    v.extra = v.extra || newExtra();
+    v.extra.bookings = v.extra.bookings || createBookings();
+    return v.extra.bookings;
   };
 
   // Presenter identity: the caller's own session nonce (random per browser tab, NOT a
@@ -494,6 +502,28 @@ export function createApp({
   }));
 
   api.get('/runs', withWorkspace((ws, _req, res) => res.json(workspaces.runs(ws))));
+  // P9: the mock airline booking system. Per-workspace, integer cents, idempotent on
+  // the client's key: replaying the same key returns the SAME booking, never a second charge.
+  api.get('/bookings', withWorkspace((ws, _req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ schema: 'bookings/1', ...bookingsOf(workspaces.state(ws)).state() });
+  }));
+
+  api.post('/bookings/book', withWorkspace((ws, req, res) => {
+    const { fareId, key } = req.body ?? {};
+    const r = bookingsOf(workspaces.state(ws)).book({ fareId, key });
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.set('Cache-Control', 'no-store');
+    res.json({ schema: 'bookings/1', replay: r.replay, ...bookingsOf(workspaces.state(ws)).state() });
+  }));
+
+  api.post('/bookings/cancel', withWorkspace((ws, req, res) => {
+    const r = bookingsOf(workspaces.state(ws)).cancel({ id: req.body?.id });
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.set('Cache-Control', 'no-store');
+    res.json({ schema: 'bookings/1', ...bookingsOf(workspaces.state(ws)).state() });
+  }));
+
   api.post('/reset', withWorkspace((ws, _req, res) => {
     workspaces.resetWorkspace(ws);
     res.json({ reset: 'ok', workspace: ws });

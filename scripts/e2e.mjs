@@ -100,6 +100,29 @@ try {
     check(narrowed > 0 && narrowed < launchButtons, `${tag} search narrows (${narrowed} of ${launchButtons})`);
     await page.screenshot({ path: path.join(shots, `use-cases-${scheme}-${width}.png`), fullPage: true });
 
+    // Airline page: hero, fare board, a booking round trip, Focus|Float, the booking form dialog
+    await page.evaluate(() => { location.hash = '#/airline'; });
+    await page.getByTestId('airline-balance').waitFor({ timeout: 10000 });
+    check(await page.getByTestId('fare-board').count() === 1, `${tag} the fare board renders`);
+    const balBefore = await page.getByTestId('airline-balance').innerText();
+    await page.getByTestId('book-den-oslo').click();
+    await page.waitForFunction((prev) => document.querySelector('[data-testid="airline-balance"]')?.innerText !== prev, balBefore, { timeout: 15000 });
+    const balAfter = await page.getByTestId('airline-balance').innerText();
+    check(balAfter !== balBefore, `${tag} booking debits the balance (${balBefore} -> ${balAfter})`);
+    check(await page.getByTestId('itineraries').count() === 1, `${tag} the itinerary list renders`);
+    await page.getByTestId('open-booking-form').click();
+    check(await page.getByTestId('booking-form-dialog').waitFor({ timeout: 5000 }).then(() => true).catch(() => false), `${tag} the booking form opens in the FloatingDialog`);
+    await page.keyboard.press('Escape');
+    await page.getByTestId('mode-float').click();
+    check(await page.getByTestId('airline-float').count() === 1, `${tag} Float mode wraps the desk in the floating panel`);
+    // close the desk by its own title-bar Close button (at 375px the bottom-docked sheet covers the page's
+    // own mode switch, so the Close button is the designed way back — and it works at every width)
+    await page.locator('[data-testid="airline-float"] button[aria-label="Close"]').first().click();
+    await page.getByTestId('airline-float').waitFor({ state: 'hidden', timeout: 5000 });
+    check(await page.getByTestId('fare-board').isVisible(), `${tag} closing the floating desk returns the page body`);
+    check(await page.getByTestId('airline-float').count() === 0, `${tag} Focus mode returns the desk to the page`);
+    await page.screenshot({ path: path.join(shots, `airline-${scheme}-${width}.png`), fullPage: true });
+
     // guide page: one h1
     await page.evaluate(() => { location.hash = '#/guide'; });
     await page.waitForTimeout(500);
