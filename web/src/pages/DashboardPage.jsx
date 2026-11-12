@@ -61,7 +61,8 @@ const SEEDS = {
   demoUser: { groups: ["privileged"], tier: "Standard" },
 };
 
-/** Jump tiles: hrefs + aria-current, smooth scroll. No Previous/Next anywhere. */
+/** Jump tiles: hrefs + aria-current. Scrolling honours prefers-reduced-motion: smooth only
+ *  when the media query says motion is OK (the native anchor jump stays instant otherwise). */
 export function StepTiles({ active, idPrefix }) {
   const steps = [
     { n: 1, id: "signin", b: "Sign in & ask", small: "PingOne, the prompt" },
@@ -70,11 +71,20 @@ export function StepTiles({ active, idPrefix }) {
     { n: 4, id: "products", b: "Products & why", small: "who enforced what" },
     { n: 5, id: "talk", b: "Talk track", small: "how to tell it" },
   ];
+  const onClick = (e, id) => {
+    const el = document.getElementById(`${idPrefix}-${id}`);
+    if (!el) return; // no target: the browser's default anchor handling (and the test DOM)
+    e.preventDefault();
+    const reduce = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    try { window.history.replaceState(null, "", `#${idPrefix}-${id}`); } catch { /* ignore */ }
+  };
   return (
     <nav className="stepper" role="navigation" aria-label="Jump to a section" data-testid="step-tiles">
       {steps.map((s) => (
         <a key={s.id} className={`step${active === s.id ? " active" : ""}`} href={`#${idPrefix}-${s.id}`}
-          aria-current={active === s.id ? "step" : undefined} data-testid={`step-${s.id}`}>
+          aria-current={active === s.id ? "step" : undefined} data-testid={`step-${s.id}`}
+          onClick={(e) => onClick(e, s.id)}>
           <span className="n" aria-hidden="true">{s.n}</span><b>{s.b}</b><small>{s.small}</small>
         </a>
       ))}
@@ -106,12 +116,14 @@ export function AssistantSection({ transcript, run, onSend, busy, fail, onChip }
       </div>
       <div className="panel direct-run" data-testid="direct-run">
         <b>Direct dashboard run</b>
-        {run ? (
-          <p data-testid="direct-run-body">
-            {visible(run.ucId || "")} · {visible(run.scenarioId || "")} —{" "}
-            <span className="outcome-chip"><span className={chipClass}>{visible(run.decision)}</span>{" "}{visible(run.reason || "")}</span>
-          </p>
-        ) : <p className="muted" data-testid="direct-run-empty">Run a prompt (or a chip) and the run lands here.</p>}
+        <div aria-live="polite" data-testid="direct-run-live">
+          {run ? (
+            <p data-testid="direct-run-body">
+              {visible(run.ucId || "")} · {visible(run.scenarioId || "")} —{" "}
+              <span className="outcome-chip"><span className={chipClass}>{visible(run.decision)}</span>{" "}{visible(run.reason || "")}</span>
+            </p>
+          ) : <p className="muted" data-testid="direct-run-empty">Run a prompt (or a chip) and the run lands here.</p>}
+        </div>
       </div>
       <div className="transcript" data-testid="transcript" aria-live="polite">
         {transcript.map((t, i) => (
@@ -243,8 +255,12 @@ export default function DashboardPage({ story, requestedUc }) {
   const [fail, setFail] = useState(null);
   const [active, setActive] = useState("signin");
   const [qcOpen, setQcOpen] = useState(false);
+  const qcOpenerRef = useRef(null);
   const [cfg, setCfg] = useState(() => readConfig());
   const onCfg = useCallback((key, value) => setCfg((c) => ({ ...c, [key]: value })), []);
+  // A11y: on close, focus returns to the "Demo controls" opener (FloatingDialog restores to
+  // the element focused before it opened; the ref keeps that the opener button, always).
+  const closeQc = useCallback(() => { setQcOpen(false); requestAnimationFrame(() => qcOpenerRef.current?.focus()); }, []);
 
   // The Real PingOne exchange panel is active only when Real mode is configured (AIDEMOLAB_REAL_*).
   useEffect(() => { getInfo().then((i) => setRealAvailable(Boolean(i?.realAvailable))).catch(() => setRealAvailable(false)); }, []);
@@ -299,7 +315,7 @@ export default function DashboardPage({ story, requestedUc }) {
       <p className="muted">Ask the airline agent, watch each authorization step, and see the evidence behind every answer — one step at a time.</p>
       <StepTiles active={active} idPrefix="dash" />
       <div className="dash-qc-row">
-        <button type="button" className="dash-qc-btn" onClick={() => setQcOpen(true)} data-testid="qc-open">Demo controls</button>
+        <button type="button" className="dash-qc-btn" onClick={() => setQcOpen(true)} ref={qcOpenerRef} data-testid="qc-open">Demo controls</button>
       </div>
       <AssistantSection transcript={transcript} run={run} onSend={send} onChip={onChip} busy={busy} fail={fail} />
       <PlanSection run={run} />
@@ -308,7 +324,7 @@ export default function DashboardPage({ story, requestedUc }) {
       <ProductsSection run={run} />
       <TalkTrackSection run={run} />
       <p className="muted">Run a real use case from <a href="#/use-cases">Use Cases</a> to fill these sections — including resolving an obligation (consent, MFA, CIBA) with its receipt.</p>
-      <QuickConfigDialog isOpen={qcOpen} onClose={() => setQcOpen(false)} config={cfg} onChange={onCfg} />
+      <QuickConfigDialog isOpen={qcOpen} onClose={closeQc} config={cfg} onChange={onCfg} />
     </div>
   );
 }

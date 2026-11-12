@@ -5,7 +5,7 @@
   border: 1px solid var(--line, #d8d4cc); background: var(--panel, #fff); border-radius: 999px;
   padding: 3px 12px; font-size: 0.8rem; cursor: pointer;
 }
-.chainv__bar .seg button.on { background: var(--accent, #b91c1c); color: #fff; border-color: var(--accent, #b91c1c); }
+.chainv__bar .seg button.on { background: var(--accent, #b91c1c); color: var(--on-accent, #fff); border-color: var(--accent, #b91c1c); }
 .chainv__skip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--muted, #6a675f); }
 .chainv__steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .chainv__steps button {
