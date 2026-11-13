@@ -1,19 +1,21 @@
-// shelf-link service: server side. Every -LAB app mounts GET /api/shelf, which returns the
-// shelf (launcher) URL from the environment: SHELF_URL, or the settings file that
-// STANDALONE_ENV points at (key SHELF_URL). Never ~/Development/.env — per-repo or
-// per-service env files only. No hardcoded host here (hygiene: repo text carries only
-// .invalid/.example names): unconfigured means shelfUrl null and the web component
-// renders nothing.
+// shelf-link service: server side. Every -LAB app mounts GET /api/shelf, which returns
+// the shelf (launcher) URL saved by scripts/bootstrap.sh in the one shared settings file
+// (~/Development/.env, or STANDALONE_ENV, key SHELF_URL). No hardcoded host here (hygiene:
+// repo text carries only .invalid/.example names): unconfigured means shelfUrl null and
+// the web component renders nothing.
 import fs from 'node:fs';
 
 function readShelfUrl(env = process.env) {
   if (env.SHELF_URL) return String(env.SHELF_URL).trim().replace(/^["']|["']$/g, '').replace(/\/+$/, '');
-  if (env.STANDALONE_ENV) {
+  const candidates = [];
+  if (env.STANDALONE_ENV) candidates.push(env.STANDALONE_ENV);
+  candidates.push(`${env.HOME || ''}/Development/.env`);
+  for (const f of candidates) {
     try {
-      const text = fs.readFileSync(env.STANDALONE_ENV, 'utf8');
+      const text = fs.readFileSync(f, 'utf8');
       const m = text.split('\n').map((l) => l.match(/^SHELF_URL=(.*)$/)).find(Boolean);
       if (m) return m[1].trim().replace(/^["']|["']$/g, '').replace(/\/+$/, '');
-    } catch { /* configured file missing: stay null */ }
+    } catch { /* next candidate */ }
   }
   return null;
 }

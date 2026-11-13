@@ -30,7 +30,7 @@ export default function SignInDialog({ isOpen, username, provider, onClose, onSi
     pwRef.current?.focus();
   };
   return (
-    <FloatingDialog isOpen={isOpen} onClose={() => { setPassword(""); onClose?.(); }} title="Sign in" ariaLabel="Sign in" defaultWidth={420} defaultHeight={430} disablePopOut testId="signin-dialog">
+    <FloatingDialog isOpen={isOpen} onClose={() => { setPassword(""); onClose?.(); }} title="Sign in" ariaLabel="Sign in" defaultWidth={420} defaultHeight={430} testId="signin-dialog">
       <form className="stack" onSubmit={submit} data-testid="signin-form">
         <p className="muted" data-testid="signin-method">
           Real sign-in with {provider === "pingfederate" ? "PingFederate" : "PingOne"}, <strong>pi.flow</strong>: this lab's
