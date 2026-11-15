@@ -171,12 +171,21 @@ try {
     await page.getByTestId('signin-dialog').waitFor({ timeout: 5000 });
     check(true, `${tag} the Sign in modal opens`);
     check((await page.getByTestId('signin-username').inputValue()) === DEMO_USERNAME, `${tag} the username is prefilled from settings`);
+    const geo = await page.evaluate(() => {
+      const box = (el) => { const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom }; };
+      const dlg = document.querySelector('[data-testid="signin-dialog"]');
+      return { body: box(dlg.querySelector('.fd-body')), panel: box(dlg), pw: box(dlg.querySelector('[data-testid="signin-password"]')), submit: box(dlg.querySelector('[data-testid="signin-submit"]')), vh: window.innerHeight };
+    });
+    check(geo.pw.top >= geo.body.top && geo.pw.bottom <= geo.body.bottom, `${tag} the Password field is fully inside the modal body, not clipped`);
+    check(geo.pw.bottom <= geo.submit.top && geo.submit.top >= geo.body.bottom && geo.submit.bottom <= geo.panel.bottom && geo.panel.bottom <= geo.vh, `${tag} the Sign in button sits below the Password field and the whole modal is in the window`);
     // the wrong password first: a fixed error, no echo
     await page.getByTestId('signin-password').fill('wrong-password-1');
     await page.getByTestId('signin-submit').click();
     await page.getByTestId('signin-error').waitFor({ timeout: 15000 });
     const errText = await page.getByTestId('signin-error').innerText();
     check(!errText.includes('wrong-password-1'), `${tag} a refused sign-in never echoes the password`);
+    const geo2 = await page.evaluate(() => { const r = (sel) => document.querySelector(sel).getBoundingClientRect(); const d = r('[data-testid="signin-dialog"]'); const b = r('[data-testid="signin-submit"]'); return { dlgBottom: d.bottom, subTop: b.top, subBottom: b.bottom, vh: window.innerHeight }; });
+    check(geo2.subTop >= 0 && geo2.subBottom <= geo2.vh && geo2.dlgBottom <= geo2.vh, `${tag} with the error line showing the Sign in button and the whole modal are still inside the window`);
     // the right password: the user and the REAL token
     await page.getByTestId('signin-password').fill(DEMO_PASSWORD);
     await page.getByTestId('signin-submit').click();
