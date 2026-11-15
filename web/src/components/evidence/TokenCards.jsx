@@ -1,3 +1,4 @@
+import Json from "../Json";
 // P3 (lab-own): the run's tokens as raw, MOCK-labelled cards. No decoding endpoint —
 // the server already sends plain claim objects on the run (tokens: TokenCard[]). The
 // delegated token carries a diff view: what was added (act), rebound (aud) and
@@ -24,7 +25,7 @@ export default function TokenCards({ tokens = [] }) {
         <div key={t.id} className="panel tc-card" data-testid={`token-card-${t.id}`}>
           <h3>{t.title} <span className="tag tag--warn" title="A mock value produced by this lab's engine">MOCK</span></h3>
           <p className="muted">{t.role}</p>
-          <pre className="json" data-testid={`token-claims-${t.id}`}>{JSON.stringify(t.claims, null, 2)}</pre>
+          <Json value={t.claims} label={`${t.title} claims`} testId={`token-claims-${t.id}`} />
           {t.diff && <TokenDiff diff={t.diff} />}
         </div>
       ))}

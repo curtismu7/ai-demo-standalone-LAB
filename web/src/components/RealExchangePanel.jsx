@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { realExchange } from "../api";
+import Json from "./Json";
 import "./RealExchangePanel.css";
 
 const JWT_TYPE = "urn:ietf:params:oauth:token-type:jwt";
@@ -17,7 +18,7 @@ function IssuedView({ issued }) {
           {Object.entries(claims).map(([k, v]) => (
             <tr key={k} className={k === "act" ? "rx-act" : undefined}>
               <td><code>{k}</code></td>
-              <td><code>{typeof v === "string" ? v : JSON.stringify(v)}</code></td>
+              <td>{typeof v === "object" && v !== null ? <Json value={v} label={`${k} claim`} /> : <code>{String(v)}</code>}</td>
             </tr>
           ))}
         </tbody>
