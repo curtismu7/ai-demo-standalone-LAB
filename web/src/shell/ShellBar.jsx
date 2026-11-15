@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { setMode, getInfo } from "../api";
 import TopMenu, { applyFontSize } from "../top-menu/TopMenu.jsx";
+import VerifyMark from "../components/VerifyMark.jsx";
 
 const ROUTES = [
   { id: "dashboard", href: "#/dashboard", label: "Dashboard" },
@@ -67,6 +68,7 @@ export default function ShellBar({ route, onReset, presenter = false, onTogglePr
           help={{ href: "https://github.com/curtismu7/ai-demo-standalone-LAB#readme" }}
           version={null}
           onReset={onReset}
+          extra={<VerifyMark id="ai-demo-standalone" />}
         >
           {children}
         </TopMenu>
