@@ -3,11 +3,11 @@ import "./TokenCardsPanel.css";
 // Lab-own token cards (P3): the plan's slim rule keeps only the token-card view, so this is
 // written for the lab's `tokens` payload ({ id, title, role, mock, claims, diff }) instead of
 // porting AI-DEMO2's events-shaped TokenCards. Claim tooltips come from the vendored
-// CLAIM_GLOSSARY (components/tokenchain/claimGlossary.js); the pretty JSON viewer is the vendored
-// JsonHighlight. Tokens are shown RAW and labelled MOCK: the mint is the lab's own, there are
+// CLAIM_GLOSSARY (components/tokenchain/claimGlossary.js); every JSON view is the shared JsonPane
+// (components/Json, Rule 24). Tokens are shown RAW and labelled MOCK: the mint is the lab's own, there are
 // no real secrets anywhere. The act diff — act added, aud rebound — is lab-own per the plan.
 import { CLAIM_GLOSSARY } from "../components/tokenchain/claimGlossary.js";
-import JsonHighlight from "../components/tokenchain/JsonHighlight.jsx";
+import Json from "./Json";
 
 const visible = (v) => (v == null || v === "" ? "—" : String(v));
 
@@ -19,7 +19,7 @@ function Claims({ claims }) {
       {entries.map(([k, v]) => (
         <div key={k}>
           <dt title={CLAIM_GLOSSARY[k] || undefined}>{k}</dt>
-          <dd>{typeof v === "object" ? JSON.stringify(v) : visible(v)}</dd>
+          <dd>{typeof v === "object" ? <Json value={v} label={`${k} claim`} /> : visible(v)}</dd>
         </div>
       ))}
     </dl>
@@ -55,7 +55,7 @@ export default function TokenCardsPanel({ tokens }) {
           <Claims claims={t.claims} />
           <details className="tcp__raw">
             <summary>Raw claims (JSON)</summary>
-            <pre className="jh-dark"><JsonHighlight value={t.claims} /></pre>
+            <Json value={t.claims} label={`${t.title} claims`} />
           </details>
         </article>
       ))}

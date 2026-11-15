@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSignin, postSignout } from "../api";
 import SignInDialog from "./SignInDialog.jsx";
+import Json from "./Json";
 
 export default function AccountChip() {
   const [info, setState] = useState(null);
@@ -35,10 +36,10 @@ export default function AccountChip() {
             {showToken ? "Hide token" : "Show REAL token"}
           </button>
           {showToken && tokens.map((t) => (
-            <pre key={t.label} className="token-raw" data-testid="real-token" aria-label="REAL access token">
-              {"REAL\n"}
-              {t.raw}
-            </pre>
+            <div key={t.label} className="token-raw" data-testid="real-token">
+              <b>REAL</b>
+              <Json value={t.raw} label="REAL access token" />
+            </div>
           ))}
           <button type="button" className="mini" onClick={signOut} data-testid="signout">Sign out</button>
         </>

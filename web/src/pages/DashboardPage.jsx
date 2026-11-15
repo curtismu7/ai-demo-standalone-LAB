@@ -151,7 +151,7 @@ export function PlanSection({ run, brainUsed }) {
     <section className="panel" id="dash-plan" aria-labelledby="dash-plan-h" data-testid="plan-section">
       <h2 id="dash-plan-h">Agent &amp; tools <span className="tag">Agent</span></h2>
       <p data-testid="plan-line">The agent planned one tool call: <code>{visible(run.tool)}</code> — brain: <b data-testid="brain-label">{brainUsed === "langgraph" ? "LangGraph (gpt-oss-20b)" : "Scripted"}</b></p>
-      <Json value={{ tool: run.tool, args, decision: run.decision, code: run.code ?? null }} label="The tool-call plan" />
+      <Json value={{ tool: run.tool, args, decision: run.decision, code: run.code ?? null }} label="The tool-call plan" hot={["tool", "amount", "code"]} />
       <p className="muted" data-testid="token-exchange-line">Token exchange (RFC 8693): the delegated token carries <code>sub={visible(run.user)}</code>, <code>act={"{ sub: "}{visible(run.act?.sub || "(none)")}"}</code> — the consent exchange is the only place <code>act</code> is minted.</p>
     </section>
   );
