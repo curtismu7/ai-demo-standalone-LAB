@@ -10,12 +10,15 @@ import { deriveTokenCategory, TokenColorDot } from './TokenColorSystem';
 import { CLAIM_GLOSSARY } from './claimGlossary';
 
 // LAB ADJUSTMENT: the source POSTed `/api/token-display/raw-decode` to the AI-DEMO2 BFF.
-// This lab has no BFF; decode locally in the browser (the tokens shown here are mock JWTs).
+// This lab has no BFF; decode with the shared pane's decoder (Rule 24b: one decode module, never hand-rolled).
+import { decodeSegment } from '../JsonPane';
 function localDecode(jwt) {
   const parts = String(jwt).split('.');
   if (parts.length < 2) throw new Error('not a JWT');
-  const b64url = (s) => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/')))));
-  return { header: b64url(parts[0]), payload: b64url(parts[1]) };
+  const header = decodeSegment(parts[0]);
+  const payload = decodeSegment(parts[1]);
+  if (!header || !payload) throw new Error('not a decodable JWT');
+  return { header, payload };
 }
 
 const IDENTITY_CLAIMS = ['sub', 'aud', 'iss', 'act', 'may_act', 'env', 'org'];
