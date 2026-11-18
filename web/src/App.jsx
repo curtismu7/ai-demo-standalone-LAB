@@ -53,6 +53,7 @@ export default function App() {
     setRequested(returned.uc);
   }, []); // once, on load
   const [presenter, setPresenter] = useState(false);
+  const [talkOpen, setTalkOpen] = useState(false);
   const [resetSignal, setResetSignal] = useState(0);
   const [resetMsg, setResetMsg] = useState("");
 
@@ -90,7 +91,7 @@ export default function App() {
   return (
     <div className={`app${presenter ? " app--presenter" : ""}`}>
       <a className="skip" href="#main">Skip to content</a>
-      <ShellBar route={route} onReset={reset} presenter={presenter} onTogglePresenter={() => setPresenter((v) => !v)}>
+      <ShellBar route={route} onReset={reset} presenter={presenter} onTogglePresenter={() => setPresenter((v) => !v)} talkTrack={{ active: talkOpen, onToggle: () => setTalkOpen((v) => !v), talk: story?.talkTrack ?? [] }}>
         <ReturnLink app="ai-demo-standalone" variant="header" />
       </ShellBar>
       <div className="account-row"><AccountChip /></div>
