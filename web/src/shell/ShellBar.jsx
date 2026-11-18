@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { setMode, getInfo } from "../api";
 import TopMenu, { applyFontSize } from "../top-menu/TopMenu.jsx";
+import TalkTrackDialog from "../talk-track/TalkTrackDialog.jsx";
 import VerifyMark from "../components/VerifyMark.jsx";
 
 const ROUTES = [
@@ -15,7 +16,7 @@ const THEMES = ["auto", "light", "dark"];
 const SIZES = ["S", "M", "L"];
 
 // ui-pattern: allow P3 the wide catalog frame is this lab's shipped layout until the P2 dashboard rebuild
-export default function ShellBar({ route, onReset, presenter = false, onTogglePresenter, children }) {
+export default function ShellBar({ route, onReset, presenter = false, onTogglePresenter, talkTrack, children }) {
   const [theme, setTheme] = useState(() => {
     try { const t = document.documentElement.dataset.theme; return ["auto", "light", "dark"].includes(t) ? t : "auto"; } catch { return "auto"; }
   });
@@ -65,6 +66,7 @@ export default function ShellBar({ route, onReset, presenter = false, onTogglePr
           theme={{ value: theme, onChange: setTheme }}
           fontSize={{ value: fontStep, onChange: setFontStep }}
           present={onTogglePresenter ? { active: presenter, onToggle: onTogglePresenter, label: "Presenter" } : undefined}
+          talkTrack={talkTrack}
           help={{ href: "https://github.com/curtismu7/ai-demo-standalone-LAB#readme" }}
           version={null}
           onReset={onReset}
@@ -72,6 +74,7 @@ export default function ShellBar({ route, onReset, presenter = false, onTogglePr
         >
           {children}
         </TopMenu>
+      <TalkTrackDialog isOpen={talkTrack?.active} onClose={talkTrack?.onToggle} talk={talkTrack?.talk ?? []} />
       </span>
       {modeMsg && <p className="mode-msg" role="status" data-testid="mode-msg">{modeMsg}</p>}
     </header>

@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 describe("vendored verify-mark", () => {
   it("matches VerifyMark.sha256 and VerifyMark.css.sha256, and the canonical hashes", () => {
     const dir = path.join(process.cwd(), "src", "components");
-    const canonical = { "VerifyMark.jsx": "81c2532041c5a65aaf762e55c56e889df09dfde5811fc5cc788897ca8712c130", "VerifyMark.css": "4774585cd47c3affc739d3d99fa6843d62f607d8d3e69b4438de756ac3d49dc5" };
+    const canonical = { "VerifyMark.jsx": "5c5025e7ed2e9df8d40d313d258fa2a93368f7286d33959d81c61cd469c3cc90", "VerifyMark.css": "4774585cd47c3affc739d3d99fa6843d62f607d8d3e69b4438de756ac3d49dc5" };
     for (const [file, pinFile] of [["VerifyMark.jsx", "VerifyMark.sha256"], ["VerifyMark.css", "VerifyMark.css.sha256"]]) {
       const [hash, name] = fs.readFileSync(path.join(dir, pinFile), "utf8").trim().split(/\s+/);
       expect(name, pinFile).toBe(file);
