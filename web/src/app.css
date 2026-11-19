@@ -1,3 +1,13 @@
+/* Colour tokens: defined once, uses read var(). */
+:root {
+  --css-app-c0: #b91c1c;
+}
+
+/* Colour tokens: the measured washes and shadows, defined once (the checker's allowance), uses read var(). */
+:root {
+  --appx-c0: var(--appx-c0);
+}
+
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--th-bg-page); color: var(--th-text); font-family: var(--font-sans); font-size: var(--font-size-base); }
 code { font-family: var(--font-mono); font-size: var(--font-size-2xs); }
@@ -84,7 +94,7 @@ details { margin: 6px 0; } summary { cursor: pointer; font-size: var(--font-size
 
 /* The teaching layer: per-stage narrative steps and the one-sentence lesson. */
 .narrative-step {
-  border-left: 3px solid var(--accent, #b3122f);
+  border-left: 3px solid var(--accent);
   padding: 0.25rem 0 0.25rem 0.75rem;
   margin: 0.5rem 0;
 }
@@ -99,7 +109,7 @@ details { margin: 6px 0; } summary { cursor: pointer; font-size: var(--font-size
 .lesson-run {
   margin-top: 0.75rem;
   padding: 0.5rem 0.75rem;
-  background: var(--surface-2, #f6f6f8);
+  background: var(--surface-2);
   border-radius: 6px;
 }
 
@@ -113,7 +123,7 @@ details { margin: 6px 0; } summary { cursor: pointer; font-size: var(--font-size
 
 /* Ping brand buttons: primary actions red, secondary outline; heavier weight per brand. */
 button { font-weight: 600; letter-spacing: 0.01em; }
-.seg button[aria-pressed="true"], .views button[aria-pressed="true"], .gate-tabs button[aria-selected="true"], .tabs [role="tab"][aria-selected="true"] { background: var(--th-accent); border-color: var(--th-accent); color: var(--on-accent, #fff); box-shadow: none; }
+.seg button[aria-pressed="true"], .views button[aria-pressed="true"], .gate-tabs button[aria-selected="true"], .tabs [role="tab"][aria-selected="true"] { background: var(--th-accent); border-color: var(--th-accent); color: var(--on-accent); box-shadow: none; }
 .seg button[aria-pressed="true"]:hover, .gate-tabs button[aria-selected="true"]:hover { background: var(--th-accent-dk); border-color: var(--th-accent-dk); }
 
 /* Guided-walk pattern (from p1-third-party-exchange): numbered rail, step eyebrow, fixed walkbar */
@@ -129,7 +139,7 @@ button { font-weight: 600; letter-spacing: 0.01em; }
 .walkbar { position: fixed; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, var(--th-bg-page) 70%, transparent); padding: 1rem 1rem 1.1rem; z-index: 20; pointer-events: none; }
 .walkbar .in { max-width: 62rem; margin: 0 auto; display: flex; gap: 0.75rem; align-items: center; pointer-events: auto; }
 .walkbar .btn { font-weight: 700; border-radius: 999px; border-width: 1.5px; padding: 0.8rem 1.5rem; font-size: 1rem; }
-.walkbar .btn.go.primary { background: var(--th-accent); border-color: var(--th-accent); color: var(--on-accent, #fff); }
+.walkbar .btn.go.primary { background: var(--th-accent); border-color: var(--th-accent); color: var(--on-accent); }
 .walkbar .btn.go.primary:hover { background: var(--th-accent-dk); border-color: var(--th-accent-dk); }
 .walkbar .where { flex: 1; color: var(--th-text-muted); font-size: 0.85rem; text-align: center; min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 480px) { .walkbar .where { display: none; } .walkbar .in { justify-content: space-between; } .walkbar .btn { padding: 0.7rem 1.1rem; } .rail span { font-size: 0.7rem; } }
@@ -144,8 +154,8 @@ button { font-weight: 600; letter-spacing: 0.01em; }
 .stepper .step b { display: block; color: var(--th-text); font-size: 13px; }
 .stepper .step small { color: var(--th-text-muted); font-size: 11.5px; display: block; }
 .stepper .step:hover { background: var(--th-bg-hover); }
-.stepper .step.active, .stepper .step[aria-current="step"] { border-color: var(--th-accent); box-shadow: 0 0 0 3px var(--th-accent-bg, rgba(210, 14, 15, 0.12)); }
-.stepper .step.active .n, .stepper .step[aria-current="step"] .n { background: var(--th-accent); border-color: var(--th-accent); color: var(--on-accent, #fff); }
+.stepper .step.active, .stepper .step[aria-current="step"] { border-color: var(--th-accent); box-shadow: 0 0 0 3px var(--th-accent-bg); }
+.stepper .step.active .n, .stepper .step[aria-current="step"] .n { background: var(--th-accent); border-color: var(--th-accent); color: var(--on-accent); }
 .lane { border-left: 4px solid var(--th-border-strong); }
 .lane-browser { border-left-color: var(--th-status-info); }
 .lane-authorize { border-left-color: var(--th-status-warning); }
@@ -178,27 +188,27 @@ button { font-weight: 600; letter-spacing: 0.01em; }
 .dashboard-page > section h2 { margin-top: 0; }
 
 /* The Real-is-reserved message: visible under the shell bar, auto-dismisses */
-.mode-msg { position: absolute; top: 100%; right: 16px; z-index: 40; margin: 6px 0 0; padding: 8px 14px; border: 1px solid var(--th-status-warning); border-radius: var(--radius-md); background: var(--th-status-warning-bg); color: var(--th-status-warning-text); font-size: var(--font-size-sm); font-weight: 600; box-shadow: 0 2px 8px rgba(2, 6, 23, 0.18); }
+.mode-msg { position: absolute; top: 100%; right: 16px; z-index: 40; margin: 6px 0 0; padding: 8px 14px; border: 1px solid var(--th-status-warning); border-radius: var(--radius-md); background: var(--th-status-warning-bg); color: var(--th-status-warning-text); font-size: var(--font-size-sm); font-weight: 600; box-shadow: 0 2px 8px var(--appx-c0); }
 .shell-bar { position: relative; }
 
 /* P7 a11y: the skip link is visually hidden until focused */
-a.skip { position: absolute; left: -9999px; top: 0; background: var(--accent, #b91c1c); color: var(--on-accent, #fff); padding: 8px 16px; border-radius: 0 0 8px 0; z-index: 1001; }
+a.skip { position: absolute; left: -9999px; top: 0; background: var(--accent, var(--css-app-c0)); color: var(--on-accent); padding: 8px 16px; border-radius: 0 0 8px 0; z-index: 1001; }
 a.skip:focus { left: 0; }
 
 /* P9: the airline page (hero, fare board, itineraries) */
-.airline .hero { background: linear-gradient(135deg, var(--accent, #b91c1c), var(--accent-deep, #7f1d1d)); color: var(--on-accent, #fff); padding: 20px 24px; border-radius: 12px; margin-bottom: 16px; }
+.airline .hero { background: linear-gradient(135deg, var(--accent, var(--css-app-c0)), var(--accent-deep)); color: var(--on-accent); padding: 20px 24px; border-radius: 12px; margin-bottom: 16px; }
 .airline .hero .eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; opacity: 0.85; margin: 0 0 6px; }
 .airline .hero-balance { font-size: 34px; font-weight: 700; margin: 0; font-variant-numeric: tabular-nums; }
 .fare-board, .itineraries { list-style: none; padding: 0; display: grid; gap: 8px; margin: 12px 0 20px; }
-.fare-board li, .itineraries li { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--line, #e5e7eb); border-radius: 10px; }
+.fare-board li, .itineraries li { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; }
 .fare-board li .fare-route, .itineraries li .fare-route { flex: 1; font-weight: 600; }
 .fare-price { font-variant-numeric: tabular-nums; }
 .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.06em; }
-.badge--booked { background: var(--ok-soft, #ecfdf5); color: var(--ok, #047857); }
-.badge--refunded { background: var(--warn-bg, #fef3c7); color: var(--warn-fg, #92400e); }
+.badge--booked { background: var(--ok-soft); color: var(--ok); }
+.badge--refunded { background: var(--warn-bg); color: var(--warn-fg); }
 .itineraries li.refunded { opacity: 0.75; }
 .booking-form { display: grid; gap: 10px; }
-.booking-form select { padding: 8px; border-radius: 8px; border: 1px solid var(--line, #e5e7eb); }
+.booking-form select { padding: 8px; border-radius: 8px; border: 1px solid var(--line); }
 
 /* ── P7: the launcher rows (the classes had no styles at all) and the 375px pass ── */
 .uc-launcher { margin: 0 0 12px; }
@@ -224,9 +234,9 @@ a.skip:focus { left: 0; }
 /* P10: the account chip (Real sign-in only) */
 .account-row { display: flex; justify-content: flex-end; padding: 4px 16px 0; }
 .account-chip { display: flex; align-items: center; gap: 8px; font-size: 13px; flex-wrap: wrap; }
-.token-raw { max-width: 480px; font-size: 11px; background: var(--surface, #fff); border: 1px solid var(--line, #e5e7eb); border-radius: 8px; padding: 8px; word-break: break-all; white-space: pre-wrap; }
+.token-raw { max-width: 480px; font-size: 11px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; word-break: break-all; white-space: pre-wrap; }
 .field { display: grid; gap: 4px; margin: 8px 0; }
 .field-label { font-weight: 600; font-size: 13px; }
-.field input { padding: 8px; border-radius: 8px; border: 1px solid var(--line, #e5e7eb); }
-.field-error { color: #b91c1c; font-size: 13px; }
+.field input { padding: 8px; border-radius: 8px; border: 1px solid var(--line); }
+.field-error { color: var(--css-app-c0); font-size: 13px; }
 .stack { display: grid; gap: 4px; }

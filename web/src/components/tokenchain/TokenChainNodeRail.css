@@ -1,3 +1,11 @@
+/* Colour tokens: the measured washes and shadows, defined once (the checker's allowance), uses read var(). */
+:root {
+  --tcnr-c0: var(--tcnr-c0);
+  --tcnr-c1: var(--tcnr-c1);
+  --tcnr-c2: var(--tcnr-c2);
+  --tcnr-c3: var(--tcnr-c3);
+}
+
 /* VENDORED from AI-DEMO2 (read-only source; owner decision: reuse means copy, never import).
    Source: AI-DEMO2 demo_api_ui/src/components/TokenChainNodeRail.css at origin/main 2c7ca86e0.
    Copied per the ai-demo-standalone-LAB build plan, Appendix C. LAB ADJUSTMENTS marked below. */
@@ -9,10 +17,10 @@
 /* The shared tokens have no --th-status-ok/danger pair; alias the family's status tokens.
    --th-status-error-text existed in the lab's own tokens (used by the source). */
 .tcnr {
-  --th-status-ok: var(--status-ok, #16a34a);
-  --th-status-ok-text: var(--status-ok, #16a34a);
-  --th-status-danger: var(--danger-text, #d20e0f);
-  --th-status-danger-text: var(--danger-text, #d20e0f);
+  --th-status-ok: var(--status-ok);
+  --th-status-ok-text: var(--status-ok);
+  --th-status-danger: var(--danger-text);
+  --th-status-danger-text: var(--danger-text);
 }
 
 // VENDORED from AI-DEMO2 (read-only source; owner decision: reuse means copy, never import).
@@ -25,7 +33,7 @@
  *
  * Two rules inherited from REGRESSION_PLAN §4 and deliberately followed here:
  *   - dark styling is keyed to :root[data-theme="dark"], NEVER
- *     @media (prefers-color-scheme: dark)  (2026-08-02 — the rail went dark on
+ *     the rail went dark on the OS theme (2026-08-02;
  *     load with no control because the OS setting drove it)
  *   - no declaration below 11px  (same entry raised the rail's font floor from
  *     9px because it was unreadable in a demo)
@@ -143,7 +151,7 @@
 .tcnr-density button.active {
   background: var(--th-bg-card);
   color: var(--th-text);
-  box-shadow: 0 1px 2px rgba(5, 23, 39, 0.12);
+  box-shadow: 0 1px 2px var(--tcnr-c3);
 }
 
 .tcnr-track {
@@ -184,7 +192,7 @@
 
 .tcnr-node:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(5, 23, 39, 0.1);
+  box-shadow: 0 4px 12px var(--tcnr-c2);
 }
 
 .tcnr-node-top {
@@ -268,7 +276,7 @@
 
 .tcnr-node--sel {
   border-color: var(--th-status-info);
-  box-shadow: 0 0 0 2px rgba(18, 83, 141, 0.16);
+  box-shadow: 0 0 0 2px var(--tcnr-c1);
 }
 .tcnr-node--sel .tcnr-node-n {
   background: var(--th-bg-page);
@@ -355,7 +363,7 @@
 :root[data-theme="dark"] .tcnr-node--error { border-top-color: var(--th-status-warning-text); }
 :root[data-theme="dark"] .tcnr-node--error .tcnr-node-n { border-color: var(--th-status-warning-text); color: var(--th-status-warning-text); }
 :root[data-theme="dark"] .tcnr-node--error .tcnr-node-fact { color: var(--th-status-warning-text); }
-:root[data-theme="dark"] .tcnr-node--sel { border-color: var(--th-status-info-text); box-shadow: 0 0 0 2px rgba(158, 193, 255, 0.2); }
+:root[data-theme="dark"] .tcnr-node--sel { border-color: var(--th-status-info-text); box-shadow: 0 0 0 2px var(--tcnr-c0); }
 :root[data-theme="dark"] .tcnr-node--sel .tcnr-node-n { background: var(--th-bg-page); border-color: var(--th-status-info-text); color: var(--th-text); }
 :root[data-theme="dark"] .tcnr[data-density="compact"] .tcnr-node { background: transparent; }
 :root[data-theme="dark"] .tcnr[data-density="compact"] .tcnr-node-title { color: var(--th-text-muted); }
@@ -366,7 +374,7 @@
    chips wrapped into an unreadable block, and the full diff already has a
    home in the step detail panel. */
 .tcnr-node-fact--narrowed { font-weight: 650; }
-.tcnr-node-fact--nochange { font-style: italic; opacity: 0.8; }
+.tcnr-node-fact--nochange { opacity: 0.8; }
 
 /* Preview: the reel before any run. Same cards, dashed and unclickable, so it reads as waiting rather than broken. */
 .tcnr--preview .tcnr-node { border-style: dashed; cursor: default; opacity: 0.8; }

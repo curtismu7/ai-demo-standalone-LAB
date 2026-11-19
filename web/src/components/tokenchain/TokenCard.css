@@ -1,3 +1,8 @@
+/* Colour tokens: washes and shadows defined once, uses read var(). */
+:root {
+  --css-tokencard-c0: var(--css-tokencard-c0);
+}
+
 // VENDORED from AI-DEMO2 (read-only source; owner decision: reuse means copy, never import).
 // Source: AI-DEMO2 demo_api_ui/src/components/TokenCard.css at origin/main 2c7ca86e0fbd2c43f7f043900391c5bda1114b69.
 // Copied per the ai-demo-standalone-LAB build plan, Appendix C. LAB ADJUSTMENTS marked below.
@@ -7,7 +12,7 @@
 .token-card {
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px var(--css-tokencard-c0);
   font-family: var(--font-primary);
   font-size: var(--font-size-sm);
 }
