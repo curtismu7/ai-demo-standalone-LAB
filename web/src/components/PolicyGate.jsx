@@ -437,11 +437,11 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
       </nav>
       <section className="panel" aria-labelledby="sc-h">
         <p className="walk-eyebrow">USE CASE {idx + 1} OF {story.scenarios.length} · {String(scenario.track || "").toUpperCase()}</p>
-        <h2 id="sc-h">{scenario.title}</h2>
+        <h2 id="sc-h"><span className="step-num" aria-hidden="true">1</span>{scenario.title}</h2>
         <p className="lesson" data-testid="lesson">{scenario.lesson}</p>
       </section>
       <section className="panel" aria-labelledby="res-h">
-        <h2 id="res-h">Decision</h2>
+        <h2 id="res-h"><span className="step-num" aria-hidden="true">2</span>Decision</h2>
         {fail && <p className="field-error" role="alert">{fail}</p>}
         <Verdict run={run} />
         {run && <Hops hops={run.hops} traceId={run.traceId} />}
@@ -467,7 +467,7 @@ export default function PolicyGate({ story, resetSignal, requestedId, onSelect }
       {selected && <UseCaseDetail uc={selected} onClose={() => setSelectedUc(null)} />}
       {catalog && <CatalogList catalog={catalog} onSelect={(u) => setSelectedUc(u.id)} selectedUc={selectedUc?.id ?? selectedUc} />}
       <section className="panel" aria-labelledby="scen-h">
-        <h2 id="scen-h">What we know, and how well{selected ? ` — ${visible(selected.id)}` : ""}</h2>
+        <h2 id="scen-h" data-n={selected ? `4 — ${visible(selected.id)}` : "4"}>What we know, and how well{selected ? ` — ${visible(selected.id)}` : ""}</h2>
         <p className="tag tag--warn">{story.tokenLabel}</p>
         <ul className="facts" data-testid="facts">
           {(selected ? useCaseFacts(selected) : story.facts).map((f) => <li key={f.id}><span className={STATUS_CLASS[f.status] || "tag"}>{f.status}</span> {visible(f.text)} <span className="muted">({visible(f.source)})</span></li>)}
