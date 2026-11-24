@@ -122,6 +122,16 @@ All under `/api`. Writes are same-origin only; every request carries a workspace
 | `GET /api/catalog?track=` | The 87-use-case catalog (`count`, `tracks`, `useCases`), optionally one track |
 | `GET /api/diagram?name=` | The decision-chain diagram (diagram-studio/1 data) |
 | `GET /api/directory` | This workspace's directory (groups and tier per user), read on every decision |
+| `GET /api/runs/record?runId=` | The record of one observability run (rule 27), by the id the action's own answer carried in its `obs` field; a run the lab no longer keeps answers `record: null` |
+
+## What each layer logged for this run (rule 27)
+
+The Dashboard shows the shared panel under the transcript: one recorded action across the six layers. Rows are what the lab's mock computed for that action; nothing is read from a product log.
+
+- **Where the lines live.** The lab process's stdout: one line per recorded action, `<time> ai-demo-standalone-lab decision step=... layer=... actor=... result=passed|stopped|unclear run=<id>`. Every value passes the masker and the line sanitiser; no field names a matcher word, a token or a person's name.
+- **What is a decision.** One recorded action is one row in the layer that decided it: the PDP verdict (PERMIT, DENY, OBLIGATION/CHALLENGED) is the Authorize layer; a token mint (consent, the A2A exchanges) is an allowed Privilege row; an attack narrow or block is the Resource server layer; an NHI lifecycle step (JOINER, MOVER, LEAVER) is information in the Agent layer. The gateway is modelled inline: the audit entry names the one decision, so no row invents a second one.
+- **The chain.** Person is the subject and Agent the actor, both read from the token the action minted or inspected (simulated); Scopes are the token's scope claim; the policy node names the PDP verdict with its use-case id.
+- **No run, no record.** A read (the directory, the catalog, the run log itself) began no run. The lab keeps the last 24 runs; Reset clears them. The answer carries the run head in `obs` (the field `run` is the scenario's teaching run object, which already existed).
 | `POST /api/directory/set` | Set one user's `groups` (up to 8) and `tier` (`Standard` or `Premium`) |
 | `POST /api/consent` | Mock consent: mint a delegated token (`sub` = user, `act` = `{ sub: actor }`, 1 hour) |
 | `POST /api/authorize` | The gated call: `{ token, tool, amount?, aud?, ucId?, receipt? }`. `200` PERMIT, `202` OBLIGATION (`obligation` names which), `403` DENY, `401` no bearer (with `WWW-Authenticate`); all return the decision, narrative, lesson, products, hops and trace id. A presented `receipt` is checked against the workspace's store and consumed when it permits; `receiptCheck` (`{ valid, code, reason }`, or `null` with no receipt) says why a receipt was refused |

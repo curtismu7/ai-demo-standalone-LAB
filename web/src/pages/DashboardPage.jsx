@@ -10,6 +10,7 @@ import { visible } from "../safeText";
 import ChainView from "../components/ChainView.jsx";
 import RealExchangePanel from "../components/RealExchangePanel.jsx";
 import { getInfo } from "../api";
+import RunObs, { headOf } from "../components/RunObs.jsx";
 import TokenCardsPanel from "../components/TokenCardsPanel.jsx";
 import QuickConfigDialog, { readConfig } from "../components/QuickConfigDialog.jsx";
 import ChainMap from "../components/evidence/ChainMap.jsx";
@@ -251,6 +252,7 @@ export default function DashboardPage({ story, requestedUc }) {
   const [realAvailable, setRealAvailable] = useState(false);
   const [transcript, setTranscript] = useState([{ who: "agent", text: GREETING }]);
   const [run, setRun] = useState(null);
+  const [lastAnswer, setLastAnswer] = useState(null);
   const [busy, setBusy] = useState(false);
   const [fail, setFail] = useState(null);
   const [active, setActive] = useState("signin");
@@ -288,6 +290,7 @@ export default function DashboardPage({ story, requestedUc }) {
     const reply = r.body.reply;
     setTranscript((t) => [...t, { who: reply.by === "agent" ? "agent" : reply.by, text: reply.text }]);
     if (r.body.run) setRun(r.body.run);
+    setLastAnswer(r.body);
   }, []);
 
   // The obligation pause is answered through the EXISTING Use Cases runner (challenge +
@@ -332,6 +335,7 @@ export default function DashboardPage({ story, requestedUc }) {
         <button type="button" className="dash-qc-btn" onClick={() => setQcOpen(true)} ref={qcOpenerRef} data-testid="qc-open">Demo controls</button>
       </div>
       <AssistantSection transcript={transcript} run={run} onSend={send} onChip={onChip} busy={busy} fail={fail} />
+      <RunObs head={lastAnswer ? headOf(lastAnswer) : null} loading={busy} />
       <PlanSection run={run} brainUsed={brainUsed} />
       <RealExchangePanel realAvailable={realAvailable} />
       <EvidenceSection run={run} cfg={cfg} />
