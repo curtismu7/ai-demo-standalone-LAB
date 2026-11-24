@@ -32,6 +32,8 @@ import { seedFor, tokenFor, callArgsFor } from './scenario.js';
 import { toDemoHops, tokenCardsFrom } from './evidenceAdapter.js';
 import { buildDemoHops, buildTokenCards } from './hops.js';
 import { usecaseRows, usecaseEntries, handoffHref } from './usecases.js';
+import { createRunLog, actionEvents, recordOf, reportFailure, runField } from './runObs.js';
+import { RunObsError } from './runObservability.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = process.env.WEB_DIST || path.resolve(HERE, '../../web/dist');
@@ -53,7 +55,15 @@ export function createApp({
   // Real toggle keeps its rule-19 409.
   env = process.env,
   signin,
+  runLog = createRunLog(),
 } = {}) {
+  // Rule 27: record the action in the workspace's run log AND as an observability run; the answer carries the run head
+  // ({ run: { id } } or NO_RUN when the recorder was down). `extra` is what the route knows beyond the entry (user, agent, amount).
+  const recorded = (ws, entry, extra = {}) => {
+    workspaces.record(ws, entry);
+    const runId = runLog.mock(() => actionEvents(entry, extra));
+    return runId ? runField(runId) : { obs: null, obsNote: RECORDER_DOWN };
+  };
   const hydrateExtra = (extra, snap) => {
     extra.receipts = createReceipts({ initial: snap.receipts, signingKey: snap.receipts?.signingKey ?? undefined });
     extra.registry = createRegistry({ initial: snap.registry });
@@ -166,8 +176,8 @@ export function createApp({
     const tier = body.tier === 'Premium' ? 'Premium' : 'Standard';
     dir[user] = { groups, tier };
     v.directory = dir;
-    workspaces.record(ws, { tool: 'directory-set', decision: 'FLIPPED', reason: `${user} -> [ ${groups.join(', ') || 'no groups'} ], tier ${tier}`, token: null });
-    return res.json({ user, groups, tier, directory: dir, workspace: ws });
+    const head = recorded(ws, { tool: 'directory-set', decision: 'FLIPPED', reason: `${user} -> [ ${groups.join(', ') || 'no groups'} ], tier ${tier}`, token: null }, { user });
+    return res.json({ user, groups, tier, directory: dir, workspace: ws, ...head });
   }));
 
   // Mint a delegated token (mock consent): sub = user, act = { actor }, 1h.
@@ -183,8 +193,8 @@ export function createApp({
     let scope = typeof body.scope === 'string' && body.scope.trim() ? body.scope.trim().slice(0, 100)
       : tool ? TOOL_REQUIRED_SCOPE[tool] ?? 'accounts:read' : 'accounts:read transfers:write';
     const token = exchange({ userSub: user, actorClientId: actor, aud, scope });
-    workspaces.record(ws, { tool: 'consent', decision: 'MINTED', reason: `act={${token.act.sub}} for ${token.sub}`, token: null });
-    return res.json({ token, workspace: ws });
+    const head = recorded(ws, { tool: 'consent', decision: 'MINTED', reason: `act={${token.act.sub}} for ${token.sub}`, token }, { user: token.sub, agent: token.act?.sub ?? null });
+    return res.json({ token, workspace: ws, ...head });
   }));
 
   // THE endpoint: one gated call — the same engine behind every catalog use case.
@@ -223,12 +233,12 @@ export function createApp({
       audience: typeof body.aud === 'string' && body.aud.trim() ? body.aud.trim().slice(0, 100) : AUDIENCE,
       now: () => Date.now(),
     });
-    workspaces.record(ws, { tool, decision: verdict.decision, reason: verdict.reason, token: body.token, blocked: verdict.code, ucId });
+    const head = recorded(ws, { tool, decision: verdict.decision, reason: verdict.reason, token: body.token, blocked: verdict.code, ucId }, { user: body.token.sub, agent: body.token.act?.sub ?? null, amount, ucId });
     const ctx = { user: body.token.sub, actor: body.token.act?.sub || null, tool, amount, groups: entry.groups, tier: entry.tier, aud: body.aud };
     const trace = newTrace(req.headers.traceparent);
     const status = verdict.decision === 'PERMIT' ? 200 : verdict.decision === 'OBLIGATION' ? 202 : 403;
     return res.status(status).json({
-      ...verdict, tool, user: body.token.sub, act: body.token.act ?? null,
+      ...verdict, tool, user: body.token.sub, act: body.token.act ?? null, ...head,
       chainDepth: actChainDepth(body.token.act), groups: entry.groups, tier: entry.tier,
       ucId, workspace: ws, obligation, amount: amount ?? null, receiptCheck,
       // the teaching layer
@@ -323,8 +333,8 @@ export function createApp({
       const token = exchangeOne({ userSub: user, generalistClientId: generalist, scope });
       const v = workspaces.state(ws);
       if (v.extra) v.extra.generalistToken = token;
-      workspaces.record(ws, { tool: 'a2a-exchange-1', decision: 'MINTED', reason: `act={${token.act.sub}} for ${token.sub}`, token: null });
-      return res.json({ token, workspace: ws });
+      const head = recorded(ws, { tool: 'a2a-exchange-1', decision: 'MINTED', reason: `act={${token.act.sub}} for ${token.sub}`, token }, { user: token.sub, agent: token.act?.sub ?? null });
+      return res.json({ token, workspace: ws, ...head });
     } catch (e) {
       if (e instanceof A2AInputError) return res.status(400).json({ error: e.code, detail: e.message });
       throw e;
@@ -338,8 +348,8 @@ export function createApp({
     const scope = typeof body.scope === 'string' && body.scope.trim() ? body.scope.trim().slice(0, A2A_LIMITS.scope) : 'a2a:get_portfolio_summary';
     try {
       const token = exchangeTwo({ generalistToken: body.generalistToken, specialistClientId: specialist, scope });
-      workspaces.record(ws, { tool: 'a2a-exchange-2', decision: 'MINTED', reason: `nested act {${token.act.sub} -> ${token.act.act.sub}} for ${token.sub}`, token: null });
-      return res.json({ token, workspace: ws });
+      const head = recorded(ws, { tool: 'a2a-exchange-2', decision: 'MINTED', reason: `nested act {${token.act.sub} -> ${token.act.act.sub}} for ${token.sub}`, token }, { user: token.sub, agent: token.act?.sub ?? null });
+      return res.json({ token, workspace: ws, ...head });
     } catch (e) {
       if (e instanceof A2AInputError) return res.status(400).json({ error: e.code, detail: e.message });
       throw e;
@@ -354,8 +364,8 @@ export function createApp({
     const v = workspaces.state(ws);
     const extra = v.extra || { registry: createRegistry({}) };
     const verdict = evaluateA2a({ token: body.token, registeredSpecialists: extra.registry.all(), requiredScope: 'a2a:get_portfolio_summary', now: () => Date.now(), upstreamAudiences: ['mcp-portfolio.internal'] });
-    workspaces.record(ws, { tool: 'a2a-tool', decision: verdict.decision, reason: verdict.reason, token: body.token, blocked: verdict.code });
-    return res.status(verdict.decision === 'PERMIT' ? 200 : 403).json({ ...verdict, chainDepth: a2aDepth(body.token.act), registered: extra.registry.all(), workspace: ws });
+    const head = recorded(ws, { tool: 'a2a-tool', decision: verdict.decision, reason: verdict.reason, token: body.token, blocked: verdict.code }, { user: body.token.sub, agent: body.token.act?.sub ?? null });
+    return res.status(verdict.decision === 'PERMIT' ? 200 : 403).json({ ...verdict, chainDepth: a2aDepth(body.token.act), registered: extra.registry.all(), workspace: ws, ...head });
   }));
   api.get('/a2a/registry', withWorkspace((ws, _req, res) => {
     const v = workspaces.state(ws);
@@ -388,8 +398,8 @@ export function createApp({
     try {
       const result = runAttack(body.attackId.trim().slice(0, 40), { user: 'demoUser', groups: entry.groups, tier: entry.tier, rateLimiter: extra.rateLimiter });
       v.extra = extra;
-      workspaces.record(ws, { tool: `attack:${result.attackId}`, decision: result.got.status === 200 ? 'NARROWED' : 'BLOCKED', reason: result.lesson, token: null, blocked: result.got.code });
-      return res.json({ ...result, workspace: ws });
+      const head = recorded(ws, { tool: `attack:${result.attackId}`, decision: result.got.status === 200 ? 'NARROWED' : 'BLOCKED', reason: result.lesson, token: null, blocked: result.got.code }, { user: 'demoUser' });
+      return res.json({ ...result, workspace: ws, ...head });
     } catch (e) {
       if (e instanceof AttackInputError) return res.status(400).json({ error: e.code, detail: e.message });
       throw e;
@@ -571,12 +581,27 @@ export function createApp({
       demoHops, tokens10: buildTokenCards({ user: sc.user, actor: sc.actor, tool: sc.tool, token, aud: sc.aud }),
       traceId: trace.traceId,
     };
-    workspaces.record(ws, { tool: sc.tool, decision: verdict.decision, reason: verdict.reason, token, blocked: verdict.code, ucId: sc.ucId });
+    const head = recorded(ws, { tool: sc.tool, decision: verdict.decision, reason: verdict.reason, token, blocked: verdict.code, ucId: sc.ucId }, { user: sc.user, agent: sc.actor ?? null, amount });
     const by = verdict.decision === 'OBLIGATION' ? 'gateway' : 'authorize';
-    return res.json({ handling: 'in-app', ucId: sc.ucId, scenarioId: sc.id, decision: verdict.decision, say: verdict.reason, obligation: obligation ?? undefined, run, hops: run.hops, demoHops: run.demoHops, tokens10: run.tokens10, reply: { text: verdict.reason, by, outcome: verdict.decision, ucId: sc.ucId, tool: sc.tool } });
+    return res.json({ handling: 'in-app', ucId: sc.ucId, scenarioId: sc.id, decision: verdict.decision, say: verdict.reason, obligation: obligation ?? undefined, run, hops: run.hops, demoHops: run.demoHops, tokens10: run.tokens10, reply: { text: verdict.reason, by, outcome: verdict.decision, ucId: sc.ucId, tool: sc.tool }, ...head });
   }));
 
   api.get('/runs', withWorkspace((ws, _req, res) => res.json(workspaces.runs(ws))));
+  // The record of one observability run (rule 27), asked for by the id the run's own answer carried. Every run here is Mock.
+  api.get('/runs/record', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const id = req.query.runId;
+    if (typeof id !== 'string' || !/^run-[0-9a-f]{6}-[0-9]{1,9}$/.test(id)) return res.status(400).json({ error: 'bad_run_id', detail: 'runId must be the id of one run' });
+    const run = runLog.get(id);
+    if (!run) return res.json({ record: null, message: NO_LONGER_KEPT });
+    try {
+      return res.json({ record: await recordOf(run) });
+    } catch (err) {
+      if (err instanceof RunObsError) return res.status(err.status).json({ error: err.code, detail: err.message });
+      reportFailure('record', err);
+      return res.status(500).json({ error: 'server_error', detail: 'The lab could not build this run\'s record (the server log says why).' });
+    }
+  });
   // P9: the mock airline booking system. Per-workspace, integer cents, idempotent on
   // the client's key: replaying the same key returns the SAME booking, never a second charge.
   api.get('/bookings', withWorkspace((ws, _req, res) => {
