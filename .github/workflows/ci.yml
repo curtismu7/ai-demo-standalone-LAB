@@ -19,7 +19,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      - run: bash scripts/check-ui-standard.sh
+      - run: STANDALONE_UI_CANONICAL_URL=https://raw.githubusercontent.com/curtismu7/AI-DEMO-Standalone/header-standard-2026-11-24/shared/standalone-ui.css bash scripts/check-ui-standard.sh
       - run: PORT=7810 npm run doctor
   # The browser run (scripts/e2e.mjs): starts the lab on its port and drives the dashboard, use cases and
   # guide in headless Chromium — desktop and 375px, dark and light. Screenshots on failure.
