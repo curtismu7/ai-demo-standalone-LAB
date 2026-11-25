@@ -128,12 +128,12 @@ test('Reset clears only its own workspace: another workspace keeps its observabi
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
     const post = async (p, body, ws) => fetch(`${base}${p}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base, 'x-workspace': ws }, body: JSON.stringify(body) }).then(async (r) => ({ status: r.status, body: await r.json() }));
-    const record = async (id) => fetch(`${base}/api/runs/record?runId=${encodeURIComponent(id)}`).then(async (r) => (await r.json()).record);
+    const record = async (id, ws) => fetch(`${base}/api/runs/record?runId=${encodeURIComponent(id)}`, { headers: { 'x-workspace': ws } }).then(async (r) => (await r.json()).record);
     const a = await post('/api/assistant/turn', { message: 'Check my balance' }, 'wsa');
     const b = await post('/api/assistant/turn', { message: 'Check my balance' }, 'wsb');
     assert.equal((await post('/api/reset', {}, 'wsa')).status, 200);
-    assert.equal(await record(a.body.obs.id), null, 'wsa lost its run to its own Reset');
-    assert.notEqual(await record(b.body.obs.id), null, 'wsb keeps its run when wsa is reset');
+    assert.equal(await record(a.body.obs.id, 'wsa'), null, 'wsa lost its run to its own Reset');
+    assert.notEqual(await record(b.body.obs.id, 'wsb'), null, 'wsb keeps its run when wsa is reset');
   } finally { await new Promise((r) => server.close(r)); }
 });
 
