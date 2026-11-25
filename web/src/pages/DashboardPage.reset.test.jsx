@@ -19,7 +19,7 @@ afterEach(() => { cleanup(); globalThis.fetch = realFetch; });
 
 describe("Reset and the run panel", () => {
   it("after Reset the panel no longer shows the last run's record", async () => {
-    globalThis.fetch = vi.fn(async (url) => (String(url).startsWith("/api/runs/record")
+    globalThis.fetch = vi.fn(async (url) => (String(url).startsWith("/api/workspace") ? new Response(JSON.stringify({ token: "t-test" }), { status: 200, headers: { "content-type": "application/json" } }) : String(url).startsWith("/api/runs/record")
       ? new Response(JSON.stringify({ record: mockRecord }), { status: 200, headers: { "content-type": "application/json" } })
       : new Response("{}", { status: 404 })));
     const { rerender } = render(<DashboardPage story={STORY} requestedUc="UC1" resetSignal={0} />);

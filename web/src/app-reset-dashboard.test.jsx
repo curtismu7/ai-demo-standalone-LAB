@@ -26,7 +26,7 @@ afterEach(() => { cleanup(); globalThis.fetch = real; window.location.hash = "";
 
 describe("Reset through the App's dashboard route", () => {
   it("after Reset the run panel no longer shows the last run's record", async () => {
-    globalThis.fetch = vi.fn(async (url) => (String(url).startsWith("/api/runs/record")
+    globalThis.fetch = vi.fn(async (url) => (String(url).startsWith("/api/workspace") ? new Response(JSON.stringify({ token: "t-test" }), { status: 200, headers: { "content-type": "application/json" } }) : String(url).startsWith("/api/runs/record")
       ? new Response(JSON.stringify({ record: mockRecord }), { status: 200, headers: { "content-type": "application/json" } })
       : new Response("{}", { status: 404 })));
     window.location.hash = "#/dashboard";
