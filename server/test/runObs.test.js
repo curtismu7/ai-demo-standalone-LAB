@@ -116,5 +116,6 @@ test('Reset clears the observability runs: the record route no longer answers a 
     const after = await fetch(`${base}/api/runs/record?runId=${encodeURIComponent(id)}`).then(async (r) => ({ status: r.status, body: await r.json() }));
     assert.equal(after.status, 200);
     assert.equal(after.body.record, null, 'Reset cleared the run, so no record is kept for it');
+    assert.match(after.body.message, /no longer kept/, 'the answer says the run is no longer kept');
   } finally { await new Promise((r) => server.close(r)); }
 });

@@ -32,7 +32,7 @@ import { seedFor, tokenFor, callArgsFor } from './scenario.js';
 import { toDemoHops, tokenCardsFrom } from './evidenceAdapter.js';
 import { buildDemoHops, buildTokenCards } from './hops.js';
 import { usecaseRows, usecaseEntries, handoffHref } from './usecases.js';
-import { createRunLog, actionEvents, recordOf, reportFailure, runField } from './runObs.js';
+import { createRunLog, actionEvents, recordOf, reportFailure, runField, NO_LONGER_KEPT } from './runObs.js';
 import { RunObsError } from './runObservability.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
