@@ -657,6 +657,7 @@ export function createApp({
 
   api.post('/reset', withWorkspace((ws, _req, res) => {
     workspaces.resetWorkspace(ws);
+    runLog.clear(); // rule 27: Reset clears the kept runs (the README and the panel say so)
     res.json({ reset: 'ok', workspace: ws });
   }));
 
