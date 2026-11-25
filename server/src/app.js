@@ -588,11 +588,11 @@ export function createApp({
 
   api.get('/runs', withWorkspace((ws, _req, res) => res.json(workspaces.runs(ws))));
   // The record of one observability run (rule 27), asked for by the id the run's own answer carried. Every run here is Mock.
-  api.get('/runs/record', async (req, res) => {
+  api.get('/runs/record', withWorkspace(async (ws, req, res) => {
     res.set('Cache-Control', 'no-store');
     const id = req.query.runId;
     if (typeof id !== 'string' || !/^run-[0-9a-f]{6}-[0-9]{1,9}$/.test(id)) return res.status(400).json({ error: 'bad_run_id', detail: 'runId must be the id of one run' });
-    const run = runLog.get(id);
+    const run = runLog.get(id, ws);
     if (!run) return res.json({ record: null, message: NO_LONGER_KEPT });
     try {
       return res.json({ record: await recordOf(run) });
@@ -601,7 +601,7 @@ export function createApp({
       reportFailure('record', err);
       return res.status(500).json({ error: 'server_error', detail: 'The lab could not build this run\'s record (the server log says why).' });
     }
-  });
+  }));
   // P9: the mock airline booking system. Per-workspace, integer cents, idempotent on
   // the client's key: replaying the same key returns the SAME booking, never a second charge.
   api.get('/bookings', withWorkspace((ws, _req, res) => {

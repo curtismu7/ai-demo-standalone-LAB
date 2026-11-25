@@ -20,7 +20,7 @@ import crypto from 'node:crypto';
 import { createMasker, createRunObservability, LAYERS } from './runObservability.js';
 
 export const SERVICE = 'ai-demo-standalone-lab';
-export const KEEP_RUNS = 24; // closed runs kept: the workspace's own run log keeps more; the panel shows the last few
+export const KEEP_RUNS = 24; // closed runs kept per workspace and per mode (createRunLog); the panel shows the last few
 export const NO_RUN_BEGAN = 'This request began no run, so nothing was recorded.';
 export const RECORDER_DOWN = 'The lab could not keep a record of this run (the server log says why).';
 export const NO_LONGER_KEPT = 'That run is no longer kept: the lab keeps the last few runs, and Reset clears this workspace\'s runs.';
@@ -104,8 +104,11 @@ export function decisionLine(ev, runId) {
 export function createRunLog({ write = (line) => process.stdout.write(`${line}\n`), clock = Date.now } = {}) {
   const part = crypto.randomBytes(3).toString('hex'); // so an id never repeats after a restart or in another process
   let made = 0;
-  const kept = [];
-  const prune = () => { while (kept.length > KEEP_RUNS) kept.shift(); };
+  const SOURCE = 'mock';
+  // The cap is per workspace and per mode: one list of at most KEEP_RUNS runs for each (workspace, mode), so no workspace evicts another's.
+  const kept = new Map(); // `${ws}` + NUL + mode -> that list, oldest first
+  const keyOf = (ws, mode) => `${ws}\u0000${mode}`;
+  const prune = (list) => { while (list.length > KEEP_RUNS) list.shift(); };
   const line = (ev, id) => safely('line', () => write(decisionLine(ev, id)));
 
   return {
@@ -114,16 +117,19 @@ export function createRunLog({ write = (line) => process.stdout.write(`${line}\n
       return safely('mock-run', () => {
         const events = build();
         const at = new Date(clock()).toISOString();
-        const run = { id: `run-${part}-${++made}`, ws, source: 'mock', startedAt: at, endedAt: at, events: events.map((e, seq) => ({ ...e, at, seq })), notes: [], partial: false };
-        kept.push(run); prune();
+        const run = { id: `run-${part}-${++made}`, ws, source: SOURCE, startedAt: at, endedAt: at, events: events.map((e, seq) => ({ ...e, at, seq })), notes: [], partial: false };
+        const key = keyOf(ws, SOURCE);
+        const list = kept.get(key) ?? [];
+        list.push(run); prune(list); kept.set(key, list);
         for (const ev of run.events) line(ev, run.id);
         return run.id;
       }) ?? null;
     },
-    get(id) { return kept.find((r) => r.id === id) || null; },
-    // Reset clears only the workspace's own runs; another workspace's kept runs stay.
-    clear(ws) { for (let i = kept.length - 1; i >= 0; i -= 1) if (kept[i].ws === ws) kept.splice(i, 1); },
-    size() { return kept.length; },
+    // A run is answered only to the workspace that owns it; any other workspace gets null, the same as a run no longer kept.
+    get(id, ws) { return (kept.get(keyOf(ws, SOURCE)) ?? []).find((r) => r.id === id) || null; },
+    // Reset clears only the workspace's own runs (every mode); another workspace's kept runs stay.
+    clear(ws) { for (const key of [...kept.keys()]) if (key.startsWith(`${ws}\u0000`)) kept.delete(key); },
+    size() { let n = 0; for (const list of kept.values()) n += list.length; return n; },
   };
 }
 // The head key is `obs` (this lab's scenario answers already carry `run`: the teaching run object).
