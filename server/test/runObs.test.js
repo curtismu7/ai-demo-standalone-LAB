@@ -100,3 +100,21 @@ test('over the API: an assistant turn answers its run id and the record route an
     assert.equal((await fetch(`${base}/api/runs/record?runId=nope`)).status, 400);
   } finally { await new Promise((r) => server.close(r)); }
 });
+
+test('Reset clears the observability runs: the record route no longer answers a run that Reset cleared', async () => {
+  const { runLog } = capture();
+  const { createServer } = await import('node:http');
+  const server = createServer(createApp({ workspaceAuth: false, runLog, workspaces: createWorkspaces() }));
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const post = async (p, body) => fetch(`${base}${p}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify(body) }).then(async (r) => ({ status: r.status, body: await r.json() }));
+    const turn = await post('/api/assistant/turn', { message: 'Check my balance' });
+    const id = turn.body.obs.id;
+    assert.equal((await fetch(`${base}/api/runs/record?runId=${encodeURIComponent(id)}`)).status, 200, 'the run is kept before Reset');
+    assert.equal((await post('/api/reset', {})).status, 200);
+    const after = await fetch(`${base}/api/runs/record?runId=${encodeURIComponent(id)}`).then(async (r) => ({ status: r.status, body: await r.json() }));
+    assert.equal(after.status, 200);
+    assert.equal(after.body.record, null, 'Reset cleared the run, so no record is kept for it');
+  } finally { await new Promise((r) => server.close(r)); }
+});
