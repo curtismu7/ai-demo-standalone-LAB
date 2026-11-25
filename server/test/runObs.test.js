@@ -136,3 +136,33 @@ test('Reset clears only its own workspace: another workspace keeps its observabi
     assert.notEqual(await record(b.body.obs.id), null, 'wsb keeps its run when wsa is reset');
   } finally { await new Promise((r) => server.close(r)); }
 });
+
+test('one workspace cannot evict another workspace\'s runs: the cap is per workspace', () => {
+  const { runLog } = capture();
+  const build = () => actionEvents({ tool: 'op', decision: 'PERMIT', reason: 'x', token: null });
+  const theirs = runLog.mock(build, 'wsb');
+  for (let i = 0; i < KEEP_RUNS + 3; i += 1) runLog.mock(build, 'wsa');
+  assert.ok(runLog.get(theirs, 'wsb'), 'wsb\'s run is still kept after wsa recorded more than KEEP_RUNS runs');
+  assert.equal(runLog.size(), KEEP_RUNS + 1, 'wsa keeps KEEP_RUNS runs and wsb keeps its one');
+});
+
+test('the record route answers another workspace\'s run exactly as a run no longer kept', async () => {
+  const { runLog } = capture();
+  const { createServer } = await import('node:http');
+  const server = createServer(createApp({ workspaceAuth: false, runLog, workspaces: createWorkspaces() }));
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const ask = (runId, ws) => fetch(`${base}/api/runs/record?runId=${encodeURIComponent(runId)}`, { headers: { 'x-workspace': ws } }).then(async (r) => ({ status: r.status, body: await r.json() }));
+  try {
+    const turn = await fetch(`${base}/api/assistant/turn`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base, 'x-workspace': 'wsa' }, body: JSON.stringify({ message: 'Check my balance' }) }).then((r) => r.json());
+    const id = turn.obs.id;
+    const own = await ask(id, 'wsa');
+    assert.equal(own.status, 200);
+    assert.ok(own.body.record, 'the owning workspace reads its own run');
+    const other = await ask(id, 'wsb');
+    const missing = await ask('run-000000-999', 'wsb');
+    assert.equal(other.body.record, null, 'wsb does not read wsa\'s run');
+    assert.equal(other.status, missing.status, 'the same status as a run that is not kept');
+    assert.deepEqual(other.body, missing.body, 'the same answer as a run that is not kept');
+  } finally { await new Promise((r) => server.close(r)); }
+});
