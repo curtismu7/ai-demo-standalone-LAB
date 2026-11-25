@@ -4,6 +4,7 @@
 // there is no re-read button: this lab reads no logs, so a re-read could find nothing new.
 import React, { useEffect, useState } from "react";
 import RunObservability from "../run-observability/RunObservability.jsx";
+import { workspaceFetch } from "../workspace.js";
 
 // Where this lab's run leaves logs and where they can stream (the README says the same).
 export const LOG_STREAMS = [
@@ -51,7 +52,7 @@ export default function RunObs({ head, loading = false, empty = "Nothing has run
     if (!runId) return undefined;
     let live = true;
     const done = (a) => { if (live) setAnswer({ key, ...a }); };
-    fetch(`/api/runs/record?runId=${encodeURIComponent(runId)}`).then(async (r) => done(shapeOf({ ok: r.ok, status: r.status, data: await r.json().catch(() => null) }))).catch((e) => done({ problem: `Could not reach the lab (${String(e?.message || e).slice(0, 120)}).` }));
+    workspaceFetch(`/api/runs/record?runId=${encodeURIComponent(runId)}`).then(async (r) => done(shapeOf({ ok: r.ok, status: r.status, data: await r.json().catch(() => null) }))).catch((e) => done({ problem: `Could not reach the lab (${String(e?.message || e).slice(0, 120)}).` }));
     return () => { live = false; };
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps -- a new run asks again; nothing else does
 

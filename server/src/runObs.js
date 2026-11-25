@@ -23,7 +23,7 @@ export const SERVICE = 'ai-demo-standalone-lab';
 export const KEEP_RUNS = 24; // closed runs kept per workspace and per mode (createRunLog); the panel shows the last few
 export const NO_RUN_BEGAN = 'This request began no run, so nothing was recorded.';
 export const RECORDER_DOWN = 'The lab could not keep a record of this run (the server log says why).';
-export const NO_LONGER_KEPT = 'That run is no longer kept: the lab keeps the last few runs, and Reset clears this workspace\'s runs.';
+export const NO_LONGER_KEPT = 'That run is no longer kept: the lab keeps the last few runs of each workspace, and Reset clears this workspace\'s runs.';
 
 // Only safe characters survive, so a typed name cannot add a second key=value pair, a quote or a line.
 export const lineValue = (v, n = 64) => String(v ?? '').replace(/[^A-Za-z0-9._:/@-]+/g, '_').slice(0, n) || '-';
