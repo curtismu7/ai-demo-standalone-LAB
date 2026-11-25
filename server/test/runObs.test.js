@@ -119,3 +119,20 @@ test('Reset clears the observability runs: the record route no longer answers a 
     assert.match(after.body.message, /no longer kept/, 'the answer says the run is no longer kept');
   } finally { await new Promise((r) => server.close(r)); }
 });
+
+test('Reset clears only its own workspace: another workspace keeps its observability run', async () => {
+  const { runLog } = capture();
+  const { createServer } = await import('node:http');
+  const server = createServer(createApp({ workspaceAuth: false, runLog, workspaces: createWorkspaces() }));
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const post = async (p, body, ws) => fetch(`${base}${p}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base, 'x-workspace': ws }, body: JSON.stringify(body) }).then(async (r) => ({ status: r.status, body: await r.json() }));
+    const record = async (id) => fetch(`${base}/api/runs/record?runId=${encodeURIComponent(id)}`).then(async (r) => (await r.json()).record);
+    const a = await post('/api/assistant/turn', { message: 'Check my balance' }, 'wsa');
+    const b = await post('/api/assistant/turn', { message: 'Check my balance' }, 'wsb');
+    assert.equal((await post('/api/reset', {}, 'wsa')).status, 200);
+    assert.equal(await record(a.body.obs.id), null, 'wsa lost its run to its own Reset');
+    assert.notEqual(await record(b.body.obs.id), null, 'wsb keeps its run when wsa is reset');
+  } finally { await new Promise((r) => server.close(r)); }
+});

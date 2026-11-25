@@ -85,7 +85,7 @@ export default function App() {
   const reset = useCallback(async () => {
     const ok = await resetWorkspace().catch(() => false);
     setResetSignal((n) => n + 1);
-    setResetMsg(ok ? "Reset: your workspace's directory flips and runs are back to defaults." : "Reset failed on the server; the view was reset.");
+    setResetMsg(ok ? "Reset: your workspace's directory flips and kept runs are cleared; other workspaces are not changed." : "Reset failed on the server; the view was reset.");
   }, []);
 
   return (
@@ -106,7 +106,7 @@ export default function App() {
                 {story.talkTrack.filter((t) => (route === "dashboard" || route === "use-cases" ? ["say-first", "one-engine", "groups", "tiers", "who-acting", "unverified"] : ["say-first"]).includes(t.id)).map((t) => <p key={t.id}><strong>{t.title}.</strong> {t.say}</p>)}
               </aside>
             )}
-            {route === "dashboard" && <DashboardPage story={story} requestedUc={route === "dashboard" && requested && /^UC/.test(requested) ? requested : null} />}
+            {route === "dashboard" && <DashboardPage story={story} resetSignal={resetSignal} requestedUc={route === "dashboard" && requested && /^UC/.test(requested) ? requested : null} />}
             {route === "use-cases" && <UseCasesPage story={story} resetSignal={resetSignal} requestedId={requested} onSelect={pickScenario} onRunHere={runHere} />}{route === "guide" && <GuidePage story={story} resetSignal={resetSignal} />}
             {route === "observability" && <ObservabilityPage />}
             {route === "welcome" && <WelcomePage />}
@@ -121,8 +121,8 @@ export default function App() {
 
 // The dashboard route is the P2 one-page layout; the guided-walk runner stays reachable on
 // the Use Cases tab (the full scenario list, tabs and obligation resolution live there).
-function DashboardPage({ story }) {
-  return <DashboardOnePage story={story} />;
+function DashboardPage({ story, resetSignal }) {
+  return <DashboardOnePage story={story} resetSignal={resetSignal} />;
 }
 
 // The Guide page: the diagram view plus the talk track, under one h1.

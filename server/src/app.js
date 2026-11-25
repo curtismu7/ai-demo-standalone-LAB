@@ -61,7 +61,7 @@ export function createApp({
   // ({ run: { id } } or NO_RUN when the recorder was down). `extra` is what the route knows beyond the entry (user, agent, amount).
   const recorded = (ws, entry, extra = {}) => {
     workspaces.record(ws, entry);
-    const runId = runLog.mock(() => actionEvents(entry, extra));
+    const runId = runLog.mock(() => actionEvents(entry, extra), ws);
     return runId ? runField(runId) : { obs: null, obsNote: RECORDER_DOWN };
   };
   const hydrateExtra = (extra, snap) => {
@@ -657,7 +657,7 @@ export function createApp({
 
   api.post('/reset', withWorkspace((ws, _req, res) => {
     workspaces.resetWorkspace(ws);
-    runLog.clear(); // rule 27: Reset clears the kept runs (the README and the panel say so)
+    runLog.clear(ws); // rule 27: Reset clears this workspace's kept runs (the README and the panel say so)
     res.json({ reset: 'ok', workspace: ws });
   }));
 

@@ -248,7 +248,7 @@ export function TalkTrackSection({ run }) {
 
 const SECTIONS = ["signin", "plan", "evidence", "products", "talk"];
 
-export default function DashboardPage({ story, requestedUc }) {
+export default function DashboardPage({ story, requestedUc, resetSignal = 0 }) {
   const [realAvailable, setRealAvailable] = useState(false);
   const [transcript, setTranscript] = useState([{ who: "agent", text: GREETING }]);
   const [run, setRun] = useState(null);
@@ -296,6 +296,9 @@ export default function DashboardPage({ story, requestedUc }) {
   // The obligation pause is answered through the EXISTING Use Cases runner (challenge +
   // challenge/answer + re-run live there); the dashboard points the visitor at it.
   const onChip = useCallback((prompt) => send(prompt), [send]);
+
+  // Reset clears the run panel's last answer too: the record of a run Reset cleared is never shown after it.
+  useEffect(() => { setLastAnswer(null); }, [resetSignal]);
 
   // P5 launcher "Runs here": the use case arrives preselected; run its chip prompt once.
   const ucOfScenario = (scId) => (story?.scenarios ?? []).find((s) => s.id === scId)?.ucId ?? null;

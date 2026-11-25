@@ -23,7 +23,7 @@ export const SERVICE = 'ai-demo-standalone-lab';
 export const KEEP_RUNS = 24; // closed runs kept: the workspace's own run log keeps more; the panel shows the last few
 export const NO_RUN_BEGAN = 'This request began no run, so nothing was recorded.';
 export const RECORDER_DOWN = 'The lab could not keep a record of this run (the server log says why).';
-export const NO_LONGER_KEPT = 'That run is no longer kept: the lab keeps the last few runs, and Reset clears them.';
+export const NO_LONGER_KEPT = 'That run is no longer kept: the lab keeps the last few runs, and Reset clears this workspace\'s runs.';
 
 // Only safe characters survive, so a typed name cannot add a second key=value pair, a quote or a line.
 export const lineValue = (v, n = 64) => String(v ?? '').replace(/[^A-Za-z0-9._:/@-]+/g, '_').slice(0, n) || '-';
@@ -109,19 +109,20 @@ export function createRunLog({ write = (line) => process.stdout.write(`${line}\n
   const line = (ev, id) => safely('line', () => write(decisionLine(ev, id)));
 
   return {
-    // One recorded action = one run. `build` may throw: then nothing is stored and the answer is the baseline's.
-    mock(build) {
+    // One recorded action = one run, owned by its workspace. `build` may throw: then nothing is stored and the answer is the baseline's.
+    mock(build, ws = null) {
       return safely('mock-run', () => {
         const events = build();
         const at = new Date(clock()).toISOString();
-        const run = { id: `run-${part}-${++made}`, source: 'mock', startedAt: at, endedAt: at, events: events.map((e, seq) => ({ ...e, at, seq })), notes: [], partial: false };
+        const run = { id: `run-${part}-${++made}`, ws, source: 'mock', startedAt: at, endedAt: at, events: events.map((e, seq) => ({ ...e, at, seq })), notes: [], partial: false };
         kept.push(run); prune();
         for (const ev of run.events) line(ev, run.id);
         return run.id;
       }) ?? null;
     },
     get(id) { return kept.find((r) => r.id === id) || null; },
-    clear() { kept.length = 0; },
+    // Reset clears only the workspace's own runs; another workspace's kept runs stay.
+    clear(ws) { for (let i = kept.length - 1; i >= 0; i -= 1) if (kept[i].ws === ws) kept.splice(i, 1); },
     size() { return kept.length; },
   };
 }
