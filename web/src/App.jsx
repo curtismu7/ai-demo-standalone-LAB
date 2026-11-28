@@ -35,7 +35,7 @@ const hashRoute = () => {
 
 // The Real-or-mock modal's line (it replaced the simulation banner). This lab has no Real mode, so the mode is fixed at Mock and there is no switch.
 const MODE_LINES = {
-  mock: "Everything here is simulated: bookings, tokens and decisions come from this lab's mock engine and mock policy, and the assistant is scripted. Nothing calls a real airline, identity provider, gateway or tenant; every value is a labelled demo value.",
+  mock: "Everything here is simulated: bookings, tokens and decisions come from this lab's mock engine and mock policy, and the assistant is scripted. Nothing calls a real airline, identity provider, gateway or tenant. Every value is a labelled demo value.",
 };
 
 // ui-pattern: allow P3 the dashboard frame is the wide catalog layout this lab ships with; P3 narrows it in a later phase

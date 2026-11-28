@@ -74,7 +74,7 @@ describe("Real-or-mock modal", () => {
     expect(modal.textContent).toContain("simulated");
     expect(modal.textContent).toContain("bookings, tokens and decisions");
     expect(modal.textContent).toContain("Nothing calls a real airline, identity provider, gateway or tenant.");
-    expect(modal.textContent).toContain("every value is a labelled demo value");
+    expect(modal.textContent).toContain("Every value is a labelled demo value.");
     expect(screen.queryByTestId("sim-banner")).toBeNull();
     expect(document.querySelector(".banner")).toBeNull();
     fireEvent.click(screen.getByTestId("mode-modal-ok"));
