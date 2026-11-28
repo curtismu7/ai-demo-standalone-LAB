@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { setMode, getInfo } from "../api";
 import TopMenu, { applyFontSize } from "../top-menu/TopMenu.jsx";
+import HelpDialog from "../help-dialog/HelpDialog.jsx";
+import { HELP_SECTIONS } from "../helpContent";
 import TalkTrackDialog from "../talk-track/TalkTrackDialog.jsx";
 import VerifyMark from "../components/VerifyMark.jsx";
 
@@ -21,6 +23,7 @@ export default function ShellBar({ route, onReset, presenter = false, onTogglePr
     try { const t = document.documentElement.dataset.theme; return ["auto", "light", "dark"].includes(t) ? t : "auto"; } catch { return "auto"; }
   });
   const [fontStep, setFontStep] = useState(() => { try { const f = localStorage.getItem("aidemo.font"); return SIZES.includes(f) ? f : "M"; } catch { return "M"; } });
+  const [helpOpen, setHelpOpen] = useState(false);
   const [modeMsg, setModeMsg] = useState("");
   const [realAvailable, setRealAvailable] = useState(false);
   const [mode, setModeState] = useState("mock");
@@ -67,7 +70,7 @@ export default function ShellBar({ route, onReset, presenter = false, onTogglePr
           fontSize={{ value: fontStep, onChange: setFontStep }}
           present={onTogglePresenter ? { active: presenter, onToggle: onTogglePresenter, label: "Presenter" } : undefined}
           talkTrack={talkTrack}
-          help={{ href: "https://github.com/curtismu7/ai-demo-standalone-LAB#readme" }}
+          help={{ onClick: () => setHelpOpen(true), title: "What this lab is, and what is simulated" }}
           version={null}
           onReset={onReset}
           extra={<VerifyMark id="ai-demo-standalone" />}
@@ -75,6 +78,7 @@ export default function ShellBar({ route, onReset, presenter = false, onTogglePr
           {children}
         </TopMenu>
       <TalkTrackDialog isOpen={talkTrack?.active} onClose={talkTrack?.onToggle} talk={talkTrack?.talk ?? []} />
+      <HelpDialog isOpen={helpOpen} onClose={() => setHelpOpen(false)} sections={HELP_SECTIONS} docsUrl="https://github.com/curtismu7/ai-demo-standalone-LAB#readme" />
       </span>
       {modeMsg && <p className="mode-msg" role="status" data-testid="mode-msg">{modeMsg}</p>}
     </header>
