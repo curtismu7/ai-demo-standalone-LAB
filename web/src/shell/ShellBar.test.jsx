@@ -1,6 +1,6 @@
 // P1 UI foundation: the shell bar, the Real-or-mock modal, and hash routing.
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const calls = [];
@@ -19,6 +19,7 @@ vi.mock("../components/TalkTrack", () => ({ default: ({ talk }) => <section data
 vi.mock("../return-link/ReturnLink.jsx", () => ({ default: () => null }));
 vi.mock("../pages/UseCasesPage", () => ({ default: () => <section data-testid="use-cases-page"><h1>Use cases</h1></section> }));
 import App from "../App";
+import { getInfo } from "../api";
 
 afterEach(() => { cleanup(); calls.length = 0; window.location.hash = ""; sessionStorage.clear(); });
 
@@ -81,6 +82,45 @@ describe("Real-or-mock modal", () => {
     expect(screen.queryByTestId("mode-modal")).toBeNull();
     unmount();
     render(<App />);
+    expect(screen.queryByTestId("mode-modal")).toBeNull();
+  });
+});
+
+describe("Real-or-mock modal in Real", () => {
+  it("says MOCK until /api/info answers, then REAL (the Real exchange is live, the rest stays simulated); Got it on MOCK does not hide REAL", async () => {
+    let release;
+    getInfo.mockImplementationOnce(() => new Promise((r) => { release = () => r({ mode: "real", realAvailable: true }); }));
+    render(<App />);
+    expect(screen.getByTestId("mode-modal").dataset.mode).toBe("mock");
+    fireEvent.click(screen.getByTestId("mode-modal-ok"));
+    expect(screen.queryByTestId("mode-modal")).toBeNull();
+    await act(async () => { release(); });
+    await waitFor(() => expect(screen.getByTestId("mode-modal").dataset.mode).toBe("real"));
+    const modal = screen.getByTestId("mode-modal");
+    expect(modal.textContent).toContain("REAL");
+    expect(modal.textContent).toContain("Real PingOne exchange");
+    expect(modal.textContent).toMatch(/policy engine, the directory, the OTP and the assistant stay simulated/);
+  });
+
+  it("switching Mock to Real in the same session shows the REAL modal", async () => {
+    const user = userEvent.setup();
+    getInfo.mockImplementationOnce(async () => ({ mode: "mock", realAvailable: true }));
+    modeResponses.push({ ok: true, status: 200, body: { source: "real" } });
+    render(<App />);
+    fireEvent.click(screen.getByTestId("mode-modal-ok"));
+    await waitFor(() => expect(screen.getByTestId("mode-select").querySelector('option[value="real"]').disabled).toBe(false));
+    await user.selectOptions(screen.getByTestId("mode-select"), "real");
+    await waitFor(() => expect(screen.getByTestId("mode-modal").dataset.mode).toBe("real"));
+  });
+
+  it("a refused switch (the server answers 409) leaves the page on MOCK and shows no new modal", async () => {
+    const user = userEvent.setup();
+    getInfo.mockImplementationOnce(async () => ({ mode: "mock", realAvailable: true }));
+    render(<App />);
+    fireEvent.click(screen.getByTestId("mode-modal-ok"));
+    await waitFor(() => expect(screen.getByTestId("mode-select").querySelector('option[value="real"]').disabled).toBe(false));
+    await user.selectOptions(screen.getByTestId("mode-select"), "real");
+    await waitFor(() => expect(screen.getByTestId("mode-select")).toHaveValue("mock"));
     expect(screen.queryByTestId("mode-modal")).toBeNull();
   });
 });

@@ -33,9 +33,10 @@ const hashRoute = () => {
   return { route: ROUTES.some((r) => r.id === h) ? h : "dashboard", scenario: null };
 };
 
-// The Real-or-mock modal's line (it replaced the simulation banner). This lab has no Real mode, so the mode is fixed at Mock and there is no switch.
+// The Real-or-mock modal's lines (it replaced the simulation banner). Real is limited: one live PingOne token exchange, the rest stays the mock engine.
 const MODE_LINES = {
   mock: "Everything here is simulated: bookings, tokens and decisions come from this lab's mock engine and mock policy, and the assistant is scripted. Nothing calls a real airline, identity provider, gateway or tenant. Every value is a labelled demo value.",
+  real: "The dashboard's Real PingOne exchange panel sends one live token exchange to your PingOne. The policy engine, the directory, the OTP and the assistant stay simulated.",
 };
 
 // ui-pattern: allow P3 the dashboard frame is the wide catalog layout this lab ships with; P3 narrows it in a later phase
@@ -47,6 +48,7 @@ export default function App() {
   // from the address bar. Ids only; an unknown app or a malformed id is ignored entirely.
   const [returned] = useState(() => takeReturn());
   const [story, setStory] = useState(null);
+  const [source, setSource] = useState("mock"); // "mock" until the shell bar's /api/info answers, then follows its Mock | Real switch
   const [error, setError] = useState(null);
   const [route, setRoute] = useState(hashRoute().route);
   const [requested, setRequested] = useState(() => hashRoute().scenario || scenarioFor(handoff));
@@ -96,7 +98,7 @@ export default function App() {
   return (
     <div className={`app${presenter ? " app--presenter" : ""}`}>
       <a className="skip" href="#main">Skip to content</a>
-      <ShellBar route={route} onReset={reset} presenter={presenter} onTogglePresenter={() => setPresenter((v) => !v)} talkTrack={{ active: talkOpen, onToggle: () => setTalkOpen((v) => !v), talk: story?.talkTrack ?? [] }}>
+      <ShellBar route={route} onReset={reset} presenter={presenter} onTogglePresenter={() => setPresenter((v) => !v)} talkTrack={{ active: talkOpen, onToggle: () => setTalkOpen((v) => !v), talk: story?.talkTrack ?? [] }} onModeChange={setSource}>
         <ReturnLink app="ai-demo-standalone" variant="header" />
       </ShellBar>
       <div className="account-row"><AccountChip /></div>
@@ -119,7 +121,7 @@ export default function App() {
           </>
         )}
       </main>
-      <ModeModal mode="mock" lines={MODE_LINES} storageKey="aidemo-mode" />
+      <ModeModal mode={source} lines={MODE_LINES} storageKey="aidemo-mode" />
     </div>
   );
 }
