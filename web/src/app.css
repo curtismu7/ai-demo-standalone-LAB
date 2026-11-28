@@ -12,7 +12,6 @@
 body { margin: 0; background: var(--th-bg-page); color: var(--th-text); font-family: var(--font-sans); font-size: var(--font-size-base); }
 code { font-family: var(--font-mono); font-size: var(--font-size-2xs); }
 .app { max-width: min(96vw, 2000px); margin: 0 auto; padding: 0 16px 32px; }
-.banner { margin: 0 -16px; padding: 8px 16px; font-size: var(--font-size-sm); color: var(--th-status-warning-text); background: var(--th-status-warning-bg); border-bottom: 1px solid var(--th-status-warning); }
 .head { display: flex; gap: 16px; justify-content: space-between; align-items: flex-start; padding: 16px 0 8px; flex-wrap: wrap; }
 .head h1 { margin: 0 0 4px; font-size: var(--font-size-xl); }
 .intro { margin: 0; max-width: 70ch; color: var(--th-text-muted); font-size: var(--font-size-sm); line-height: 1.45; }
@@ -32,7 +31,7 @@ button:focus-visible { outline: 2px solid var(--th-status-info); outline-offset:
 .track__now p { margin: 0; font-size: var(--font-size-base); line-height: 1.5; }
 .keys { color: var(--th-text-muted); font-size: var(--font-size-2xs); }
 .app-error { padding: 16px; color: var(--th-accent); }
-/* Presenter mode: less chrome, bigger talk track. The simulation banner stays. */
+/* Presenter mode: less chrome, bigger talk track. The Real-or-mock modal is unaffected. */
 .app--presenter .track__now h2, .track__now h3 { font-size: var(--font-size-xl); }
 .app--presenter .track__now p { font-size: var(--font-size-lg); line-height: 1.55; }
 .app--presenter .head h1 { font-size: var(--font-size-lg); }

@@ -19,7 +19,7 @@ vi.mock("./pages/UseCasesPage", () => ({ default: () => <section>use cases</sect
 import App from "./App";
 
 const real = globalThis.fetch;
-afterEach(() => { cleanup(); globalThis.fetch = real; window.location.hash = ""; });
+afterEach(() => { cleanup(); globalThis.fetch = real; window.location.hash = ""; sessionStorage.clear(); });
 
 const mark = (status, label, extra = {}) => ({ status, label, note: "", updatedAt: "2026-11-15", source: "shipped", ...extra });
 function withShelf(payload) {

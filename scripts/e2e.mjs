@@ -68,7 +68,15 @@ try {
     await page.locator('header').first().waitFor();
     check(true, `${tag} the shell renders`);
     check(await page.evaluate(() => !!document.querySelector('.skip, a.skip')), `${tag} a skip link exists`);
-    check(await page.evaluate(() => document.querySelectorAll('[data-testid="banner"], .banner').length > 0), `${tag} the simulation banner shows`);
+    // The Real-or-mock modal opens first and sits over the page: assert it, then close it before the walk clicks anything.
+    await page.getByTestId('mode-modal').waitFor();
+    check((await page.getByTestId('mode-modal').getAttribute('data-mode')) === 'mock' && /MOCK/.test(await page.getByTestId('mode-modal').innerText()), `${tag} the page opens on the MOCK modal`);
+    check(await page.evaluate(() => document.querySelectorAll('[data-testid="banner"], [data-testid="sim-banner"], .banner').length === 0), `${tag} the old simulation banner is gone`);
+    await page.getByTestId('mode-modal-ok').click();
+    check((await page.getByTestId('mode-modal').count()) === 0, `${tag} Got it closes the modal`);
+    await page.reload();
+    await page.locator('header').first().waitFor();
+    check((await page.getByTestId('mode-modal').count()) === 0, `${tag} a same-session reload does not show the modal again`);
     check(await page.evaluate(() => document.querySelector('main')?.getAttribute('tabindex') !== null || !!document.querySelector('main')), `${tag} main is present`);
 
     // h1 exactly one per page

@@ -4,7 +4,7 @@ import DiagramTab from "./components/DiagramTab";
 import TalkTrack from "./components/TalkTrack";
 import ReturnLink from "./return-link/ReturnLink.jsx";
 import ShellBar from "./shell/ShellBar.jsx";
-import SimBanner from "./shell/SimBanner.jsx";
+import ModeModal from "./mode-modal/ModeModal.jsx";
 import WelcomePage from "./pages/WelcomePage.jsx";
 import ObservabilityPage from "./pages/ObservabilityPage.jsx";
 import AirlinePage from "./pages/AirlinePage.jsx";
@@ -31,6 +31,11 @@ const hashRoute = () => {
   if (m) return { route: "use-cases", scenario: m[1] };
   if (h === DIAGRAM_ROUTE) return { route: DIAGRAM_ROUTE, scenario: null };
   return { route: ROUTES.some((r) => r.id === h) ? h : "dashboard", scenario: null };
+};
+
+// The Real-or-mock modal's line (it replaced the simulation banner). This lab has no Real mode, so the mode is fixed at Mock and there is no switch.
+const MODE_LINES = {
+  mock: "Everything here is simulated: bookings, tokens and decisions come from this lab's mock engine and mock policy, and the assistant is scripted. Nothing calls a real airline, identity provider, gateway or tenant; every value is a labelled demo value.",
 };
 
 // ui-pattern: allow P3 the dashboard frame is the wide catalog layout this lab ships with; P3 narrows it in a later phase
@@ -96,7 +101,6 @@ export default function App() {
       </ShellBar>
       <div className="account-row"><AccountChip /></div>
       <main id="main" tabIndex={-1}>
-        <SimBanner />
         <ReturnLink app="ai-demo-standalone" />
         <p className="sr-only" role="status" aria-live="polite">{resetMsg}</p>
         {error ? <p className="app-error" role="alert">Could not load the lab ({error}). Is the server running?</p> : !story ? <p className="muted">Loading...</p> : (
@@ -115,6 +119,7 @@ export default function App() {
           </>
         )}
       </main>
+      <ModeModal mode="mock" lines={MODE_LINES} storageKey="aidemo-mode" />
     </div>
   );
 }
