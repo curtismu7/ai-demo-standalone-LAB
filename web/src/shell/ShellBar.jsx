@@ -18,7 +18,7 @@ const THEMES = ["auto", "light", "dark"];
 const SIZES = ["S", "M", "L"];
 
 // ui-pattern: allow P3 the wide catalog frame is this lab's shipped layout until the P2 dashboard rebuild
-export default function ShellBar({ route, onReset, presenter = false, onTogglePresenter, talkTrack, children }) {
+export default function ShellBar({ route, onReset, presenter = false, onTogglePresenter, talkTrack, onModeChange, children }) {
   const [theme, setTheme] = useState(() => {
     try { const t = document.documentElement.dataset.theme; return ["auto", "light", "dark"].includes(t) ? t : "auto"; } catch { return "auto"; }
   });
@@ -28,6 +28,7 @@ export default function ShellBar({ route, onReset, presenter = false, onTogglePr
   const [realAvailable, setRealAvailable] = useState(false);
   const [mode, setModeState] = useState("mock");
 
+  useEffect(() => { if (onModeChange) onModeChange(mode); }, [mode]); // the app renders the Real-or-mock modal from this
   useEffect(() => { getInfo().then((i) => { setRealAvailable(Boolean(i?.realAvailable)); setModeState(i?.mode || "mock"); }).catch(() => {}); }, []);
 
   // "auto" removes data-theme so the OS preference (tokens.css / main.jsx mirror) shows through.

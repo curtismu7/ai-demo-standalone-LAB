@@ -10,13 +10,12 @@ vi.mock("./api", () => ({
   getInfo: vi.fn(async () => ({ mode: "mock", realAvailable: false })),
 }));
 vi.mock("./shell/ShellBar", () => ({ default: ({ children }) => <header>{children}</header> }));
-vi.mock("./shell/SimBanner", () => ({ default: () => <p data-testid="banner">SIMULATED</p> }));
 vi.mock("./pages/WelcomePage", () => ({ default: () => null }));
 vi.mock("./pages/UseCasesPage", () => ({ default: ({ requestedId }) => <p data-testid="pg">{String(requestedId)}</p> }));
 vi.mock("./components/DiagramTab", () => ({ default: () => null }));
 import App from "./App";
 
-afterEach(() => { cleanup(); calls.length = 0; window.history.replaceState(null, "", "/"); window.location.hash = ""; });
+afterEach(() => { cleanup(); calls.length = 0; window.history.replaceState(null, "", "/"); window.location.hash = ""; sessionStorage.clear(); });
 
 describe("hand-off from Customer Agent LAB", () => {
   it("every mapped use case names a real scenario", () => {
@@ -31,7 +30,8 @@ describe("hand-off from Customer Agent LAB", () => {
     window.location.hash = "#/use-cases";
     render(<App />);
     expect(screen.getByRole("note", { name: "Opened from Customer Agent LAB" }).textContent).toContain("UC9");
-    expect(screen.getByTestId("banner").nextElementSibling).toBe(screen.getByRole("note", { name: "Opened from Customer Agent LAB" })); // banner first, strip right below
+    expect(screen.queryByTestId("sim-banner")).toBeNull(); // the mode modal replaced the banner; the strip is the first thing in <main>
+    expect(document.querySelector("main").firstElementChild).toBe(screen.getByRole("note", { name: "Opened from Customer Agent LAB" }));
     expect(screen.getAllByRole("button", { name: /Back to Customer Agent LAB/ })).toHaveLength(2);
     await waitFor(() => expect(screen.getByTestId("pg").textContent).toBe("uc9"));
   });
